@@ -1,0 +1,29 @@
+/* Section 2 of std/fs/tutorial.md, verbatim.
+ *
+ * The gate builds and runs every *.ct in test/std/fs/, and passes two
+ * arguments: a directory it created with exactly two files in it, and a file
+ * path outside that directory. Run it by hand the same way:
+ *
+ *   ct build -I . test/std/fs/first.ct -o /tmp/first
+ *   /tmp/first /tmp /tmp/ct-fs-first.txt
+ */
+import std::fs::Fs;
+import std::test::Test;
+
+int main(int argc, char **argv)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[64];
+
+    tp->init();
+    tp->checkEqInt(argc, 3, "the runner passes a directory and a file");
+    if (argc < 3) return tp->report();
+
+    tp->checkTrue(argv[1].exists(), "the directory exists");
+    tp->checkEqInt(argv[2].writeFile("hi\n"), 0, "write the file");
+    tp->checkEqInt(argv[2].readFile(buf, 64), 3, "read returns the byte count");
+    tp->checkEqStr(buf, "hi\n", "read value");
+
+    return tp->report();
+}

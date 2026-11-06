@@ -1,0 +1,87 @@
+/* std::utf8 - the four sequence lengths and the sequences a strict decoder
+   must reject. Every call is a method now: the byte string is the receiver,
+   and for `encode` the receiver is the buffer the bytes go into. */
+import std::utf8::Utf8Ops;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char eacute[3];
+    char euro[4];
+    char emoji[5];
+    char overlong[3];
+    char surrogate[4];
+    char buf[16];
+    int cp;
+    int n;
+
+    tp->init();
+
+    tp->checkEqInt("A".decode(&cp), 1, "decode ASCII");
+    tp->checkEqInt(cp, 65, "decode ASCII value");
+
+    eacute[0] = (char)0xC3;
+    eacute[1] = (char)0xA9;
+    eacute[2] = 0;
+    tp->checkEqInt(eacute.decode(&cp), 2, "decode two bytes");
+    tp->checkEqInt(cp, 233, "decode two-byte value");
+
+    euro[0] = (char)0xE2;
+    euro[1] = (char)0x82;
+    euro[2] = (char)0xAC;
+    euro[3] = 0;
+    tp->checkEqInt(euro.decode(&cp), 3, "decode three bytes");
+    tp->checkEqInt(cp, 8364, "decode three-byte value");
+
+    emoji[0] = (char)0xF0;
+    emoji[1] = (char)0x9F;
+    emoji[2] = (char)0x98;
+    emoji[3] = (char)0x80;
+    emoji[4] = 0;
+    tp->checkEqInt(emoji.decode(&cp), 4, "decode four bytes");
+    tp->checkEqInt(cp, 128512, "decode four-byte value");
+
+    tp->checkEqInt(buf.encode(233, 16), 2, "encode two bytes");
+    tp->checkEqInt(buf.decode(&cp), 2, "round-trip two bytes");
+    tp->checkEqInt(cp, 233, "round-trip two-byte value");
+    tp->checkEqInt(buf.encode(128512, 16), 4, "encode four bytes");
+    tp->checkEqInt(buf.decode(&cp), 4, "round-trip four bytes");
+    tp->checkEqInt(cp, 128512, "round-trip four-byte value");
+    tp->checkEqInt(buf.encode(233, 2), 2, "encode fits exactly");
+    tp->checkEqInt(buf.encode(233, 1), -1, "encode needs the full width");
+    tp->checkEqInt(buf.encode(0xD800, 16), -1, "encode rejects a surrogate");
+    tp->checkEqInt(buf.encode(0x110000, 16), -1, "encode rejects out of range");
+
+    overlong[0] = (char)0xC0;
+    overlong[1] = (char)0x80;
+    overlong[2] = 0;
+    tp->checkEqInt(overlong.decode(&cp), -1, "decode rejects an overlong");
+    surrogate[0] = (char)0xED;
+    surrogate[1] = (char)0xA0;
+    surrogate[2] = (char)0x80;
+    surrogate[3] = 0;
+    tp->checkEqInt(surrogate.decode(&cp), -1, "decode rejects a surrogate");
+    tp->checkEqInt("\x80".decode(&cp), -1, "decode rejects a lone continuation");
+    tp->checkEqInt("\xC3".decode(&cp), -1, "decode rejects a truncated sequence");
+
+    n = "héllo".codepointCount();
+    tp->checkEqInt(n, 5, "codepointCount counts code points, not bytes");
+    tp->checkEqInt(emoji.codepointCount(), 1, "codepointCount of one four-byte point");
+    tp->checkEqInt("\x80".codepointCount(), -1, "codepointCount rejects invalid text");
+
+    /* `decode` does not write through its receiver, and the literal has to be
+       reached through a `char *` name (a literal receiver still works, as the
+       cases above show). */
+    {
+        char *u = eacute;
+        char *bad = "\x80";
+
+        tp->checkEqInt(u.decode(&cp), 2, "oo decode two bytes");
+        tp->checkEqInt(cp, 233, "oo decode two-byte value");
+        tp->checkEqInt(bad.codepointCount(), -1, "oo codepointCount rejects invalid text");
+    }
+
+    return tp->report();
+}

@@ -1,0 +1,35 @@
+/* Section 2 of std/utf8/tutorial.md, verbatim.
+ *
+ * The gate builds and runs every *.ct in test/std/utf8/, so the tutorial's
+ * opening program is compiled on every run instead of rotting in the docs.
+ *
+ *   ct build -I . test/std/utf8/first.ct -o /tmp/first && /tmp/first
+ */
+import std::utf8::Utf8Ops;
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[8];
+    int cp;
+    int n;
+
+    tp->init();
+
+    tp->checkEqInt("é".len(), 2, "len counts bytes");
+    tp->checkEqInt("é".codepointCount(), 1, "codepointCount counts code points");
+
+    tp->checkEqInt("é".decode(&cp), 2, "decode returns the bytes consumed");
+    tp->checkEqInt(cp, 233, "decode gives the code point");
+
+    n = buf.encode(cp, 8);
+    tp->checkEqInt(n, 2, "encode returns the bytes written");
+    buf[n] = 0;
+    tp->checkEqInt(buf.decode(&cp), 2, "round trip");
+    tp->checkEqInt(cp, 233, "round-trip value");
+
+    return tp->report();
+}

@@ -1,0 +1,60 @@
+/* The runnable half of std/str/tutorial.md.
+ *
+ * Every "runnable" snippet in that tutorial is a block of this file; the gate
+ * builds and runs it (test/std/run.sh drives every *.ct in this directory), so
+ * a broken example fails the build instead of rotting in the docs.
+ *
+ * Build and run by hand:
+ *   ct build -I . test/std/str/guide.ct -o /tmp/guide && /tmp/guide
+ */
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[16];
+    char word[8];
+    char *s = "Hello, ct";
+
+    tp->init();
+
+    /* 1. Read: every index is a BYTE offset, every length is in BYTES. */
+    tp->checkEqInt(s.len(), 9, "len");
+    tp->checkEqInt(s.find("ct"), 7, "find");
+    tp->checkEqInt(s.find("zz"), -1, "find misses");
+    tp->checkEqInt(s.findChar(','), 5, "findChar");
+    tp->checkEqInt(s.findChar('z'), -1, "findChar misses");
+    tp->checkEqInt(s.startsWith("Hello"), 1, "startsWith hit");
+    tp->checkEqInt(s.startsWith("hello"), 0, "startsWith is case sensitive");
+    tp->checkEqInt(s.endsWith("ct"), 1, "endsWith hit");
+    tp->checkEqInt(s.endsWith("tc"), 0, "endsWith miss");
+    tp->checkEqInt("abc".compare("abd"), -1, "compare orders like strcmp");
+
+    /* 2. Write into a buffer the caller owns: `out` and `cap` are arguments. */
+    tp->checkEqInt(s.copy(buf, 16), 0, "copy");
+    tp->checkEqStr(buf, "Hello, ct", "copy result");
+    tp->checkEqInt(s.copy(buf, 9), -1, "copy needs room for the NUL");
+
+    tp->checkEqInt(s.slice(0, 5, buf, 16), 0, "slice");
+    tp->checkEqStr(buf, "Hello", "slice is half-open [start, end)");
+    tp->checkEqInt(s.slice(0, 99, buf, 16), -1, "slice past the end");
+
+    tp->checkEqInt("Hello, ".concat("ct", buf, 16), 0, "concat");
+    tp->checkEqStr(buf, "Hello, ct", "concat result");
+    tp->checkEqInt("Hello, ".concat("ct", buf, 9), -1, "concat needs room for the NUL");
+
+    /* 3. In place: only ever on a buffer you own, never on a literal. */
+    tp->checkEqInt("Hello".copy(word, 8), 0, "seed a mutable buffer");
+    tp->checkEqInt(word.toLower(), 0, "toLower");
+    tp->checkEqStr(word, "hello", "toLower rewrites the buffer");
+    tp->checkEqInt(word.toUpper(), 0, "toUpper");
+    tp->checkEqStr(word, "HELLO", "toUpper rewrites the buffer");
+
+    /* 4. Bytes, not characters: "é" is one character and two bytes. */
+    tp->checkEqInt("é".len(), 2, "len counts bytes");
+    tp->checkEqInt("é".findChar('z'), -1, "indexes are byte offsets too");
+
+    return tp->report();
+}

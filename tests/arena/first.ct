@@ -1,0 +1,34 @@
+/* Section 2 of std/arena/tutorial.md, verbatim.
+ *
+ * The gate builds and runs every *.ct in test/std/arena/, so the tutorial's
+ * opening program is compiled on every run instead of rotting in the docs.
+ *
+ *   ct build -I . test/std/arena/first.ct -o /tmp/first && /tmp/first
+ */
+import std::arena::Arena;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    Arena a;
+    Arena *ap = &a;
+    char *p;
+
+    tp->init();
+
+    tp->checkEqInt(ap->init(32), 0, "init");
+    p = (char *)ap->alloc(8);
+    tp->checkTrue(p != 0, "alloc");
+    p[0] = 'A';
+    tp->checkEqInt(p[0], 'A', "the slice is writable");
+
+    ap->reset();
+    p = (char *)ap->alloc(8);
+    tp->checkTrue(p != 0, "alloc after reset");
+    ap->freeAll();
+    tp->checkTrue(ap->alloc(8) == 0, "alloc after freeAll fails");
+
+    return tp->report();
+}

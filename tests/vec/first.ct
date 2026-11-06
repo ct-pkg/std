@@ -1,0 +1,30 @@
+/* Section 2 of std/vec/tutorial.md, verbatim.
+ *
+ * The gate builds and runs every *.ct in test/std/vec/, so the tutorial's
+ * opening program is compiled on every run instead of rotting in the docs.
+ *
+ *   ct build -I . test/std/vec/first.ct -o /tmp/first && /tmp/first
+ */
+import std::vec::Vec;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    VecInt v;
+    VecInt *vp = &v;
+    int x;
+
+    tp->init();
+
+    vp->init();
+    tp->checkEqInt(vp->push(10), 0, "push");
+    tp->checkEqInt(vp->push(20), 0, "push");
+    tp->checkEqInt(vp->len(), 2, "len");
+    tp->checkEqInt(vp->at(1, &x), 0, "at");
+    tp->checkEqInt(x, 20, "at value");
+    vp->free();
+
+    return tp->report();
+}

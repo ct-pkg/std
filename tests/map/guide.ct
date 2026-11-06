@@ -1,0 +1,93 @@
+/* The runnable half of std/map/tutorial.md.
+ *
+ * Every "runnable" snippet in that tutorial is a block of this file; the gate
+ * builds and runs it (test/std/run.sh drives every *.ct in this directory), so
+ * a broken example fails the build instead of rotting in the docs.
+ *
+ * Build and run by hand:
+ *   ct build -I . test/std/map/guide.ct -o /tmp/guide && /tmp/guide
+ */
+import std::map::Map;
+import std::str::String;
+import std::test::Test;
+
+#include <stdlib.h>
+
+/* A plain `void (*)(void *)` for MapIntPtr; `free` itself is not a name this
+   unit can pass around. */
+static void drop(void *p)
+{
+    free(p);
+}
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    MapStrInt m;
+    MapStrInt *mp = &m;
+    MapStrInt seed;
+    MapStrInt *heap;
+    MapIntPtr pmap;
+    MapIntPtr *pm = &pmap;
+    char key[8];
+    int i;
+    int v;
+    void *out;
+
+    tp->init();
+
+    /* 1. init first, then put / get / overwrite. */
+    tp->checkEqInt(mp->init(8), 0, "init");
+    tp->checkEqInt(mp->put("k0", 10), 0, "put");
+    tp->checkEqInt(mp->get("k0", &v), 0, "get");
+    tp->checkEqInt(v, 10, "the stored value");
+    tp->checkEqInt(mp->put("k0", 11), 0, "overwrite");
+    tp->checkEqInt(mp->get("k0", &v), 0, "get after overwrite");
+    tp->checkEqInt(v, 11, "the overwritten value");
+    tp->checkEqInt(mp->len(), 1, "an overwrite does not grow the table");
+    tp->checkEqInt(mp->get("missing", &v), -1, "a missing key");
+
+    /* 2. MapStrInt compares keys by CONTENT, but stores the pointer you gave. */
+    tp->checkEqInt("kk".copy(key, 8), 0, "seed a mutable key buffer");
+    tp->checkEqInt(mp->put(key, 20), 0, "put with a buffer key");
+    tp->checkEqInt(mp->get("kk", &v), 0, "lookup through another pointer");
+    tp->checkEqInt(v, 20, "equal content finds the entry");
+
+    /* 3. clear empties the slots but keeps the table usable. */
+    mp->clear();
+    tp->checkEqInt(mp->len(), 0, "clear empties the table");
+    tp->checkEqInt(mp->get("k0", &v), -1, "get after clear");
+    tp->checkEqInt(mp->put("k0", 1), 0, "put after clear");
+    mp->free();
+
+    /* 4. MapIntPtr: fixed capacity, values owned through free_fn. */
+    tp->checkEqInt(pm->init(4, drop), 0, "init sizes up to the 16 minimum");
+    for (i = 0; i < 16; i++) {
+        int *p = (int *)malloc(sizeof(int));
+        if (!p) return 1;
+        *p = i * 10;
+        tp->checkEqInt(pm->put(i, p), 0, "fill a slot");
+    }
+    tp->checkEqInt(pm->len(), 16, "the table is full");
+    tp->checkEqInt(pm->put(99, 0), -1, "a full table refuses a new key");
+    tp->checkEqInt(pm->get(15, &out), 0, "the last key is found");
+    tp->checkEqInt(*(int *)out, 150, "the last value");
+    tp->checkEqInt(pm->get(99, &out), -1, "a missing key");
+    pm->clear();
+    tp->checkEqInt(pm->len(), 0, "clear runs free_fn and drops the entries");
+    pm->free();
+
+    /* 5. A heap map: copy an initialised value in before dispatching. */
+    seed.init(4);
+    heap = (MapStrInt *)malloc(sizeof(MapStrInt));
+    if (!heap) return 2;
+    *heap = seed;
+    tp->checkEqInt(heap->put("h", 7), 0, "put through a heap pointer");
+    tp->checkEqInt(heap->get("h", &v), 0, "get through a heap pointer");
+    tp->checkEqInt(v, 7, "heap value");
+    heap->free();
+    free(heap);
+
+    return tp->report();
+}

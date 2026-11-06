@@ -1,0 +1,76 @@
+/* The runnable half of std/arena/tutorial.md.
+ *
+ * Every "runnable" snippet in that tutorial is a block of this file; the gate
+ * builds and runs it (test/std/run.sh drives every *.ct in this directory), so
+ * a broken example fails the build instead of rotting in the docs.
+ *
+ * Build and run by hand:
+ *   ct build -I . test/std/arena/guide.ct -o /tmp/guide && /tmp/guide
+ */
+import std::arena::Arena;
+import std::test::Test;
+
+#include <stdlib.h>
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    Arena a;
+    Arena *ap = &a;
+    Arena seed;
+    Arena *heap;
+    char *first;
+    char *p;
+    char *q;
+    int i;
+
+    tp->init();
+
+    /* 1. init, then hand out aligned slices. */
+    tp->checkEqInt(ap->init(32), 0, "init");
+    p = (char *)ap->alloc(1);
+    tp->checkTrue(p != 0, "alloc a byte");
+    tp->checkEqInt((int)((long)p % 8), 0, "alloc is 8-byte aligned");
+    first = p;
+    q = (char *)ap->alloc(8);
+    tp->checkTrue(q != 0, "alloc eight bytes");
+    tp->checkEqInt((int)(q - p), 8, "a one-byte request still takes eight bytes");
+
+    /* 2. Zero and negative requests are refused with NULL, not an abort. */
+    tp->checkTrue(ap->alloc(0) == 0, "alloc of zero bytes is refused");
+    tp->checkTrue(ap->alloc(-1) == 0, "alloc of a negative size is refused");
+
+    /* 3. A request that does not fit the block gets a new block. */
+    q = (char *)ap->alloc(40);
+    tp->checkTrue(q != 0, "alloc across a block boundary");
+    for (i = 0; i < 40; i++) q[i] = (char)i;
+    tp->checkEqInt(q[39], (char)39, "the overflow block is writable");
+
+    /* 4. reset: every block after the first goes back, the first is reused. */
+    ap->reset();
+    p = (char *)ap->alloc(8);
+    tp->checkTrue(p != 0, "alloc after reset");
+    tp->checkTrue(p == first, "reset recycles the first block");
+    tp->checkEqInt((int)((long)p % 8), 0, "reset keeps the alignment");
+
+    /* 5. freeAll: even the first block goes, the arena refuses work until init. */
+    ap->freeAll();
+    tp->checkTrue(ap->alloc(8) == 0, "alloc after freeAll fails");
+    tp->checkEqInt(ap->init(32), 0, "init makes the arena usable again");
+    p = (char *)ap->alloc(8);
+    tp->checkTrue(p != 0, "alloc after re-init");
+    ap->freeAll();
+
+    /* 6. A heap arena: copy an initialised value in before dispatching. */
+    seed.init(16);
+    heap = (Arena *)malloc(sizeof(Arena));
+    if (!heap) return 2;
+    *heap = seed;
+    p = (char *)heap->alloc(8);
+    tp->checkTrue(p != 0, "alloc through a heap pointer");
+    heap->freeAll();
+    free(heap);
+
+    return tp->report();
+}

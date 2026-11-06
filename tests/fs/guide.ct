@@ -1,0 +1,71 @@
+/* The runnable half of std/fs/tutorial.md.
+ *
+ * Every "runnable" snippet in that tutorial is a block of this file; the gate
+ * builds and runs it (test/std/run.sh drives every *.ct in this directory) and
+ * passes argv[1] (a directory with exactly two entries) and argv[2] (a file
+ * path outside it), so the listing assertions are deterministic.
+ *
+ * Build and run by hand:
+ *   ct build -I . test/std/fs/guide.ct -o /tmp/guide
+ *   /tmp/guide /tmp /tmp/ct-fs-guide.txt
+ */
+import std::fs::Fs;
+import std::str::String;
+import std::test::Test;
+
+int main(int argc, char **argv)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[64];
+    char listing[128];
+    char *dir;
+    char *file;
+    int n;
+
+    tp->init();
+    tp->checkEqInt(argc, 3, "the runner passes a directory and a file");
+    if (argc < 3) return tp->report();
+
+    dir = argv[1];
+    file = argv[2];
+
+    /* 1. exists: the receiver is any char *, and a missing path is 0. */
+    tp->checkTrue(dir.exists(), "the directory exists");
+    tp->checkTrue(!file.exists(), "the file does not exist yet");
+    tp->checkEqInt("/no/such/path".exists(), 0, "a missing path is 0");
+    tp->checkEqInt("".exists(), 0, "an empty string is not a path");
+
+    /* 2. write then read; read reports BYTES written, not characters. */
+    tp->checkEqInt(file.writeFile("hello\nworld"), 0, "write the file");
+    tp->checkTrue(file.exists(), "the file exists now");
+    n = file.readFile(buf, 64);
+    tp->checkEqInt(n, 11, "read returns the byte count");
+    tp->checkEqStr(buf, "hello\nworld", "read value");
+    tp->checkEqInt(file.readFile(buf, 11), -1,
+                   "read needs room for the terminating NUL");
+    tp->checkEqInt("/no/such/file".readFile(buf, 64), -1, "read a missing file");
+
+    /* 3. list: entries joined with '\n', no trailing newline. */
+    n = dir.list(listing, 128);
+    tp->checkEqInt(n, 2, "list two entries");
+    tp->checkTrue(listing.find("a.txt") >= 0, "the listing has a.txt");
+    tp->checkTrue(listing.find("b.txt") >= 0, "the listing has b.txt");
+    tp->checkTrue(listing.findChar('\n') >= 0, "entries are joined with a newline");
+    tp->checkEqInt(dir.list(listing, 4), -1,
+                   "list refuses a buffer that cannot hold the first name");
+    tp->checkEqInt("/no/such/dir".list(listing, 128), -1, "list a missing directory");
+
+    /* 4. writeFile replaces: the old contents do not survive. */
+    tp->checkEqInt(file.writeFile("oo\n"), 0, "rewrite the file");
+    n = file.readFile(buf, 64);
+    tp->checkEqInt(n, 3, "read the rewritten file");
+    tp->checkEqStr(buf, "oo\n", "rewritten value");
+
+    /* 5. Bytes again: "é" is one character and two bytes on disk. */
+    tp->checkEqInt(file.writeFile("é"), 0, "write a multi-byte character");
+    n = file.readFile(buf, 64);
+    tp->checkEqInt(n, 2, "read counts bytes, not characters");
+
+    return tp->report();
+}

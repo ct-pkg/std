@@ -1,0 +1,196 @@
+/*
+ * Vec.h.ct - monomorphic growable arrays (std::vec).
+ *
+ * CT has no generics, so the two shapes a first version needs are spelled out:
+ * `VecInt` (int elements) and `VecStr` (`char *` elements). A future generic
+ * form can replace them; callers should not rely on the field layout.
+ *
+ * `VecInt` / `VecStr` are CT-owned types, not C standard-library ones, so this
+ * unit is the whole module: struct, trait, impl and code, with no mapping unit
+ * and no shim. Calls are OO (`vp->push(x)`, `vp->len()`), and because each
+ * struct carries `use ...Ops`, every vector holds one extra pointer -- 8 bytes
+ * per object (sizeof goes 16 -> 24) -- and one indirect jump per call.
+ *
+ * Two facts that follow from `use`, and that no spelling can avoid:
+ *
+ *  - `at()` / `len()` are tiny accessors that a direct call folds away at -O2;
+ *    through the vtable they always cost the indirect jump (about 1 ns here).
+ *    That is native OO, not an implementation defect -- do not special-case
+ *    such methods back to direct calls, it would trade consistency for nothing.
+ *  - the vptr (`__vecintops_vptr`) is part of the exported struct layout, so
+ *    this header publishes a layout 8 bytes larger than the bare fields.
+ *
+ * Order matters: a trait has to be declared before the struct that uses it,
+ * otherwise the compiler reports `struct 'VecInt' uses undefined trait
+ * 'VecIntOps'`. This module spells calls `p->method()` throughout: it works for
+ * a declared value and for a heap object alike. A declared value ALSO accepts
+ * `v.method()` -- the compiler appends `.vptr = &vtable` to the declaration's
+ * initializer and passes `&v` -- but that only covers objects that came from a
+ * declaration. A `malloc`ed vector must not be dispatched through before its
+ * vptr is set: assign an initialised value first.
+ *
+ * Growth is amortised doubling. A failed `realloc` returns -1 and leaves the
+ * vector untouched. The unit owns the element array, not the elements: `VecStr`
+ * stores the pointers it is given, so the caller keeps them alive until the
+ * vector is done with them. `free()` releases the array.
+ *
+ * `VEC_MIN_CAP` stays out of the exported header: a `#define` in a `.h.ct` lands
+ * in this unit's own `.c`, which is where the code that uses it lives.
+ *
+ * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ */
+#include <stdlib.h>
+
+namespace std::vec;
+
+/* Stateless marker type; nothing instantiates it. */
+pub struct Vec {
+    int unused;
+}
+
+pub trait VecIntOps {
+    void init();
+    int len();
+    int push(int x);
+    int pop(int *out);
+    int at(int i, int *out);
+    void free();
+}
+
+pub struct VecInt {
+    int *data;
+    int n;
+    int cap;
+} use VecIntOps;
+
+#define VEC_MIN_CAP 8
+
+impl VecIntOps for VecInt {
+    /* Zero the vector; every other method assumes this ran (or a zeroed value). */
+    void init()
+    {
+        self->data = 0;
+        self->n = 0;
+        self->cap = 0;
+    }
+
+    int len()
+    {
+        return self->n;
+    }
+
+    /* Append `x`; -1 when the element array cannot grow. */
+    int push(int x)
+    {
+        int cap;
+        int *p;
+
+        if (self->n >= self->cap) {
+            cap = self->cap ? self->cap * 2 : VEC_MIN_CAP;
+            p = realloc(self->data, (size_t)cap * sizeof(int));
+            if (!p) return -1;
+            self->data = p;
+            self->cap = cap;
+        }
+        self->data[self->n] = x;
+        self->n++;
+        return 0;
+    }
+
+    /* Read the last element into `out` and remove it; -1 when empty. */
+    int pop(int *out)
+    {
+        if (self->n <= 0) return -1;
+        self->n--;
+        if (out) *out = self->data[self->n];
+        return 0;
+    }
+
+    /* Read `i` into `out`; -1 when `i` is out of range. */
+    int at(int i, int *out)
+    {
+        if (i < 0 || i >= self->n) return -1;
+        if (out) *out = self->data[i];
+        return 0;
+    }
+
+    void free()
+    {
+        free(self->data);
+        self->data = 0;
+        self->n = 0;
+        self->cap = 0;
+    }
+}
+
+pub trait VecStrOps {
+    void init();
+    int len();
+    int push(char *s);
+    int pop(char **out);
+    int at(int i, char **out);
+    void free();
+}
+
+pub struct VecStr {
+    char **data;
+    int n;
+    int cap;
+} use VecStrOps;
+
+impl VecStrOps for VecStr {
+    void init()
+    {
+        self->data = 0;
+        self->n = 0;
+        self->cap = 0;
+    }
+
+    int len()
+    {
+        return self->n;
+    }
+
+    /* Append the pointer `s` (not a copy); -1 when the element array cannot grow. */
+    int push(char *s)
+    {
+        int cap;
+        char **p;
+
+        if (self->n >= self->cap) {
+            cap = self->cap ? self->cap * 2 : VEC_MIN_CAP;
+            p = realloc(self->data, (size_t)cap * sizeof(char *));
+            if (!p) return -1;
+            self->data = p;
+            self->cap = cap;
+        }
+        self->data[self->n] = s;
+        self->n++;
+        return 0;
+    }
+
+    /* Read the last pointer into `out` and remove it; -1 when empty. */
+    int pop(char **out)
+    {
+        if (self->n <= 0) return -1;
+        self->n--;
+        if (out) *out = self->data[self->n];
+        return 0;
+    }
+
+    /* Read `i` into `out`; -1 when `i` is out of range. */
+    int at(int i, char **out)
+    {
+        if (i < 0 || i >= self->n) return -1;
+        if (out) *out = self->data[i];
+        return 0;
+    }
+
+    void free()
+    {
+        free(self->data);
+        self->data = 0;
+        self->n = 0;
+        self->cap = 0;
+    }
+}

@@ -1,0 +1,92 @@
+/*
+ * Test.h.ct - a tiny assertion counter (std::test).
+ *
+ * `Test` is a CT-owned type, not a C standard-library one, so this unit is the
+ * whole module: the struct, the trait, the impl and the code, with no mapping
+ * unit and no shim. Calls are OO (`tp->checkEqInt(...)`, `tp->report()`), and
+ * because the struct carries `use TestOps`, every `Test` value carries a vtable
+ * pointer -- 8 bytes more than the bare fields, and one indirect jump per check.
+ *
+ * Order matters: the trait has to be declared before the struct that uses it,
+ * otherwise the compiler reports `struct 'Test' uses undefined trait 'TestOps'`.
+ *
+ * Assertion macros cannot cross a unit boundary, so the module exposes real
+ * methods: every check counts itself and reports a failure on stderr, and
+ * `report` returns the exit status the caller should use.
+ *
+ * A heap-allocated `Test` must not be dispatched through before its vptr is set:
+ * `malloc` leaves it garbage. Construct a value (or assign a compound literal,
+ * which the compiler initializes) before the first method call.
+ *
+ * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ */
+
+#include <stdio.h>
+#include <string.h>
+
+namespace std::test;
+
+pub trait TestOps {
+    void init();
+    int checkTrue(int cond, const char *msg);
+    int checkEqInt(int got, int want, const char *msg);
+    int checkEqStr(const char *got, const char *want, const char *msg);
+    int report();
+}
+
+pub struct Test {
+    int checks;
+    int failures;
+} use TestOps;
+
+impl TestOps for Test {
+    void init()
+    {
+        self->checks = 0;
+        self->failures = 0;
+    }
+
+    int checkTrue(int cond, const char *msg)
+    {
+        self->checks++;
+        if (!cond) {
+            self->failures++;
+            fprintf(stderr, "FAIL: %s\n", msg ? msg : "(no message)");
+            return 0;
+        }
+        return 1;
+    }
+
+    int checkEqInt(int got, int want, const char *msg)
+    {
+        self->checks++;
+        if (got != want) {
+            self->failures++;
+            fprintf(stderr, "FAIL: %s (got %d, want %d)\n",
+                    msg ? msg : "(no message)", got, want);
+            return 0;
+        }
+        return 1;
+    }
+
+    int checkEqStr(const char *got, const char *want, const char *msg)
+    {
+        self->checks++;
+        if (!got) got = "";
+        if (!want) want = "";
+        if (strcmp(got, want) != 0) {
+            self->failures++;
+            fprintf(stderr, "FAIL: %s (got '%s', want '%s')\n",
+                    msg ? msg : "(no message)", got, want);
+            return 0;
+        }
+        return 1;
+    }
+
+    int report()
+    {
+        printf("%d checks, %d failures\n", self->checks, self->failures);
+        if (self->failures == 0) return 0;
+        return 1;
+    }
+}

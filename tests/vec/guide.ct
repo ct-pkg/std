@@ -1,0 +1,88 @@
+/* The runnable half of std/vec/tutorial.md.
+ *
+ * Every "runnable" snippet in that tutorial is a block of this file; the gate
+ * builds and runs it (test/std/run.sh drives every *.ct in this directory), so
+ * a broken example fails the build instead of rotting in the docs.
+ *
+ * Build and run by hand:
+ *   ct build -I . test/std/vec/guide.ct -o /tmp/guide && /tmp/guide
+ */
+import std::vec::Vec;
+import std::test::Test;
+
+#include <stdlib.h>
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    VecInt v;
+    VecInt *vp = &v;
+    VecStr names;
+    VecStr *np = &names;
+    VecInt seed;
+    VecInt *heap;
+    char *name;
+    int i;
+    int x;
+
+    tp->init();
+
+    /* 1. `init` is the first step: it zeros the fields. */
+    vp->init();
+    tp->checkEqInt(vp->len(), 0, "a fresh vector is empty");
+
+    /* 2. Append, read, remove. Every index is bounds-checked. */
+    tp->checkEqInt(vp->push(10), 0, "push");
+    tp->checkEqInt(vp->push(20), 0, "push");
+    tp->checkEqInt(vp->len(), 2, "len");
+    tp->checkEqInt(vp->at(1, &x), 0, "at");
+    tp->checkEqInt(x, 20, "at value");
+    tp->checkEqInt(vp->at(2, &x), -1, "at past the end");
+    tp->checkEqInt(vp->at(-1, &x), -1, "at before the start");
+    tp->checkEqInt(x, 20, "a failed at() leaves the out-param alone");
+    tp->checkEqInt(vp->pop(&x), 0, "pop");
+    tp->checkEqInt(x, 20, "pop returns the last element");
+    tp->checkEqInt(vp->len(), 1, "len after pop");
+
+    /* 3. Growth is amortised doubling; the capacity is not part of the API. */
+    for (i = 0; i < 100; i++) vp->push(i);
+    tp->checkEqInt(vp->len(), 101, "len after growth");
+    tp->checkEqInt(vp->at(100, &x), 0, "the last element survives growth");
+    tp->checkEqInt(x, 99, "the last element value");
+    vp->free();
+    tp->checkEqInt(vp->len(), 0, "free empties the vector");
+    tp->checkEqInt(vp->pop(&x), -1, "pop on an empty vector");
+
+    /* 4. `VecStr` stores borrowed pointers; it never copies or frees them. */
+    np->init();
+    tp->checkEqInt(np->push("alpha"), 0, "push a borrowed string");
+    tp->checkEqInt(np->at(0, &name), 0, "at");
+    tp->checkEqStr(name, "alpha", "the pointer comes back unchanged");
+    np->free();
+
+    /* 5. Heap objects: assign an initialised value before the first call.
+          `malloc` alone leaves the vptr holding garbage (a segfault). */
+    seed.init();
+    heap = (VecInt *)malloc(sizeof(VecInt));
+    if (!heap) return 2;
+    *heap = seed;
+    tp->checkEqInt(heap->push(7), 0, "push through a heap pointer");
+    tp->checkEqInt(heap->at(0, &x), 0, "at through a heap pointer");
+    tp->checkEqInt(x, 7, "heap value");
+    heap->free();
+    free(heap);
+
+    /* 6. A declared value dispatches too: the compiler fills in the vptr at the
+          declaration. The `->` form above is the explicit spelling. */
+    {
+        VecInt local;
+
+        local.init();
+        local.push(3);
+        tp->checkEqInt(local.len(), 1, "value receiver");
+        local.free();
+    }
+
+    return tp->report();
+}

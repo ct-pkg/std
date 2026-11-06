@@ -1,0 +1,105 @@
+name: test
+
+# After std leaves ct-lang, this workflow is the only coverage std has.
+# It therefore runs on every pull request, not just on release.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # 20:00 UTC = 04:00 Asia/Shanghai: catch ct-lang main regressions overnight.
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: std-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CT_REPO: samxxu/ct-lang
+  # Track main while the OO std is being landed in ct-lang. Once the compiler
+  # release that ships it is tagged, pin this to that tag (expected v0.20.0)
+  # so pull requests test against a stable compiler, and leave compiler-head
+  # on main.
+  CT_REF: main
+
+jobs:
+  host:
+    name: ${{ matrix.os }} / ${{ matrix.cc }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cc: gcc
+          - os: macos-latest
+            cc: clang
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: checkout ct-lang
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CT_REPO }}
+          ref: ${{ env.CT_REF }}
+          path: .ct-src
+          # ct-lang is public (verified 2026-11-06), so the workflow token can
+          # read it. If it ever goes private, add CT_LANG_TOKEN (read access)
+          # and this line falls back to it automatically.
+          token: ${{ secrets.CT_LANG_TOKEN || github.token }}
+
+      - name: bootstrap ct
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          bash tools/bootstrap-ct.sh .ct-src "$RUNNER_TEMP/ct"
+          echo "$RUNNER_TEMP/ct" >> "$GITHUB_PATH"
+
+      # Optional while std/ still lives in ct-lang: proves this package is a
+      # byte-for-byte copy of the source tree. Remove this step once ct-lang
+      # deletes std/ (the comparison then has no source side).
+      #
+      # - name: package must match ct-lang
+      #   env:
+      #     CT_SRC: .ct-src
+      #   run: bash tools/migrate-from-ct.sh --check
+
+      - name: gate
+        env:
+          CC: ${{ matrix.cc }}
+          CT: ${{ runner.temp }}/ct/ct
+        run: bash tests/run.sh
+
+  compiler-head:
+    # The nightly job that pins nothing: language changes on ct-lang main show
+    # up here within a day, instead of waiting for a package release.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: checkout ct-lang main
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CT_REPO }}
+          ref: main
+          path: .ct-src
+          token: ${{ secrets.CT_LANG_TOKEN || github.token }}
+
+      - name: bootstrap ct
+        env:
+          CC: gcc
+        run: |
+          bash tools/bootstrap-ct.sh .ct-src "$RUNNER_TEMP/ct"
+          echo "$RUNNER_TEMP/ct" >> "$GITHUB_PATH"
+
+      - name: gate
+        env:
+          CC: gcc
+          CT: ${{ runner.temp }}/ct/ct
+        run: bash tests/run.sh

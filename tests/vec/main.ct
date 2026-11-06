@@ -1,0 +1,57 @@
+/* std::vec - growth, indexing and the empty / out-of-range cases. */
+import std::vec::Vec;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    VecInt vi;
+    VecStr vs;
+    VecInt *ip = &vi;
+    VecStr *sp = &vs;
+    int i;
+    int x;
+    char *s;
+
+    tp->init();
+
+    ip->init();
+    tp->checkEqInt(ip->len(), 0, "a fresh int vector is empty");
+    tp->checkEqInt(ip->push(7), 0, "push 7");
+    tp->checkEqInt(ip->push(8), 0, "push 8");
+    tp->checkEqInt(ip->len(), 2, "len after two pushes");
+    tp->checkEqInt(ip->at(1, &x), 0, "at(1)");
+    tp->checkEqInt(x, 8, "at(1) value");
+    tp->checkEqInt(ip->at(2, &x), -1, "at past the end");
+    tp->checkEqInt(ip->at(-1, &x), -1, "at before the start");
+
+    /* More than VEC_MIN_CAP forces the doubling path. */
+    for (i = 0; i < 100; i++) ip->push(i);
+    tp->checkEqInt(ip->len(), 102, "len after growth");
+    tp->checkEqInt(ip->at(101, &x), 0, "last element after growth");
+    tp->checkEqInt(x, 99, "last element value");
+    tp->checkEqInt(ip->pop(&x), 0, "pop");
+    tp->checkEqInt(x, 99, "pop value");
+    tp->checkEqInt(ip->len(), 101, "len after pop");
+    ip->free();
+    tp->checkEqInt(ip->len(), 0, "len after free");
+    tp->checkEqInt(ip->pop(&x), -1, "pop on an empty vector");
+
+    sp->init();
+    tp->checkEqInt(sp->push("one"), 0, "push a string");
+    tp->checkEqInt(sp->push("two"), 0, "push another");
+    tp->checkEqInt(sp->len(), 2, "string len");
+    tp->checkEqInt(sp->at(0, &s), 0, "string at(0)");
+    tp->checkEqStr(s, "one", "string at(0) value");
+    tp->checkEqInt(sp->at(2, &s), -1, "string at past the end");
+    tp->checkEqInt(sp->pop(&s), 0, "string pop");
+    tp->checkEqStr(s, "two", "string pop value");
+    tp->checkEqInt(sp->pop(&s), 0, "string pop the last element");
+    tp->checkEqStr(s, "one", "string pop value of the last element");
+    tp->checkEqInt(sp->pop(&s), -1, "string pop on an empty vector");
+    sp->free();
+    tp->checkEqInt(sp->len(), 0, "string len after free");
+
+    return tp->report();
+}

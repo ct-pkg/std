@@ -1,0 +1,31 @@
+/* Section 2 of std/str/tutorial.md, verbatim.
+ *
+ * The gate builds and runs every *.ct in test/std/str/, so the tutorial's
+ * opening program is compiled on every run instead of rotting in the docs.
+ *
+ *   ct build -I . test/std/str/first.ct -o /tmp/first && /tmp/first
+ */
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char *s = "Hello, ct";
+
+    tp->init();
+
+    tp->checkEqInt(s.len(), 9, "len");
+    tp->checkEqInt(s.find("ct"), 7, "find");
+    tp->checkEqInt(s.find("zz"), -1, "find misses");
+    tp->checkEqInt(s.findChar(','), 5, "findChar");
+    tp->checkEqInt(s.findChar('z'), -1, "findChar misses");
+    tp->checkEqInt(s.startsWith("Hello"), 1, "startsWith hit");
+    tp->checkEqInt(s.startsWith("hello"), 0, "startsWith is case sensitive");
+    tp->checkEqInt(s.endsWith("ct"), 1, "endsWith hit");
+    tp->checkEqInt(s.endsWith("tc"), 0, "endsWith miss");
+    tp->checkEqInt("abc".compare("abd"), -1, "compare orders like strcmp");
+
+    return tp->report();
+}

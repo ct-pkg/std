@@ -1,0 +1,38 @@
+/*
+ * Fs.m.ct - the method spellings for std::fs (std::fs::FsOps).
+ *
+ * std::fs is a mapping module, not a type: it extends `char *` with file-system
+ * verbs, so the path is the receiver (`path.exists()`, `path.readFile(out, cap)`)
+ * and there is no `Fs` struct and no `Fs.h.ct`. This unit plus `Fs.shim.h` is
+ * the whole module.
+ *
+ * Zero-cost static mappings: `path.exists()` expands to `std_fs_exists(path)`,
+ * with no wrapper, no interface value and no vtable. The functions are defined
+ * `static inline` in Fs.shim.h, which the driver injects at the top of every
+ * consumer that imports this unit -- before any call site -- and compiles as
+ * part of that consumer, so there is no separate translation unit to link.
+ *
+ * Why the implementations are in the shim and not here: a `.m.ct` accepts only
+ * `#include` and `#define` in its prologue, so a `#ct-raw` block with a function
+ * body is a hard parse error. This is not a style choice.
+ *
+ * This unit is the only import: `import std::fs::Fs;`.
+ *
+ * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ */
+
+namespace std::fs;
+
+pub trait FsOps {
+    int exists();
+    int readFile(char *out, int cap);
+    int writeFile(const char *data);
+    int list(char *out, int cap);
+}
+
+map trait FsOps for type char * {
+    exists(path) -> std_fs_exists(path);
+    readFile(path, out, cap) -> std_fs_read_file(path, out, cap);
+    writeFile(path, data) -> std_fs_write_file(path, data);
+    list(path, out, cap) -> std_fs_list(path, out, cap);
+}

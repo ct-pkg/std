@@ -1,0 +1,30 @@
+/* Section 2 of std/map/tutorial.md, verbatim.
+ *
+ * The gate builds and runs every *.ct in test/std/map/, so the tutorial's
+ * opening program is compiled on every run instead of rotting in the docs.
+ *
+ *   ct build -I . test/std/map/first.ct -o /tmp/first && /tmp/first
+ */
+import std::map::Map;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    MapStrInt m;
+    MapStrInt *mp = &m;
+    int v;
+
+    tp->init();
+
+    tp->checkEqInt(mp->init(8), 0, "init is the first step");
+    tp->checkEqInt(mp->put("one", 1), 0, "put");
+    tp->checkEqInt(mp->get("one", &v), 0, "get");
+    tp->checkEqInt(v, 1, "the stored value");
+    tp->checkEqInt(mp->get("two", &v), -1, "a missing key");
+    tp->checkEqInt(mp->len(), 1, "len");
+    mp->free();
+
+    return tp->report();
+}

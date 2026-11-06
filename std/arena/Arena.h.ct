@@ -1,0 +1,123 @@
+/*
+ * Arena.h.ct - a block bump allocator (std::arena).
+ *
+ * `Arena` is a CT-owned type, not a C standard-library one, so this unit is the
+ * whole module: the struct, the trait, the impl and the code, with no mapping
+ * unit and no shim. Calls are OO -- `ap->init(block)`, `ap->alloc(n)`,
+ * `ap->reset()`, `ap->freeAll()`.
+ *
+ * Order matters: the trait has to be declared before the struct that uses it,
+ * otherwise the compiler reports `struct 'Arena' uses undefined trait
+ * 'ArenaOps'`.
+ *
+ * `use ArenaOps` appends a vtable pointer to the struct, so an `Arena` is one
+ * pointer wider than its fields and every method call is an indirect jump. A
+ * heap-allocated arena must not be dispatched through before its vptr is set:
+ * `malloc` leaves it garbage. Construct a value (or assign a compound literal,
+ * which the compiler initializes) before the first method call.
+ *
+ * An arena hands out 8-byte aligned slices from blocks it owns. There is no
+ * per-value free: `reset` returns every block after the first to the heap, and
+ * `freeAll` releases the arena completely. `alloc` returns NULL when a new block
+ * cannot be obtained -- it never aborts.
+ *
+ * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ */
+
+#include <stdlib.h>
+
+namespace std::arena;
+
+pub trait ArenaOps {
+    int init(int block);
+    void *alloc(int n);
+    void reset();
+    void freeAll();
+}
+
+pub struct Arena {
+    struct Arena *next;
+    char *mem;
+    int cap;
+    int used;
+} use ArenaOps;
+
+/* The alignment `alloc` rounds to. A `#define` in this unit reaches the unit's
+   own `.c`, never the generated header, so it is implementation detail. */
+#define ARENA_ALIGN 8
+
+impl ArenaOps for Arena {
+    /* Give the arena its first block; `block` below 16 is raised to 16. */
+    int init(int block)
+    {
+        if (block < 16) block = 16;
+        self->next = 0;
+        self->used = 0;
+        self->cap = block;
+        self->mem = malloc((size_t)block);
+        if (!self->mem) {
+            self->cap = 0;
+            return -1;
+        }
+        return 0;
+    }
+
+    /* Hand out `n` bytes, or NULL when `n <= 0` or a block cannot be obtained. */
+    void *alloc(int n)
+    {
+        int need;
+        int off;
+        struct Arena *b;
+
+        if (n <= 0 || self->cap <= 0) return 0;
+        need = (n + (ARENA_ALIGN - 1)) & ~(ARENA_ALIGN - 1);
+        if (self->used + need <= self->cap) {
+            off = self->used;
+            self->used += need;
+            return self->mem + off;
+        }
+        /* The request does not fit the current block: start another one that is
+           at least as large as this request, and link it after the first. */
+        b = malloc(sizeof(struct Arena));
+        if (!b) return 0;
+        b->cap = need > self->cap ? need : self->cap;
+        b->used = need;
+        b->mem = malloc((size_t)b->cap);
+        b->next = 0;
+        if (!b->mem) {
+            b->cap = 0;
+            b->used = 0;
+            free(b);
+            return 0;
+        }
+        b->next = self->next;
+        self->next = b;
+        return b->mem;
+    }
+
+    /* Recycle every block after the first and keep the first one empty. */
+    void reset()
+    {
+        struct Arena *b;
+        struct Arena *nx;
+
+        b = self->next;
+        while (b) {
+            nx = b->next;
+            free(b->mem);
+            free(b);
+            b = nx;
+        }
+        self->next = 0;
+        self->used = 0;
+    }
+
+    /* Release every block, including the first; the arena is reusable via init. */
+    void freeAll()
+    {
+        self->reset();
+        free(self->mem);
+        self->mem = 0;
+        self->cap = 0;
+    }
+}

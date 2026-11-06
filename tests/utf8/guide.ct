@@ -1,0 +1,91 @@
+/* The runnable half of std/utf8/tutorial.md.
+ *
+ * Every "runnable" snippet in that tutorial is a block of this file; the gate
+ * builds and runs it (test/std/run.sh drives every *.ct in this directory), so
+ * a broken example fails the build instead of rotting in the docs.
+ *
+ * Build and run by hand:
+ *   ct build -I . test/std/utf8/guide.ct -o /tmp/guide && /tmp/guide
+ */
+import std::utf8::Utf8Ops;
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[8];
+    char *s;
+    char *p;
+    int cp;
+    int n;
+    int i;
+    int step;
+
+    tp->init();
+
+    /* 1. Two units, two names: bytes vs code points. */
+    tp->checkEqInt("é".len(), 2, "String.len counts bytes");
+    tp->checkEqInt("é".codepointCount(), 1, "codepointCount counts code points");
+    tp->checkEqInt("héllo".len(), 6, "héllo is six bytes");
+    tp->checkEqInt("héllo".codepointCount(), 5, "héllo is five code points");
+
+    /* 2. decode: one code point, and the number of bytes it took. */
+    tp->checkEqInt("A".decode(&cp), 1, "decode one byte");
+    tp->checkEqInt(cp, 65, "the ASCII code point");
+    tp->checkEqInt("é".decode(&cp), 2, "decode two bytes");
+    tp->checkEqInt(cp, 233, "the two-byte code point");
+    tp->checkEqInt("\xE2\x82\xAC".decode(&cp), 3, "decode three bytes");
+    tp->checkEqInt(cp, 8364, "the euro sign");
+    tp->checkEqInt("\xF0\x9F\x98\x80".decode(&cp), 4, "decode four bytes");
+    tp->checkEqInt(cp, 128512, "the emoji code point");
+    tp->checkEqInt("A".decode((int *)0), 1, "the out-param may be NULL");
+
+    /* 3. Walking a string: advance by what decode consumed. */
+    s = "héllo";
+    i = 0;
+    n = 0;
+    while (s[i]) {
+        p = s + i;
+        step = p.decode(&cp);
+        if (step < 0) break;
+        i += step;
+        n++;
+    }
+    tp->checkEqInt(n, 5, "the walk visits five code points");
+    tp->checkEqInt(i, 6, "the walk consumes six bytes");
+
+    /* 4. encode: the receiver is the output buffer, cap is its capacity. */
+    n = buf.encode(233, 8);
+    tp->checkEqInt(n, 2, "encode returns the byte width");
+    tp->checkEqInt(buf[0], (char)0xC3, "first byte of é");
+    tp->checkEqInt(buf[1], (char)0xA9, "second byte of é");
+    buf[n] = 0;
+    tp->checkEqStr(buf, "é", "the buffer spells é once terminated");
+    tp->checkEqInt(buf.decode(&cp), 2, "round trip");
+    tp->checkEqInt(cp, 233, "round-trip value");
+    tp->checkEqInt(buf.encode(8364, 8), 3, "three bytes for the euro sign");
+    tp->checkEqInt(buf.encode(128512, 8), 4, "four bytes for the emoji");
+    tp->checkEqInt(buf.encode(233, 2), 2, "cap equal to the width is enough");
+    tp->checkEqInt(buf.encode(233, 1), -1, "cap below the width fails");
+    tp->checkEqInt(buf.encode(0xD800, 8), -1, "encode rejects a surrogate");
+    tp->checkEqInt(buf.encode(0x110000, 8), -1, "encode rejects past U+10FFFF");
+
+    /* 5. encode does not terminate the buffer: it writes bytes, not a string. */
+    buf[0] = '?';
+    buf[1] = 'X';
+    n = buf.encode('A', 8);
+    tp->checkEqInt(n, 1, "one byte for ASCII");
+    tp->checkEqInt(buf[0], 'A', "the byte was written");
+    tp->checkEqInt(buf[1], 'X', "encode leaves the following byte alone");
+
+    /* 6. Invalid UTF-8 is an error, not a replacement character. */
+    tp->checkEqInt("\xC0\x80".decode(&cp), -1, "decode rejects an overlong");
+    tp->checkEqInt("\xED\xA0\x80".decode(&cp), -1, "decode rejects a surrogate");
+    tp->checkEqInt("\x80".decode(&cp), -1, "decode rejects a lone continuation");
+    tp->checkEqInt("\xC3".decode(&cp), -1, "decode rejects a truncated sequence");
+    tp->checkEqInt("\x80".codepointCount(), -1, "codepointCount rejects invalid text");
+
+    return tp->report();
+}

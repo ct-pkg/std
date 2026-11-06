@@ -1,0 +1,64 @@
+/* std::str - positive path and the bounded / missing cases.
+ *
+ * `std::str`'s only CT entry is the OO spelling from `String.m.ct`; each call
+ * is a static mapping onto the `std_str_*` C functions in String.shim.h, so
+ * these checks cover both the spelling and the code. */
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[32];
+    char word[16];
+    char *s = "hello";
+    const char *cs = "hello";
+
+    tp->init();
+
+    tp->checkEqInt(s.len(), 5, "len");
+    tp->checkEqInt("hi".len(), 2, "literal receiver");
+    tp->checkEqInt(cs.len(), 5, "const receiver");
+    tp->checkEqInt(s.find("ll"), 2, "find a hit");
+    tp->checkEqInt(s.find("z"), -1, "find a miss");
+    tp->checkEqInt(s.findChar('l'), 2, "findChar a hit");
+    tp->checkEqInt(s.findChar('z'), -1, "findChar a miss");
+    tp->checkTrue(s.startsWith("he"), "prefix hit");
+    tp->checkTrue(!s.startsWith("el"), "prefix miss");
+    tp->checkTrue(s.endsWith("lo"), "suffix hit");
+    tp->checkTrue(!s.endsWith("ol"), "suffix miss");
+    tp->checkTrue(!"hi".endsWith("hello"), "suffix longer than input");
+
+    tp->checkEqInt(s.copy(buf, 32), 0, "copy fits");
+    tp->checkEqStr(buf, "hello", "copy value");
+    tp->checkEqInt(s.copy(buf, 5), -1, "copy needs room for the NUL");
+
+    tp->checkEqInt(s.slice(1, 3, buf, 32), 0, "slice");
+    tp->checkEqStr(buf, "el", "slice value");
+    tp->checkEqInt(s.slice(4, 2, buf, 32), -1, "slice reversed range");
+    tp->checkEqInt(s.slice(0, 9, buf, 32), -1, "slice past the end");
+
+    tp->checkEqInt("ab".concat("cd", buf, 32), 0, "concat fits");
+    tp->checkEqStr(buf, "abcd", "concat value");
+    tp->checkEqInt("ab".concat("cd", buf, 5), 0, "concat fits exactly");
+    tp->checkEqInt("ab".concat("cd", buf, 4), -1, "concat needs room for the NUL");
+
+    tp->checkEqInt(buf.toLower(), 0, "toLower");
+    tp->checkEqStr(buf, "abcd", "toLower value");
+    tp->checkEqInt(buf.toUpper(), 0, "toUpper");
+    tp->checkEqStr(buf, "ABCD", "toUpper value");
+
+    tp->checkEqInt("abc".compare("abd"), -1, "compare less");
+    tp->checkEqInt("abc".compare("abc"), 0, "compare equal");
+    tp->checkEqInt("abd".compare("abc"), 1, "compare greater");
+
+    /* The same methods on a mutable local, so in-place edits are visible. */
+    tp->checkEqInt("Hello!".copy(word, 16), 0, "copy into word");
+    tp->checkEqInt(word.toLower(), 0, "toLower on word");
+    tp->checkEqStr(word, "hello!", "toLower in place");
+    tp->checkEqInt(word.toUpper(), 0, "toUpper on word");
+    tp->checkEqStr(word, "HELLO!", "toUpper in place");
+
+    return tp->report();
+}

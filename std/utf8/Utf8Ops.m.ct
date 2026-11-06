@@ -1,0 +1,45 @@
+/*
+ * Utf8Ops.m.ct - the method spellings for std::utf8 (std::utf8::Utf8Ops).
+ *
+ * Every binding is a zero-cost static mapping: `s.decode(&cp)` expands at the
+ * call site into `std_utf8_decode(s, &cp)`, with no wrapper, no interface value
+ * and no vtable. The functions it calls are defined `static inline` in
+ * Utf8Ops.shim.h; this unit adds spelling only, never semantics.
+ *
+ * This unit plus Utf8Ops.shim.h is the whole module -- two files, the floor for
+ * a mapping unit. A `.m.ct` prologue allows only `#include` / `#define`, so the
+ * code cannot live here, and there is no `.h.ct` to declare it from either.
+ *
+ * All three functions take a byte string: the first two read it, and `encode`
+ * writes into it, so its receiver is the output buffer -- `buf.encode(cp, cap)`.
+ * That is deliberate: `cap` belongs to the buffer, and `encode` is the one
+ * operation whose subject is where the bytes go rather than their text.
+ *
+ * `codepointCount` is the old `length`. `String.len()` (also imported here in
+ * `test/std/all`) counts BYTES; `codepointCount` counts CODE POINTS and returns
+ * -1 for invalid UTF-8. Two different numbers, two different names.
+ *
+ * The host is `char *`; the type key drops a top-level `const`, so a literal
+ * receiver works. `decode` and `codepointCount` never write through it.
+ *
+ * Strict means a decoder rejects everything that is not a well-formed sequence:
+ * a bad continuation byte, an overlong encoding, a surrogate and anything past
+ * U+10FFFF. A decoder that accepted those would let two different byte strings
+ * mean the same text, which is exactly what the standard forbids.
+ *
+ * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ */
+
+namespace std::utf8;
+
+pub trait Utf8Ops {
+    int decode(int *cp);
+    int codepointCount();
+    int encode(int cp, int cap);
+}
+
+map trait Utf8Ops for type char * {
+    decode(s, cp) -> std_utf8_decode(s, cp);
+    codepointCount(s) -> std_utf8_codepoint_count(s);
+    encode(out, cp, cap) -> std_utf8_encode(cp, out, cap);
+}

@@ -1,0 +1,56 @@
+/* std::fs - write / read / exists / list, including the bounded cases.
+   argv[1] is a directory the runner created with exactly two entries, and
+   argv[2] is a file path outside it.
+
+   std::fs has no function form: the receiver is the path, so every call is
+   `path.method(...)`. */
+import std::fs::Fs;
+import std::str::String;
+import std::test::Test;
+
+int main(int argc, char **argv)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[64];
+    char listing[128];
+    char *dir;
+    char *file;
+    int n;
+
+    tp->init();
+    tp->checkEqInt(argc, 3, "the runner passes a directory and a file");
+    if (argc < 3) return tp->report();
+
+    dir = argv[1];
+    file = argv[2];
+
+    tp->checkTrue(dir.exists(), "the directory exists");
+    tp->checkTrue(!file.exists(), "the file does not exist yet");
+    tp->checkEqInt("/no/such/path".exists(), 0, "a missing path is 0");
+
+    tp->checkEqInt(file.writeFile("hello\nworld"), 0, "write the file");
+    tp->checkTrue(file.exists(), "the file exists now");
+    n = file.readFile(buf, 64);
+    tp->checkEqInt(n, 11, "read returns the byte count");
+    tp->checkEqStr(buf, "hello\nworld", "read value");
+    tp->checkEqInt(file.readFile(buf, 11), -1,
+                   "read refuses a buffer without room for the NUL");
+    tp->checkEqInt("/no/such/file".readFile(buf, 64), -1, "read a missing file");
+
+    n = dir.list(listing, 128);
+    tp->checkEqInt(n, 2, "list two entries");
+    tp->checkTrue(listing.find("a.txt") >= 0, "the listing has a.txt");
+    tp->checkTrue(listing.find("b.txt") >= 0, "the listing has b.txt");
+    tp->checkEqInt(dir.list(listing, 4), -1,
+                   "list refuses a buffer that cannot hold the first name");
+    tp->checkEqInt("/no/such/dir".list(listing, 128), -1, "list a missing directory");
+
+    /* An overwrite through the same path receiver. */
+    tp->checkEqInt(file.writeFile("oo\n"), 0, "rewrite the file");
+    n = file.readFile(buf, 64);
+    tp->checkEqInt(n, 3, "read the rewritten file");
+    tp->checkEqStr(buf, "oo\n", "rewritten value");
+
+    return tp->report();
+}

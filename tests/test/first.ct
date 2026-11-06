@@ -1,0 +1,22 @@
+/* Section 2 of std/test/tutorial.md, verbatim.
+ *
+ * The gate builds and runs every *.ct in test/std/test/. `main.ct` is the
+ * negative fixture (it must fail); this file and guide.ct are the examples the
+ * tutorial quotes, so they must pass.
+ *
+ *   ct build -I . test/std/test/first.ct -o /tmp/first && /tmp/first
+ */
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+
+    tp->init();
+    tp->checkTrue(1, "a passing check");
+    tp->checkEqInt(2 + 2, 4, "int equality");
+    tp->checkEqStr("abc", "abc", "string equality");
+
+    return tp->report();
+}

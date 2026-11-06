@@ -1,0 +1,66 @@
+/*
+ * String.m.ct - the method spellings for `char *` in std::str (std::str::String).
+ *
+ * Every binding is a zero-cost static mapping: `s.len()` expands at the call
+ * site into `std_str_len(s)`, with no wrapper, no interface value and no
+ * vtable. The functions it calls are defined `static inline` in String.shim.h;
+ * this unit adds spelling only, never semantics.
+ *
+ * The trait is `String`, not `Str`: there is no `Str` struct here at all, and
+ * a `pub trait Str` would still be a poor name beside the C `std_str_*` layer.
+ * `String` is a distinct name, so nothing shadows it.
+ *
+ * `map trait ... for type` is legal only in `.m.ct`, so this is the only CT
+ * unit of std::str; the C surface lives in the shim pair next to it, not in a
+ * `.h.ct`.
+ *
+ * Naming: `toLower` / `toUpper` MUTATE IN PLACE and return a status code, not a
+ * new string -- the `to` prefix does not mean "returns a fresh value" here.
+ * `copy` / `slice` / `concat` keep their short names for the same reason: their
+ * output is the caller-supplied buffer plus capacity, never a new allocation,
+ * so a `toXxx` name would wrongly suggest a fresh value.
+ *
+ * The host is `char *`. The compiler's type key drops a top-level `const`, so
+ * a `const char *` receiver (a literal, or a `const char *` field) matches the
+ * same host -- including the in-place `toLower` / `toUpper`, which the compiler
+ * will not reject on a literal.
+ *
+ * This unit is the only import: `import std::str::String;` brings the trait and
+ * the shim, so the generated `.c` has the definitions it needs. The C functions
+ * (`std_str_len`, ...) are still callable from C or from a raw
+ * `#include "String.shim.h"` block -- they are `static inline`, so each
+ * translation unit gets its own copy; the CT-level `std::str::len(...)` spelling
+ * no longer exists.
+ *
+ * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ */
+
+namespace std::str;
+
+pub trait String {
+    int len();
+    int find(const char *needle);
+    int findChar(int c);
+    int startsWith(const char *prefix);
+    int endsWith(const char *suffix);
+    int copy(char *out, int cap);
+    int slice(int start, int end, char *out, int cap);
+    int concat(const char *other, char *out, int cap);
+    int toLower();
+    int toUpper();
+    int compare(const char *other);
+}
+
+map trait String for type char * {
+    len(s) -> std_str_len(s);
+    find(s, needle) -> std_str_find(s, needle);
+    findChar(s, c) -> std_str_find_char(s, c);
+    startsWith(s, prefix) -> std_str_starts_with(s, prefix);
+    endsWith(s, suffix) -> std_str_ends_with(s, suffix);
+    copy(s, out, cap) -> std_str_copy(s, out, cap);
+    slice(s, start, end, out, cap) -> std_str_slice(s, start, end, out, cap);
+    concat(s, other, out, cap) -> std_str_concat(s, other, out, cap);
+    toLower(s) -> std_str_lower(s);
+    toUpper(s) -> std_str_upper(s);
+    compare(s, other) -> std_str_compare(s, other);
+}

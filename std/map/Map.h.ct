@@ -1,0 +1,335 @@
+/*
+ * Map.h.ct - bounded open-addressing maps (std::map).
+ *
+ * Two monomorphic shapes ship in v1: `MapStrInt` (char * key -> int value) and
+ * `MapIntPtr` (int key -> void * value). A generic map would need generics; a
+ * `void *`-erased trait interface is possible but would lose compile-time key /
+ * value typing, so it is documented as the trade-off and not shipped yet.
+ *
+ * `MapStrInt` / `MapIntPtr` are CT-owned types, not C standard-library ones, so
+ * this unit is the whole module: struct, trait, impl and code, with no mapping
+ * unit and no shim. Calls are OO (`m->put(key, value)`, `m->get(key, &x)`), and
+ * because each struct carries `use ...Ops`, every map holds one extra pointer --
+ * 8 bytes per object (sizeof goes 32 -> 40 and 40 -> 48) -- and one indirect
+ * jump per call.
+ *
+ * Two facts that follow from `use`, and that no spelling can avoid:
+ *
+ *  - `len()` is a tiny accessor that a direct call folds away at -O2; through
+ *    the vtable it always costs the indirect jump (about 1 ns here). That is
+ *    native OO, not an implementation defect -- do not special-case such
+ *    methods back to direct calls, it would trade consistency for nothing.
+ *  - the vptr (`__mapstrintops_vptr`) is part of the exported struct layout, so
+ *    this header publishes a layout 8 bytes larger than the bare fields.
+ *
+ * Order matters: a trait has to be declared before the struct that uses it,
+ * otherwise the compiler reports `struct 'MapStrInt' uses undefined trait
+ * 'MapStrIntOps'`. This module spells calls `m->method()` throughout: it works
+ * for a declared value and for a heap object alike. A declared value ALSO
+ * accepts `m.method()` -- the compiler appends `.vptr = &vtable` to the
+ * declaration's initializer and passes `&m` -- but that only covers objects that
+ * came from a declaration. A `malloc`ed map must not be dispatched through
+ * before its vptr is set: assign an initialised value first.
+ *
+ * The table is fixed-capacity: `init` sizes it once (rounded up to a power of
+ * two), and `put` fails when it is full. It never rehashes or grows on its own,
+ * so memory use is predictable and no operation allocates behind the caller's
+ * back. Keys are stored by pointer, not copied: they must outlive the entry.
+ *
+ * There is no `delete`, because `Drop` is emitted `static` and a library unit
+ * cannot destroy a caller's value type. `clear()` drops every entry; for
+ * `MapIntPtr` it calls the `free_fn` supplied at `init` (when non-NULL), so the
+ * caller chooses the ownership rule once.
+ *
+ * `MAP_MIN_CAP` and the hash helpers stay out of the exported header: a
+ * `#define` in a `.h.ct` lands in this unit's own `.c`, and the helpers are
+ * `static` there, which is also where the code that uses them lives.
+ *
+ * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ */
+#include <stdlib.h>
+#include <string.h>
+
+namespace std::map;
+
+/* Stateless marker type; nothing instantiates it. */
+pub struct Map {
+    int unused;
+}
+
+pub trait MapStrIntOps {
+    int init(int want);
+    int put(char *key, int value);
+    int get(const char *key, int *out);
+    int len();
+    void clear();
+    void free();
+}
+
+pub struct MapStrInt {
+    int cap;
+    int n;
+    char **keys;
+    int *vals;
+    unsigned char *used;
+} use MapStrIntOps;
+
+pub trait MapIntPtrOps {
+    int init(int want, void (*free_fn)(void *));
+    int put(int key, void *value);
+    int get(int key, void **out);
+    int len();
+    void clear();
+    void free();
+}
+
+pub struct MapIntPtr {
+    int cap;
+    int n;
+    int *keys;
+    void **vals;
+    unsigned char *used;
+    void (*free_fn)(void *);
+} use MapIntPtrOps;
+
+#define MAP_MIN_CAP 16
+
+/* A power of two at least `want`; probing uses `hash & (cap - 1)`. */
+static int cap_for(int want)
+{
+    int cap = MAP_MIN_CAP;
+
+    while (cap < want) cap = cap * 2;
+    return cap;
+}
+
+static unsigned int hash_str(const char *s)
+{
+    unsigned int h = 2166136261;
+    int i;
+
+    for (i = 0; s[i]; i++) {
+        h = h ^ (unsigned char)s[i];
+        h = h * 16777619;
+    }
+    return h;
+}
+
+static unsigned int hash_int(int key)
+{
+    unsigned int x = (unsigned int)key;
+
+    x = x ^ (x >> 16);
+    x = x * 33;
+    x = x ^ (x >> 13);
+    x = x * 33;
+    x = x ^ (x >> 16);
+    return x;
+}
+
+/* --- MapStrInt -------------------------------------------------------------- */
+
+impl MapStrIntOps for MapStrInt {
+    int init(int want)
+    {
+        int cap;
+
+        cap = cap_for(want);
+        self->keys = calloc((size_t)cap, sizeof(char *));
+        self->vals = calloc((size_t)cap, sizeof(int));
+        self->used = calloc((size_t)cap, sizeof(unsigned char));
+        self->cap = cap;
+        self->n = 0;
+        if (!self->keys || !self->vals || !self->used) {
+            free(self->keys);
+            free(self->vals);
+            free(self->used);
+            self->keys = 0;
+            self->vals = 0;
+            self->used = 0;
+            self->cap = 0;
+            return -1;
+        }
+        return 0;
+    }
+
+    /* Insert or overwrite; returns -1 when the table is full. */
+    int put(char *key, int value)
+    {
+        unsigned int i;
+        unsigned int slot;
+        int probes;
+
+        if (!key || self->cap <= 0) return -1;
+        if (self->n >= self->cap) return -1;
+        slot = hash_str(key) & (unsigned int)(self->cap - 1);
+        for (probes = 0; probes < self->cap; probes++) {
+            i = slot;
+            if (!self->used[i]) {
+                self->used[i] = 1;
+                self->keys[i] = key;
+                self->vals[i] = value;
+                self->n++;
+                return 0;
+            }
+            if (strcmp(self->keys[i], key) == 0) {
+                self->vals[i] = value;
+                return 0;
+            }
+            slot = (slot + 1) & (unsigned int)(self->cap - 1);
+        }
+        return -1;
+    }
+
+    /* Look `key` up; returns 0 and stores the value, or -1 when absent. */
+    int get(const char *key, int *out)
+    {
+        unsigned int slot;
+        int probes;
+
+        if (!key || self->cap <= 0) return -1;
+        slot = hash_str(key) & (unsigned int)(self->cap - 1);
+        for (probes = 0; probes < self->cap; probes++) {
+            if (!self->used[slot]) return -1;
+            if (strcmp(self->keys[slot], key) == 0) {
+                if (out) *out = self->vals[slot];
+                return 0;
+            }
+            slot = (slot + 1) & (unsigned int)(self->cap - 1);
+        }
+        return -1;
+    }
+
+    int len()
+    {
+        return self->n;
+    }
+
+    /* Drop every entry (keys and values are borrowed, so nothing is freed). */
+    void clear()
+    {
+        if (!self->used) return;
+        memset(self->used, 0, (size_t)self->cap);
+        memset(self->keys, 0, (size_t)self->cap * sizeof(char *));
+        self->n = 0;
+    }
+
+    void free()
+    {
+        self->clear();
+        free(self->keys);
+        free(self->vals);
+        free(self->used);
+        self->keys = 0;
+        self->vals = 0;
+        self->used = 0;
+        self->cap = 0;
+        self->n = 0;
+    }
+}
+
+/* --- MapIntPtr -------------------------------------------------------------- */
+
+impl MapIntPtrOps for MapIntPtr {
+    /* `free_fn` is remembered and called on every value by `clear()`. */
+    int init(int want, void (*free_fn)(void *))
+    {
+        int cap;
+
+        cap = cap_for(want);
+        self->keys = calloc((size_t)cap, sizeof(int));
+        self->vals = calloc((size_t)cap, sizeof(void *));
+        self->used = calloc((size_t)cap, sizeof(unsigned char));
+        self->cap = cap;
+        self->n = 0;
+        self->free_fn = free_fn;
+        if (!self->keys || !self->vals || !self->used) {
+            free(self->keys);
+            free(self->vals);
+            free(self->used);
+            self->keys = 0;
+            self->vals = 0;
+            self->used = 0;
+            self->cap = 0;
+            return -1;
+        }
+        return 0;
+    }
+
+    int put(int key, void *value)
+    {
+        unsigned int slot;
+        int probes;
+
+        if (self->cap <= 0) return -1;
+        if (self->n >= self->cap) return -1;
+        slot = hash_int(key) & (unsigned int)(self->cap - 1);
+        for (probes = 0; probes < self->cap; probes++) {
+            if (!self->used[slot]) {
+                self->used[slot] = 1;
+                self->keys[slot] = key;
+                self->vals[slot] = value;
+                self->n++;
+                return 0;
+            }
+            if (self->keys[slot] == key) {
+                self->vals[slot] = value;
+                return 0;
+            }
+            slot = (slot + 1) & (unsigned int)(self->cap - 1);
+        }
+        return -1;
+    }
+
+    int get(int key, void **out)
+    {
+        unsigned int slot;
+        int probes;
+
+        if (self->cap <= 0) return -1;
+        slot = hash_int(key) & (unsigned int)(self->cap - 1);
+        for (probes = 0; probes < self->cap; probes++) {
+            if (!self->used[slot]) return -1;
+            if (self->keys[slot] == key) {
+                if (out) *out = self->vals[slot];
+                return 0;
+            }
+            slot = (slot + 1) & (unsigned int)(self->cap - 1);
+        }
+        return -1;
+    }
+
+    int len()
+    {
+        return self->n;
+    }
+
+    /* Free every value through `free_fn` (when one was supplied), then reset. */
+    void clear()
+    {
+        int i;
+
+        if (!self->used) return;
+        if (self->free_fn) {
+            for (i = 0; i < self->cap; i++) {
+                if (self->used[i]) self->free_fn(self->vals[i]);
+            }
+        }
+        memset(self->used, 0, (size_t)self->cap);
+        memset(self->vals, 0, (size_t)self->cap * sizeof(void *));
+        self->n = 0;
+    }
+
+    void free()
+    {
+        self->clear();
+        free(self->keys);
+        free(self->vals);
+        free(self->used);
+        self->keys = 0;
+        self->vals = 0;
+        self->used = 0;
+        self->cap = 0;
+        self->n = 0;
+    }
+}

@@ -1,0 +1,79 @@
+/* std::map - open addressing, overwrite, the fixed-capacity limit, clear and
+   the `free_fn` ownership rule. */
+import std::map::Map;
+import std::test::Test;
+
+#include <stdlib.h>
+
+/* 16 keys for a table `init(8)` rounds up to 16, plus one that must be refused. */
+static char *g_keys[17] = {
+    "k0", "k1", "k2", "k3", "k4", "k5", "k6", "k7",
+    "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15", "k16"
+};
+
+/* `free` is only a passthrough declaration, so it is not a value the unit can
+   name; the map wants a plain `void (*)(void *)`, which this wrapper is. */
+static void drop(void *p)
+{
+    free(p);
+}
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    MapStrInt ms;
+    MapIntPtr mp;
+    MapStrInt *sm = &ms;
+    MapIntPtr *pm = &mp;
+    int i;
+    int v;
+    void *out;
+    int *nums[4];
+
+    tp->init();
+
+    tp->checkEqInt(sm->init(8), 0, "init");
+    tp->checkEqInt(sm->put(g_keys[0], 10), 0, "put k0");
+    tp->checkEqInt(sm->put(g_keys[1], 20), 0, "put k1");
+    tp->checkEqInt(sm->get(g_keys[0], &v), 0, "get k0");
+    tp->checkEqInt(v, 10, "get k0 value");
+    tp->checkEqInt(sm->put(g_keys[0], 11), 0, "overwrite k0");
+    tp->checkEqInt(sm->get(g_keys[0], &v), 0, "get k0 again");
+    tp->checkEqInt(v, 11, "the overwritten value");
+    tp->checkEqInt(sm->len(), 2, "an overwrite does not grow the table");
+    tp->checkEqInt(sm->get("missing", &v), -1, "get a missing key");
+
+    for (i = 0; i < 16; i++) {
+        tp->checkEqInt(sm->put(g_keys[i], i), 0, "fill a slot");
+    }
+    tp->checkEqInt(sm->len(), 16, "the table is full");
+    tp->checkEqInt(sm->put(g_keys[16], 16), -1,
+                            "a full table refuses a new key");
+    tp->checkEqInt(sm->get(g_keys[15], &v), 0, "the last slot is found");
+    tp->checkEqInt(v, 15, "the last slot value");
+
+    sm->clear();
+    tp->checkEqInt(sm->len(), 0, "clear empties the table");
+    tp->checkEqInt(sm->get(g_keys[0], &v), -1, "get after clear");
+    tp->checkEqInt(sm->put(g_keys[0], 1), 0, "put after clear");
+    sm->free();
+
+    tp->checkEqInt(pm->init(4, drop), 0, "int_ptr init with free_fn");
+    for (i = 0; i < 4; i++) {
+        nums[i] = (int *)malloc(sizeof(int));
+        if (!nums[i]) return 1;
+        *nums[i] = i * 10;
+        tp->checkEqInt(pm->put(i, nums[i]), 0, "int_ptr put");
+    }
+    tp->checkEqInt(pm->len(), 4, "int_ptr len");
+    tp->checkEqInt(pm->get(1, &out), 0, "int_ptr get");
+    tp->checkEqInt(*(int *)out, 10, "int_ptr value");
+    tp->checkEqInt(pm->get(99, &out), -1, "int_ptr missing key");
+    pm->clear();
+    tp->checkEqInt(pm->len(), 0, "int_ptr clear");
+    tp->checkEqInt(pm->get(1, &out), -1, "int_ptr get after clear");
+    pm->free();
+
+    return tp->report();
+}

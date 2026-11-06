@@ -1,0 +1,59 @@
+/* every std module in one program: the units must coexist in one build, and
+   every call goes through the module's own spelling. */
+import std::arena::Arena;
+import std::fs::Fs;
+import std::map::Map;
+import std::str::String;
+import std::test::Test;
+import std::utf8::Utf8Ops;
+import std::vec::Vec;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    Arena a;
+    Arena *ap = &a;
+    VecInt v;
+    VecInt *vp = &v;
+    MapStrInt m;
+    MapStrInt *mp = &m;
+    char *p;
+    char buf[16];
+    int cp;
+    int x;
+
+    tp->init();
+
+    /* The three `char *` hosts (str / fs / utf8) coexist in one unit: str's
+       `len` counts bytes, utf8's `codepointCount` counts code points. */
+    tp->checkEqInt("std".len(), 3, "str len counts bytes");
+    tp->checkEqInt("std".codepointCount(), 3, "utf8 codepointCount on ASCII");
+    tp->checkEqInt("é".codepointCount(), 1, "one two-byte code point");
+    tp->checkEqInt("é".len(), 2, "str len counts the same text as two bytes");
+    tp->checkEqInt("A".decode(&cp), 1, "utf8 decode");
+    tp->checkEqInt(cp, 65, "utf8 value");
+    tp->checkEqInt(buf.encode(233, 16), 2, "utf8 encode");
+    tp->checkEqInt(".".exists(), 1, "fs host");
+
+    tp->checkEqInt(ap->init(16), 0, "arena init");
+    p = (char *)ap->alloc(8);
+    tp->checkTrue(p != 0, "arena alloc");
+    ap->freeAll();
+
+    vp->init();
+    tp->checkEqInt(vp->push(4), 0, "vec push");
+    tp->checkEqInt(vp->at(0, &x), 0, "vec at");
+    tp->checkEqInt(x, 4, "vec at value");
+    tp->checkEqInt(vp->len(), 1, "vec len");
+    vp->free();
+
+    mp->init(4);
+    tp->checkEqInt(mp->put("one", 1), 0, "map put");
+    tp->checkEqInt(mp->get("one", &x), 0, "map get");
+    tp->checkEqInt(x, 1, "map value");
+    tp->checkEqInt(mp->len(), 1, "map len");
+    mp->free();
+
+    return tp->report();
+}

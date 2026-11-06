@@ -1,0 +1,40 @@
+/* The runnable half of std/test/tutorial.md.
+ *
+ * Every "runnable" snippet in that tutorial is a block of this file; the gate
+ * builds and runs it (test/std/run.sh drives every *.ct in this directory), so
+ * a broken example fails the build instead of rotting in the docs.
+ *
+ * Build and run by hand:
+ *   ct build -I . test/std/test/guide.ct -o /tmp/guide && /tmp/guide
+ */
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    int ok;
+
+    tp->init();
+
+    /* 1. The three checks, all passing. */
+    tp->checkTrue(1, "checkTrue");
+    tp->checkEqInt(7, 7, "checkEqInt");
+    tp->checkEqStr("hello", "hello", "checkEqStr");
+
+    /* 2. Each check returns 1 on success and 0 on failure. */
+    ok = tp->checkTrue(1, "returns 1");
+    tp->checkEqInt(ok, 1, "checkTrue return value");
+    ok = tp->checkEqInt(5, 5, "returns 1");
+    tp->checkEqInt(ok, 1, "checkEqInt return value");
+    ok = tp->checkEqStr("a", "a", "returns 1");
+    tp->checkEqInt(ok, 1, "checkEqStr return value");
+
+    /* 3. A NULL message is allowed; NULL strings compare as "". */
+    tp->checkTrue(1, (char *)0);
+    tp->checkEqStr((char *)0, "", "NULL got is empty");
+    tp->checkEqStr("", (char *)0, "NULL want is empty");
+
+    /* 4. The report is the exit status: 0 here, 1 when anything failed. */
+    return tp->report();
+}

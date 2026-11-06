@@ -1,0 +1,18 @@
+/* std::test - the failing half. Every check here is meant to fail, so the
+   runner can assert that `report` returns non-zero and names each failure. */
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+
+    /* The OO spelling: `Test *` is a real receiver, so the assertions read as
+       operations on the counter. Three of the four checks fail on purpose. */
+    tp->init();
+    tp->checkTrue(0, "intentional failure");
+    tp->checkEqInt(1, 2, "intentional int mismatch");
+    tp->checkEqStr("a", "b", "intentional string mismatch");
+    tp->checkTrue(1, "a passing check");
+    return tp->report();
+}
