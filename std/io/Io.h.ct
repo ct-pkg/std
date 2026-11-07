@@ -1,0 +1,32 @@
+/*
+ * Io.h.ct - the variadic half of std::io: `std::io::printf`.
+ *
+ * `printf` is the one stdio entry point a `.m.ct` cannot express. A map recipe
+ * forwards a fixed parameter list, so the variadic call has to be a real CT
+ * function; `.m.ct` files hold no function bodies. This unit therefore sits
+ * beside `Stdout.m.ct` / `File.m.ct` and does nothing else.
+ *
+ * The call is namespace-level (`std::io::printf(fmt, ...)`), not a receiver
+ * variadic `"fmt".printf(...)`: the latter needs the compiler to forward `...`
+ * through a map recipe, which is not available yet. See README.md.
+ *
+ * The `Io` struct is the layout-gate marker every `.h.ct` in std carries (one
+ * `pub struct <file>` per unit); it is never instantiated.
+ */
+#include <stdarg.h>
+#include <stdio.h>
+
+namespace std::io;
+
+pub struct Io {
+    int pad;
+}
+
+pub int printf(const char *fmt, ...) {
+    va_list ap;
+    int n;
+    va_start(ap, fmt);
+    n = vprintf(fmt, ap);
+    va_end(ap);
+    return n;
+}

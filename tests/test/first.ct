@@ -1,10 +1,10 @@
-/* Section 2 of std/test/tutorial.md, verbatim.
+/* Section 3 of std/test/README.md, verbatim.
  *
- * The gate builds and runs every *.ct in test/std/test/. `main.ct` is the
+ * The gate builds and runs every *.ct in tests/test/. `main.ct` is the
  * negative fixture (it must fail); this file and guide.ct are the examples the
- * tutorial quotes, so they must pass.
+ * README quotes, so they must pass.
  *
- *   ct build -I . test/std/test/first.ct -o /tmp/first && /tmp/first
+ *   ct build -I . tests/test/first.ct -o /tmp/first && /tmp/first
  */
 import std::test::Test;
 

@@ -1,0 +1,46 @@
+/* std::math - the namespace pair (Math) and the value hosts (Float / Real). */
+import std::math::Math;
+import std::math::Real;
+import std::test::Test;
+
+#include <stdlib.h>
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[32];
+    double x = 16.0;
+    double neg = -3.5;
+    double d = 2.6;
+    double third = 1.0 / 3.0;
+    double precise = 1.23456789;
+    double zero = 0.0;
+    double nan = zero / zero;
+    double inf = 1.0 / zero;
+    float f = -2.5f;
+    float f26 = 2.6f;
+
+    tp->init();
+
+    tp->checkEqInt((int)std::math::Math.sqrt(x), 4, "Math.sqrt");
+    tp->checkEqInt((int)std::math::Math.fabs(neg), 3, "Math.fabs");
+
+    tp->checkEqInt((int)f.abs(), 2, "float abs");
+    tp->checkEqInt((int)f.floor(), -3, "float floor");
+    tp->checkEqInt((int)f26.ceil(), 3, "float ceil");
+    tp->checkEqInt((int)f26.round(), 3, "float round");
+    tp->checkEqInt((int)d.sqrt(), 1, "double sqrt");
+    tp->checkEqInt((int)d.round(), 3, "double round");
+    tp->checkTrue(nan.isNan(), "isNan");
+    tp->checkTrue(inf.isInf(), "isInf");
+
+    tp->checkEqStr(d.toStr(buf, 32), "2.6", "toStr keeps the short form");
+    tp->checkEqStr(d.toString(), "2.6", "toString keeps the short form");
+    tp->checkEqStr(precise.toString(), "1.2345678899999999",
+                   "17 digits when 6 do not round-trip");
+    tp->checkTrue(atof(third.toString()) == third, "toString round-trips through atof");
+    tp->checkTrue(atof(precise.toStr(buf, 32)) == precise, "toStr round-trips through atof");
+
+    return tp->report();
+}

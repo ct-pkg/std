@@ -1,9 +1,9 @@
-/* Section 2 of std/utf8/tutorial.md, verbatim.
+/* UTF-8 coverage; the working docs are in std/utf8/README.md.
  *
- * The gate builds and runs every *.ct in test/std/utf8/, so the tutorial's
- * opening program is compiled on every run instead of rotting in the docs.
+ * The gate builds and runs every *.ct in tests/utf8/, so these examples stay
+ * compiled instead of rotting in the docs.
  *
- *   ct build -I . test/std/utf8/first.ct -o /tmp/first && /tmp/first
+ *   ct build -I . tests/utf8/first.ct -o /tmp/first && /tmp/first
  */
 import std::utf8::Utf8Ops;
 import std::str::String;

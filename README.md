@@ -1,192 +1,302 @@
-# std — CT 标准库（已从 ct-lang 迁出）
+# `std` — CT 标准库（ct-pkg 包）
 
-本仓库是 CT 的标准库，从 `ct-lang` 的 `std/` 目录整体迁出，作为一个**普通 ct-pkg 包**发布。
-`import std::str::String` 等 import 路径**不变**，变化的只有分发方式：不再随编译器安装，改为 `ct get` 安装。
+`std` 是**源码库**，不是 `ct` 二进制的一部分：`import std::str::String` 只在显式 `-I` 下解析，
+编译器没有默认搜索路径。仓库根就是包根，`std/` 子目录是命名空间根。
 
-> **当前状态：源码已迁入，未发版。** `std/` 与 `tests/` 已由 `tools/migrate-from-ct.sh --apply`
-> 从 ct-lang 复制（25 个文件 + 22 个 fixture，`--check` 无漂移），包内 gate 为 10 passed / 0 failed。
-> 尚未打 tag；在 `v0.1.0` 打出来之前本包不可通过索引安装。
+## 1. 定位与边界
 
-## 安装
+- 十个模块：`str` / `io` / `fs` / `utf8` / `num` / `math` / `vec` / `map` / `arena` / `test`。
+- 两种实现形态，机制不同，不要互相套用：
+  - **C 宿主映射**（`.m.ct` + 同名 `.shim.h`）：`str` / `io` / `fs` / `utf8` / `num` / `math`。
+    接收者是 C 已有类型（`char *`、`IoFile *`、`int`、`double` …），调用点直接展开成 C 调用。
+  - **CT 自有类型**（`.h.ct`）：`vec` / `map` / `arena` / `test`。`pub trait` + `struct ... use Trait`
+    + `impl` 写在同一文件里，分派走 vptr。
+- 不提供：堆字符串类型、泛型容器、Unicode 规范化 / 字素簇、网络、时间、进程、正则。
+- 不分配内存的模块（`str` / `fs` / `utf8` / `num` / `math` 的文本化）一律写调用方缓冲区，
+  容量不足返回 `-1`；唯一使用静态环形槽的是 `num.toString` / `math.toString`，非线程安全。
+
+## 2. 依赖与安装
+
+`ct.pkg`：
 
 ```
-ct get std@^0.1.0        # 解析并写入 ct.lock、vendor/std/
-ct verify                # 可选：核对 vendor/ 与 lock 的摘要
-ct install               # 打印建议的构建命令
+name = std
+version = 0.1.0
+requires = ct >= 0.19.1
+ldflags = -lm
+```
+
+`requires` 只告警、不拒装；`ldflags` 里的 `-lm` 给 `std::math` 用，在 libm 已并入 libc 的平台上
+是空操作。
+
+### 安装
+
+```sh
+ct get std@^0.1.0      # 解析并写入 ct.lock、vendor/std/
+ct verify              # 核对 vendor/ 与 lock 的摘要
+ct install             # 打印建议的构建命令
 ```
 
 `ct install` 会打印 `-I vendor/std ...`，把这一项加进 `ct build` 即可：
 
-```
-ct build src/main.ct -I vendor/std -o main
+```sh
+ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
 ```
 
-`vendor/std/std/str/String.m.ct` 这样的双层目录不是笔误：包工具按包逐个打印 `-I vendor/<包名>`，
-而命名空间根是 `std/`，两层合起来正好还原 `import std::str::String`（与 `clib` 包的结构一致）。
+`vendor/std/std/str/String.m.ct` 这样的双层目录不是笔误：包工具按包打印 `-I vendor/<包名>`，
+而命名空间根是 `std/`，两层合起来正好还原 `import std::str::String`。
+
+### 在包根内开发
+
+本仓库根就是包根，直接指 `-I .`：
+
+```sh
+ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
+```
 
 ### 离线 / 钉版本
 
 把 `vendor/` 连同 `ct.lock` 一起提交，CI 里用 `ct install --check`（或 `ct verify`）即可离线构建。
 需要某个具体版本时，在 `ct.pkg` 里写 `dep = std@0.1.0` 并提交 `ct.lock`。
 
-## 版本策略
+### 当前发布状态
+
+`0.1.0` **尚未打 tag、尚未发布**。在 `v0.1.0` 打出来之前本包不可通过索引安装。
+索引只收录每个仓库最高的 `v*` tag，不保留历史版本，所以老编译器无法从索引取到与它兼容的旧版 std；
+需要旧版时只能用 `file://` 路径安装，或手工 checkout 对应 tag 的 `vendor/std`。
+
+## 3. 快速开始
+
+跨四个模块的完整程序：写文件、读回来、转大写、打印字节数。
+
+```ct
+import std::str::String;
+import std::fs::Fs;
+import std::num::Num;
+import std::io::Io;
+
+int main(void)
+{
+    char buf[64];
+    char word[16];
+    char *path = "/tmp/std-overview.txt";
+    char *s = "ct-pkg";
+    int n;
+
+    path.writeFile(s);
+    n = path.readFile(buf, 64);
+    buf.copy(word, 16);
+    word.toUpper();
+    std::io::printf("file=%s bytes=%s upper=%s\n", buf, n.toString(), word);
+    return 0;
+}
+```
+
+`ct build` 实际执行的 `cc` 行（本机实测，路径随检出位置变化）：
+
+```
+'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/str' -I '/Users/samxx/vscspace/ct-pkg/std/std/fs' -I '/Users/samxx/vscspace/ct-pkg/std/std/num' '.ctbuild/main.c' '.ctbuild/Io.c' '-o' '/tmp/std-doc-verify/bin/overview'
+```
+
+输出：
+
+```text
+file=ct-pkg bytes=6 upper=CT-PKG
+```
+
+接收者必须写成变量（`path`、`buf`、`n`、`word`）。字面量接收者 `"abc".len()` 在 v0.19.1 报
+`method receiver must be a variable, an element, a call or a field chain`，需要 **0.20.0**。
+
+## 4. API 全表（按宿主分组）
+
+### 4.1 模块索引
+
+| 模块 | 入口 import | 宿主 | 方法数 | 文档 |
+| --- | --- | --- | --- | --- |
+| `std::str` | `std::str::String` | `char *` | 15 | [str/README.md](std/str/README.md) |
+| `std::io` | `std::io::Io` / `Stdout` / `File` | namespace、`char *`、`IoFile *` | 1 + 4 + 1 + 3 | [io/README.md](std/io/README.md) |
+| `std::fs` | `std::fs::Fs` | `char *` | 4 | [fs/README.md](std/fs/README.md) |
+| `std::utf8` | `std::utf8::Utf8Ops` | `char *` | 3 | [utf8/README.md](std/utf8/README.md) |
+| `std::num` | `std::num::Num` | `int` / `long` / `long long` / `char` | 7 × 4 | [num/README.md](std/num/README.md) |
+| `std::math` | `std::math::Math` / `Real` | namespace、`float`、`double` | 2 + 5 + 9 | [math/README.md](std/math/README.md) |
+| `std::vec` | `std::vec::Vec` | `VecInt *` / `VecStr *` | 6 × 2 | [vec/README.md](std/vec/README.md) |
+| `std::map` | `std::map::Map` | `MapStrInt *` / `MapIntPtr *` | 6 × 2 | [map/README.md](std/map/README.md) |
+| `std::arena` | `std::arena::Arena` | `Arena *` | 4 | [arena/README.md](std/arena/README.md) |
+| `std::test` | `std::test::Test` | `Test *` | 5 | [test/README.md](std/test/README.md) |
+
+### 4.2 `char *` 宿主（23 个方法，名字全局共享）
+
+同一接收者类型上，**方法名不能重复**：任意两个可见 trait 声明同名方法，调用点就报
+`ambiguous type-host map for method 'x' on type 'char *'`。按名字判定，不看参数个数。
+给 `char *` 新增 trait 前先查这张表。
+
+| 模块 | 方法 |
+| --- | --- |
+| `String` | `len` `find` `findChar` `startsWith` `endsWith` `copy` `slice` `concat` `toLower` `toUpper` `compare` `copyFrom` `copyTo` `toInt` `toDouble` |
+| `FsOps` | `exists` `readFile` `writeFile` `list` |
+| `Utf8Ops` | `decode` `codepointCount` `encode` |
+| `Path`（`std::io`） | `open` |
+
+合计 15 + 4 + 3 + 1 = **23**。`const char *` 也匹配同一宿主：类型键丢掉顶层 `const`，
+所以对字符串字面量调用原地方法（`toLower` / `toUpper`）不会被编译器拦住，写只读内存是未定义行为。
+
+### 4.3 其它宿主
+
+| 宿主 | trait / 入口 | 方法 |
+| --- | --- | --- |
+| namespace `std::io` | `Stdout` | `puts` `putchar` `getchar` `fflush` |
+| namespace `std::io` | `Io` | `printf(fmt, ...)`（变参，`va_list` + `vprintf`） |
+| `IoFile *` | `File` | `read` `write` `close`（`IoFile` 是 `typedef struct ct_io_file IoFile;`） |
+| `int` | `Int` | `abs` `clamp` `max` `min` `toStr` `toString` `toBase` |
+| `long` | `Long` | 同上 7 个 |
+| `long long` | `LLong` | 同上 7 个 |
+| `char` | `Char` | `isDigit` `isAlpha` `isSpace` `isUpper` `isLower` `toUpper` `toLower` |
+| namespace `std::math` | `Math` | `sqrt` `fabs` |
+| `float` | `Float` | `abs` `sqrt` `floor` `ceil` `round` |
+| `double` | `Real` | 同上 5 个，另有 `isNan` `isInf` `toStr` `toString` |
+
+`int` / `long` / `long long` 与 `char` 是四个独立宿主，同名方法跨宿主允许（`n.toString()` 与
+`c.isDigit()` 互不冲突）；`char` 不会提升成 `int`。
+
+### 4.4 失败返回
+
+- 缓冲区不够：`-1`，**不截断**（`num.toStr` 是唯一的例外，它按 `snprintf` 语义静默截断；
+  `num.toBase` 不截断，放不下返回 `NULL`）。
+- 查询未命中：`-1`（`fs.exists` 是 `0` / `1`）。
+- 打开失败：`NULL`（`path.open`）。
+- 出错不 abort，不设 `errno`。
+
+## 5. 教程正文（跨模块）
+
+### 5.1 四种调用形态
+
+| 形态 | 例子 | 说明 |
+| --- | --- | --- |
+| `char *` 上的值方法 | `s.len()`、`path.exists()`、`buf.encode(cp, cap)` | 最常用；`encode` 的接收者是输出缓冲区 |
+| 命名空间函数 | `std::io::printf(...)`、`std::math::Math.sqrt(x)` | 必须带全命名空间 |
+| C 不透明句柄 | `path.open("w")` 返回 `IoFile *`，再 `f.read(...)` / `f.close()` | 句柄不是堆对象，关闭后置空 |
+| CT 自有类型 | `vp->push(1)`、`mp->put("k", 1)`、`ap->alloc(8)`、`tp->report()` | 先声明值再取地址；裸 `malloc` 的 vptr 是垃圾 |
+
+### 5.2 两种实现，两个代价
+
+**映射式**（`.m.ct` + `.shim.h`）：shim 里全是 `static inline`，实现按消费方复制一份
+（断点要下在消费者里），`std_*` 不再是外部符号，跨语言 FFI 需要自己再导出一层。
+好处是零开销：`s.len()` 在调用点就是 `std_str_len(s)`，没有 wrapper、没有 vtable、布局不变。
+
+**原生 OO**（`.h.ct`）：`use` 会给结构体尾部追加 vptr，实测 `VecInt` / `VecStr` 16 → 24、
+`MapStrInt` 32 → 40、`MapIntPtr` 40 → 48；vptr 出现在导出头里。方法永远不能被内联，
+这是机制属性。堆对象不能裸 `malloc` 后直接调方法（vptr 是垃圾，实测段错误），先声明值或赋复合字面量。
+
+### 5.3 字节与码点
+
+`String.len()` 数字节，`Utf8Ops.codepointCount()` 数码点。同一段 `"é"` 是 `len() == 2`、
+`codepointCount() == 1`。两个名字不能互换，也不要再引入叫 `length` 的第三个。
+需要按字符遍历时用 `decode` 拿到步长，累加字节偏移。
+
+### 5.4 容器与测试
+
+`vec` / `map` / `arena` / `test` 是原生 OO：先声明值、取地址，再调方法；每个持有资源的类型都有
+显式 `free()` / `reset()` / `freeAll()` / `clear()`，没有析构。容器都是有界实现，溢出返回 `-1`。
+`VecStr` 的字符串是借用指针，容器不释放元素；`MapIntPtr` 在 `init` 时接收 `free_fn`。
+详见各自 README。
+
+## 6. 常见配方
+
+| 任务 | 写法 | 模块 |
+| --- | --- | --- |
+| 字符串长度 | `s.len()` | `std::str` |
+| 子串 | `s.slice(start, end, buf, cap)`（半开区间） | `std::str` |
+| 原地大小写 | `buf.toLower()` / `buf.toUpper()`，返回 0 / -1 | `std::str` |
+| 字符串转数字 | `s.toInt()` / `s.toDouble()` | `std::str` |
+| 数字转文本 | `n.toString()` 或 `n.toStr(buf, cap)` | `std::num` |
+| 进制转换 | `n.toBase(16, buf, cap)` | `std::num` |
+| 读整个文件 | `path.readFile(buf, cap)` | `std::fs` |
+| 流式读写 | `path.open("r")` → `f.read(...)` → `f.close()` | `std::io` |
+| 遍历码点 | `p.decode(&cp)` 返回步长 | `std::utf8` |
+| 编码码点 | `buf.encode(cp, cap)`，自己补 NUL | `std::utf8` |
+| 取整 | `x.floor()` / `x.ceil()` / `x.round()` | `std::math` |
+| 可往返浮点文本 | `x.toString()` | `std::math` |
+
+## 7. 排错
+
+### 7.1 字面量接收者
+
+```ct
+import std::str::String;
+
+int main(void)
+{
+    int n = "abc".len();
+    return n;
+}
+```
+
+```text
+main.ct:5:1: error: method receiver must be a variable, an element, a call or a field chain
+```
+
+v0.19.1 只接受变量、元素、调用、字段链作接收者。先写 `char *s = "abc";` 再 `s.len()`。
+调用结果可以直接链式：`s.len().toString()` 合法（`s.len()` 是调用）。字面量接收者需要 **0.20.0**。
+
+### 7.2 忘了 import
+
+```ct
+int main(void)
+{
+    char *s = "abc";
+    return s.len();
+}
+```
+
+```text
+main.ct:4:1: error: no method 'len' for type 'char *'
+```
+
+方法随 trait 一起可见；没有 import，`char *` 上就什么都没有。补 `import std::str::String;`。
+
+### 7.3 同名方法冲突
+
+两个可见 trait 在同一宿主上声明同名方法时，调用点报
+`ambiguous type-host map for method 'x' on type 'char *'`，并列出两个 `.m.ct`。
+只 import 不调用不报错。按 4.2 节的表查名字，改掉新方法的名字。
+
+### 7.4 链接失败
+
+`std::math` 调用 `sqrt` / `fabs` / `isnan` / `isinf`。libm 单独提供的平台上需要 `-lm`：
+`ct build ... --ldflags "-lm"`，或用 `ct install` 打印的命令（`ct.pkg` 的 `ldflags` 已带）。
+
+## 8. 限制与未支持
+
+- **索引只收录最新 tag**：没有历史版本，老编译器取不到匹配的旧版 std。
+- **`requires` 只告警**：装得上不代表文档示例能编译。
+- **字面量接收者需要 0.20.0**：v0.19.1 上所有示例都写成变量接收者。
+- **`char *` 方法名全局共享**：新增 trait 必须避开 23 个已有名字。
+- **`const` 不参与类型键**：原地方法能对字符串字面量调用，后果自负。
+- **`num.toString` / `math.toString` 非线程安全**：四个静态槽轮转。
+- **`num.toStr` 静默截断**：容量不够得到短文本，不报错。
+- **没有泛型**：容器只有 `VecInt` / `VecStr` / `MapStrInt` / `MapIntPtr` 四个单态类型。
+
+## 9. 版本与变更记录
+
+| 版本 | 状态 | 变更 |
+| --- | --- | --- |
+| `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写：包根 README 改为总览；十个模块 README 全部吸收各自教程并删除教程文件；新建 `math/README.md`。API 未变。 |
+
+版本策略：
 
 | 项 | 约定 |
 | --- | --- |
-| 版本号 | 独立 semver，从 `0.1.0` 起；与编译器版本号**无关**（编译器是 `0.19.x` 时本包可以是 `0.1.x`） |
-| `0.x` 期间 | 破坏性改动走 **minor**（`0.1.0` → `0.2.0`），修复走 patch；不承诺向后兼容 |
-| `1.0.0` 之后 | 破坏性改动走 major，与包的 semver 常规一致 |
-| tag | `v<version>`，例如 `v0.1.0`；索引只认 `v*` 且取最高一个 |
-| 编译器下限 | 写在 `ct.pkg` 的 `requires`；**只告警不拒装**，所以 README 也要写。当前为 `ct >= 0.20.0`，依据见下 |
+| 版本号 | 独立 semver，从 `0.1.0` 起；与编译器版本号无关 |
+| `0.x` 期间 | 破坏性改动走 minor（`0.1.0` → `0.2.0`），修复走 patch；不承诺向后兼容 |
+| `1.0.0` 之后 | 破坏性改动走 major |
+| tag | `v<version>`；索引只认 `v*` 且取最高一个 |
+| 编译器下限 | `ct >= 0.19.1`，写在 `ct.pkg` 的 `requires` |
 
-`requires` 是实测的，而且要分两层看（2026-11-06，对照编译器由 tag `v0.19.1` 源码引导）：
-
-| 对象 | v0.19.1 | 当前 ct-lang `main` |
-| --- | --- | --- |
-| 七个模块单元本体 | 通过 | 通过 |
-| 22 个 fixture + 文档示例 | **5 passed / 5 failed** | 10 passed / 0 failed |
-
-- **库本体兼容 0.19.1。** 四个 `.h.ct` 用 `ct build --ns-root . --emit-c -o <dir>` 逐个产出 C；
-  三个 `.m.ct` 不能单独出 C，改用一个只 import 七个模块、以**变量**作接收者各调一个 API 的探针程序
-  编译并运行，结果 `9 checks, 0 failures`。`std/**/*.ct` 里没有任何字面量接收者。
-- **文档与示例不兼容 0.19.1。** fixture 与 tutorial 大量写 `"hi".len()`、`"std".codepointCount()`，
-  v0.19.1 报：
-
-  ```
-  error: method receiver must be a variable, an element, a call or a field chain
-  ```
-
-  这条语言特性是 v0.19.1 之后才加的。
-
-所以包级 `requires = ct >= 0.20.0`：在 0.19.1 上**装得上、库也能用**，但照抄 README / tutorial 的示例
-会编译失败。0.20.0 是第一个带该特性的发行版（尚未发布）；发版后把这里和 `ct.pkg` 一起钉成实际 tag 复核。
-
-## ⚠️ 索引限制：只能拿到最新版
-
-`index/index` 的质量约定是**每个仓库只收录最高的 `v*` tag**，一行一个包，不带历史版本。
-后果对使用者是明确的：
-
-- `ct get std@^0.1.0` 只会解析到索引里的那一个版本；
-- **老编译器无法从索引取到与它兼容的旧版 std**。`requires` 只打印告警，装完之后才可能报编译错误；
-- 需要旧版时只能绕过索引：`git clone` 后在本地用 `file://` 路径安装，或手工 checkout 对应 tag 的 `vendor/std`。
-
-这条限制在包模型升级（索引支持多版本）之前不会消失，因此本包**不承诺**「任意编译器版本都能装上匹配的 std」。
-
-## 目录结构
-
-```
-std/                      ← 仓库根 = 包根（ct.pkg 所在处）
-├── ct.pkg
-├── LICENSE               ← 从 ct-lang 复制，含 GPL-3.0 与 GCC 运行时例外
-├── LICENSE.EXCEPTION
-├── README.md
-├── std/                  ← 命名空间根，-I vendor/std 指向这里
-│   ├── README.md         ← 七个模块的总览
-│   ├── str/   String.m.ct + String.shim.h + README + tutorial
-│   ├── fs/    Fs.m.ct + Fs.shim.h + README + tutorial
-│   ├── utf8/  Utf8Ops.m.ct + Utf8Ops.shim.h + README + tutorial
-│   ├── vec/   Vec.h.ct + README + tutorial
-│   ├── map/   Map.h.ct
-│   ├── arena/ Arena.h.ct
-│   └── test/  Test.h.ct
-├── tests/                ← 原 ct-lang 的 test/std 门禁，改为本包自己的 CI
-│   ├── run.sh
-│   └── <mod>/…           ← fixture，由迁移脚本复制
-├── tools/
-│   ├── bootstrap-ct.sh   ← 从 ct-lang 源码引导出 ct 编译器（CI 用）
-│   └── migrate-from-ct.sh
-└── .github/workflows/test.yml
-```
-
-`std/` 内的 7 个模块目录与文件内容**逐字来自 ct-lang**，迁移脚本只做复制，不做改写。
-
-## 测试
-
-```
-CT=/path/to/ct bash tests/run.sh          # 或把 ct 放进 PATH 后直接 bash tests/run.sh
-CC=gcc bash tests/run.sh                  # 指定编译器
-```
-
-`tests/run.sh` 是 ct-lang 第 10 道门禁 `test/std/run.sh` 的移植版，保留同样的检查：
-
-1. 每个 `.h.ct` 的 `namespace std::<目录>;` 与「`pub struct` 名 = 文件名」；
-2. 每个 fixture 用 `-Wall -Wextra` 编译、运行，stdout 必须含 ` 0 failures`；
-3. `test` 模块的负向 fixture 必须返回非零并打印 3 条 `FAIL`。
-
-### CI 覆盖（迁出后唯一的防线）
-
-ct-lang 侧删掉 `std/` 与 `test/std` 之后，编译器仓库不再有任何 std 覆盖。
-本包的 CI 因此承担全部信号，触发条件刻意做成「PR 必跑 + 每晚对编译器 main 跑」：
-
-| Job | 触发 | 编译器来源 | 矩阵 |
-| --- | --- | --- | --- |
-| `host` | `pull_request`、push `main`、schedule、手动 | `CT_REF`（当前 `main`，编译器发版后钉到 `v0.20.0`） | ubuntu / gcc，macOS / clang |
-| `compiler-head` | schedule、手动 | 强制 `main` | ubuntu / gcc |
-
-`compiler-head` 的意义：语言仓库的破坏性改动通常落在 `main`，它会在下一个自然日把这个包打红，
-而不是等到下一次包发布才发现。
-
-**仓库可见性（已核实）**：`ct-lang` 当前是**公开仓库**，所以工作流用内置 `github.token` 就能跨仓
-checkout，不需要任何 secret。工作流仍写成 `secrets.CT_LANG_TOKEN || github.token`：仓库哪天转私有，
-配一个对 `ct-lang` 有 read 权限的 `CT_LANG_TOKEN` 即可恢复，无需改 YAML。
-
-## 从 ct-lang 迁移（已执行，2026-11-06）
-
-```
-bash tools/migrate-from-ct.sh                 # 只打印计划，不写任何文件
-bash tools/migrate-from-ct.sh --check         # 只检查源/目标是否漂移（有漂移则非零退出）
-CT_SRC=/path/to/ct bash tools/migrate-from-ct.sh --apply   # 真正复制
-```
-
-脚本行为：
-
-- 复制 `std/{str,fs,utf8,vec,map,arena,test}` → `std/`（`rsync -a --delete`，排除 `.DS_Store`）；
-- 复制 `std/README.md` → `std/README.md`（七个模块的总览，不属于任何模块目录）；
-- 复制 `test/std/*` → `tests/`（同样 `--delete`，但**排除 `tests/run.sh`**，它是本包维护的门禁脚本）；
-- 只读 ct 仓库，不改、不删、不提交；不执行任何 git 命令；
-- 幂等：重复执行结果一致；`--check` 可在 CI 里防止包内容与 ct 源头静默漂移。
-
-本轮**不属于**本包、由 ct 侧另行安排的动作（脚本一律不碰）：
-删除 ct-lang 的 `std/`、删除 `test/std`、修改 `install.sh`、修改 `check-all.sh` 的第 10 道门禁。
-
-### 跨仓库相对链接（脚本改写）
-
-模块文档是按 ct-lang 的目录写的，直接搬会有三类链接指向包外，共 39 条。迁移脚本在复制时做**确定性改写**，
-不手工改包内文案（否则下一次 `--apply` 会覆盖）：
-
-| 原形态 | 条数 | 改写为 |
-| --- | --- | --- |
-| `../../test/std/<mod>/…` | 29 | `../../tests/<mod>/…`（fixture 目录随包搬迁） |
-| `../../issues/selfhost/…` | 8 | `https://github.com/samxxu/ct-lang/blob/main/issues/selfhost/…` |
-| `../selfhost/ct-ast/…` | 2 | `https://github.com/samxxu/ct-lang/blob/main/selfhost/ct-ast/…` |
-
-台账和编译器源码留在 ct-lang，所以指向绝对 URL：既不会在包内过期，也不用把副本拖进来。改写规则写在
-[`tools/migrate-from-ct.sh`](tools/migrate-from-ct.sh) 顶部的注释里；`--check` 比对的就是改写后的结果，
-因此规则可复现。当前包内相对链接 100 条，**断链 0**。
-
-## 摘要与发布注意
-
-`refresh-index` 计算摘要时会遍历包目录下除 `.git`、`vendor`、`.ctcache` 之外的所有文件，
-因此 `README.md`、`tests/`、`.github/` 也计入 `sha256`。这意味着：
-
-- 打 tag 之前必须让所有文件（包括 CI 工作流）定稿；
-- tag 之后任何文件改动都需要新版本号 + 新 tag，否则 `ct verify` 会报摘要不一致。
-
-### 打 tag 后必须做（清单）
-
-索引里 `std` 目前只有一行注释（无 tag 时 `refresh-index.sh` 会 `exit 1`，打断夜间任务），
-注释不会提醒任何人，所以按顺序做完这四步才算发布完成：
-
-1. 把 `index/packages.txt` 里 `std` 那行的 `#` 去掉（`refresh-index.sh` 从这里读仓库列表）；
-2. 跑 `index/tools/refresh-index.sh`（或手动触发索引仓库的 workflow），生成带**真实 sha256** 的
-   `index/index` 行——`name version url tag sha256:<64 hex>`，不能手写占位摘要；
-3. 起一个干净目录跑 `ct get std@0.1.0 && ct verify`，确认摘要与安装链路都成立；
-4. `CT_SRC=<ct-lang> bash tools/migrate-from-ct.sh --check` 必须输出 `in sync`，否则说明包内文件
-   与源头不一致，先对齐再重新打 tag。
-
-发布顺序：`git tag v0.1.0` → `bash tools/publish-package.sh std` → 上面四步。
+打 tag 之后索引里的摘要会覆盖包目录下除 `.git`、`vendor`、`.ctcache` 外的所有文件，
+包括 `README.md`、`tests/`、`.github/`。所以打 tag 前必须让所有文件定稿；tag 之后任何文件改动
+都需要新版本号和新 tag，否则 `ct verify` 会报摘要不一致。
 
 ## License
 
-与 ct-lang 一致：GPL-3.0-or-later，附 GCC 运行时例外（见 `LICENSE` 与 `LICENSE.EXCEPTION`）。
+GPL-3.0-or-later，附 GCC 运行时例外（见 `LICENSE` 与 `LICENSE.EXCEPTION`）。
 你写的 `.ct` 源码与编译器生成物不受 GPL 约束。

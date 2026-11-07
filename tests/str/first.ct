@@ -1,9 +1,9 @@
-/* Section 2 of std/str/tutorial.md, verbatim.
+/* String method coverage; the working docs are in std/str/README.md.
  *
- * The gate builds and runs every *.ct in test/std/str/, so the tutorial's
- * opening program is compiled on every run instead of rotting in the docs.
+ * The gate builds and runs every *.ct in tests/str/, so these examples stay
+ * compiled instead of rotting in the docs.
  *
- *   ct build -I . test/std/str/first.ct -o /tmp/first && /tmp/first
+ *   ct build -I . tests/str/first.ct -o /tmp/first && /tmp/first
  */
 import std::str::String;
 import std::test::Test;

@@ -1,0 +1,203 @@
+/* std::num - every method of the four hosts (Int / Long / LLong / Char), with
+ * the buffer-capacity boundaries, the base conversions and the toString ring.
+ *
+ * `abs(INT_MIN)` / `labs(LONG_MIN)` / `llabs(LLONG_MIN)` are undefined
+ * behaviour in C (the result is not representable), so those calls are
+ * deliberately not asserted; `INT_MIN + 1` and the stringification of the
+ * minimum values are covered instead. */
+import std::num::Num;
+import std::test::Test;
+
+#include <limits.h>
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[64];
+    char sent[8];
+    char *nullbuf = 0;
+    char *r0;
+    char *r1;
+    char *r2;
+    char *r3;
+    char *r4;
+    int i0 = 0;
+    int i1 = -1;
+    int i5 = 5;
+    int i9 = 9;
+    int i35 = 35;
+    int i65 = 65;
+    int i255 = 255;
+    int im255 = -255;
+    int ineg = -77;
+    int ineg2 = -88;
+    int imax = INT_MAX;
+    int imin1 = INT_MIN + 1;
+    int imin = INT_MIN;
+    long l0 = 0;
+    long l1 = -1;
+    long l5 = 5;
+    long l9 = 9;
+    long l65 = 65;
+    long lneg = -77;
+    long l255 = 255;
+    long lm255 = -255;
+    long lmin1 = LONG_MIN + 1;
+    long long ll0 = 0;
+    long long llneg = -88;
+    long long ll255 = 255;
+    long long llm255 = -255;
+    long long llmin = LLONG_MIN;
+    long long llmin1 = LLONG_MIN + 1;
+    char c0 = '0';
+    char c9 = '9';
+    char ca = 'a';
+    char cz = 'z';
+    char cA = 'A';
+    char cZ = 'Z';
+    char c1 = '1';
+    char csp = ' ';
+    char ctab = '\t';
+    char cnl = '\n';
+    char cus = '_';
+    char cneg = (char)-1;
+
+    tp->init();
+
+    /* ---- Int: abs / clamp / max / min -------------------------------- */
+    tp->checkEqInt(i0.abs(), 0, "Int.abs: 0");
+    tp->checkEqInt(i1.abs(), 1, "Int.abs: -1");
+    tp->checkEqInt(imax.abs(), INT_MAX, "Int.abs: INT_MAX");
+    tp->checkEqInt(imin1.abs(), INT_MAX, "Int.abs: INT_MIN+1");
+    tp->checkEqInt(i65.clamp(0, 3), 3, "Int.clamp: above hi");
+    tp->checkEqInt(ineg.clamp(0, 3), 0, "Int.clamp: below lo");
+    tp->checkEqInt(i5.clamp(0, 9), 5, "Int.clamp: inside");
+    tp->checkEqInt(i5.clamp(7, 7), 7, "Int.clamp: lo == hi");
+    tp->checkEqInt(i5.max(i9), 9, "Int.max");
+    tp->checkEqInt(i5.min(i9), 5, "Int.min");
+    tp->checkEqInt(i5.max(5), 5, "Int.max: equal");
+    tp->checkEqInt(ineg.max(ineg2), -77, "Int.max: negatives");
+    tp->checkEqInt(ineg.min(ineg2), -88, "Int.min: negatives");
+
+    /* ---- Int: toStr --------------------------------------------------- */
+    buf[0] = 0;
+    tp->checkTrue(i65.toStr(buf, 32) == buf, "Int.toStr: returns the buffer");
+    tp->checkEqStr(buf, "65", "Int.toStr: 65");
+    tp->checkTrue(i65.toStr(buf, 3) == buf, "Int.toStr: cap exactly");
+    tp->checkEqStr(buf, "65", "Int.toStr: cap exactly value");
+    tp->checkTrue(i65.toStr(buf, 2) == buf, "Int.toStr: cap one short succeeds");
+    tp->checkEqStr(buf, "6", "Int.toStr: cap one short truncates silently");
+    tp->checkTrue(i65.toStr(nullbuf, 32) == 0, "Int.toStr: NULL buffer returns NULL");
+    sent[0] = 'X'; sent[1] = 'Y'; sent[2] = 'Z'; sent[3] = 0;
+    tp->checkTrue(i65.toStr(sent, 0) == sent, "Int.toStr: cap 0 returns the buffer");
+    tp->checkEqStr(sent, "XYZ", "Int.toStr: cap 0 leaves it untouched");
+    tp->checkTrue(imin.toStr(buf, 12) == buf, "Int.toStr: INT_MIN cap exactly");
+    tp->checkEqStr(buf, "-2147483648", "Int.toStr: INT_MIN value");
+    tp->checkTrue(imin.toStr(buf, 11) == buf, "Int.toStr: INT_MIN cap one short");
+    tp->checkEqStr(buf, "-214748364", "Int.toStr: INT_MIN truncates silently");
+
+    /* ---- Int: toBase -------------------------------------------------- */
+    tp->checkEqStr(i65.toBase(16, buf, 32), "41", "Int.toBase: 65/16");
+    tp->checkEqStr(i5.toBase(2, buf, 32), "101", "Int.toBase: 5/2");
+    tp->checkEqStr(i35.toBase(36, buf, 32), "z", "Int.toBase: 35/36");
+    tp->checkEqStr(i0.toBase(2, buf, 2), "0", "Int.toBase: 0 fits cap 2");
+    tp->checkTrue(i0.toBase(2, buf, 1) == 0, "Int.toBase: 0 needs cap 2");
+    tp->checkEqStr(i255.toBase(16, buf, 3), "ff", "Int.toBase: 255/16 cap 3 exact");
+    tp->checkTrue(i255.toBase(16, buf, 2) == 0, "Int.toBase: 255/16 cap 2 refused");
+    tp->checkEqStr(im255.toBase(16, buf, 4), "-ff", "Int.toBase: -255/16 cap 4 exact");
+    tp->checkTrue(im255.toBase(16, buf, 3) == 0, "Int.toBase: -255/16 cap 3 refused");
+    tp->checkEqStr(imin.toBase(10, buf, 12), "-2147483648", "Int.toBase: INT_MIN cap 12 exact");
+    tp->checkTrue(imin.toBase(10, buf, 11) == 0, "Int.toBase: INT_MIN cap 11 refused");
+    tp->checkTrue(i5.toBase(1, buf, 32) == buf, "Int.toBase: base 1 returns the buffer");
+    tp->checkEqStr(buf, "", "Int.toBase: base 1 is empty, not NULL");
+    tp->checkTrue(i5.toBase(37, buf, 32) == buf, "Int.toBase: base 37 returns the buffer");
+    tp->checkEqStr(buf, "", "Int.toBase: base 37 is empty, not NULL");
+    tp->checkTrue(i65.toBase(16, nullbuf, 32) == 0, "Int.toBase: NULL buffer returns NULL");
+    sent[0] = 'X'; sent[1] = 'Y'; sent[2] = 'Z'; sent[3] = 0;
+    tp->checkTrue(i65.toBase(16, sent, 0) == sent, "Int.toBase: cap 0 returns the buffer");
+    tp->checkEqStr(sent, "XYZ", "Int.toBase: cap 0 leaves it untouched");
+
+    /* ---- Int: the four-slot toString ring ----------------------------- */
+    r0 = i0.toString();
+    r1 = i1.toString();
+    r2 = i5.toString();
+    r3 = i9.toString();
+    tp->checkTrue(r0 != r1 && r1 != r2 && r2 != r3 && r0 != r3,
+                  "Int.toString: four live results take four slots");
+    r4 = i65.toString();
+    tp->checkTrue(r4 == r0, "Int.toString: the fifth call reuses slot 0");
+    tp->checkEqStr(r0, "65", "Int.toString: slot 0 now holds the fifth value");
+    tp->checkEqStr(r1, "-1", "Int.toString: slot 1 stayed intact");
+    tp->checkEqStr(r2, "5", "Int.toString: slot 2 value");
+    tp->checkEqStr(r3, "9", "Int.toString: slot 3 value");
+
+    /* ---- Long --------------------------------------------------------- */
+    tp->checkEqInt((int)l0.abs(), 0, "Long.abs: 0");
+    tp->checkEqInt((int)l1.abs(), 1, "Long.abs: -1");
+    tp->checkEqInt((int)lneg.abs(), 77, "Long.abs: -77");
+    tp->checkTrue(lmin1.abs() == LONG_MAX, "Long.abs: LONG_MIN+1");
+    tp->checkEqInt((int)l65.clamp(0, 3), 3, "Long.clamp: above hi");
+    tp->checkEqInt((int)lneg.clamp(-100, -50), -77, "Long.clamp: inside a negative range");
+    tp->checkEqInt((int)lneg.clamp(-10, 10), -10, "Long.clamp: below lo");
+    tp->checkEqInt((int)l5.max(l9), 9, "Long.max");
+    tp->checkEqInt((int)l5.min(l9), 5, "Long.min");
+    tp->checkEqInt((int)l5.max(5), 5, "Long.max: equal");
+    tp->checkTrue(l65.toStr(buf, 32) == buf, "Long.toStr: returns the buffer");
+    tp->checkEqStr(buf, "65", "Long.toStr: 65");
+    tp->checkEqStr(lneg.toString(), "-77", "Long.toString: -77");
+    tp->checkEqStr(l255.toBase(16, buf, 32), "ff", "Long.toBase: 255/16");
+    tp->checkEqStr(lm255.toBase(16, buf, 4), "-ff", "Long.toBase: -255/16 cap 4 exact");
+    tp->checkTrue(lm255.toBase(16, buf, 3) == 0, "Long.toBase: -255/16 cap 3 refused");
+    tp->checkTrue(lmin1.toBase(10, buf, 32) != 0, "Long.toBase: LONG_MIN+1 emits");
+
+    /* ---- LLong -------------------------------------------------------- */
+    tp->checkEqInt((int)ll0.abs(), 0, "LLong.abs: 0");
+    tp->checkEqInt((int)llneg.abs(), 88, "LLong.abs: -88");
+    tp->checkTrue(llmin1.abs() == LLONG_MAX, "LLong.abs: LLONG_MIN+1");
+    tp->checkEqInt((int)ll255.clamp(0, 3), 3, "LLong.clamp");
+    tp->checkEqInt((int)llneg.max(ll255), 255, "LLong.max");
+    tp->checkEqInt((int)llneg.min(ll255), -88, "LLong.min");
+    tp->checkEqStr(ll255.toStr(buf, 32), "255", "LLong.toStr: 255");
+    tp->checkEqStr(llneg.toString(), "-88", "LLong.toString: -88");
+    tp->checkEqStr(ll255.toBase(2, buf, 32), "11111111", "LLong.toBase: 255/2");
+    tp->checkEqStr(llm255.toBase(10, buf, 32), "-255", "LLong.toBase: -255/10");
+    tp->checkTrue(llmin.toStr(buf, 21) == buf, "LLong.toStr: LLONG_MIN cap 21 exact");
+    tp->checkEqStr(buf, "-9223372036854775808", "LLong.toStr: LLONG_MIN value");
+    tp->checkTrue(llmin.toStr(buf, 20) == buf, "LLong.toStr: LLONG_MIN cap 20 succeeds");
+    tp->checkEqStr(buf, "-922337203685477580", "LLong.toStr: LLONG_MIN truncates");
+    tp->checkEqStr(llmin.toBase(10, buf, 21), "-9223372036854775808",
+                   "LLong.toBase: LLONG_MIN cap 21 exact");
+    tp->checkTrue(llmin.toBase(10, buf, 20) == 0, "LLong.toBase: LLONG_MIN cap 20 refused");
+
+    /* ---- Char --------------------------------------------------------- */
+    tp->checkEqInt(c0.isDigit(), 1, "Char.isDigit: '0'");
+    tp->checkEqInt(c9.isDigit(), 1, "Char.isDigit: '9'");
+    tp->checkEqInt(ca.isDigit(), 0, "Char.isDigit: 'a'");
+    tp->checkEqInt(cus.isDigit(), 0, "Char.isDigit: '_'");
+    tp->checkEqInt(cneg.isDigit(), 0, "Char.isDigit: negative char is safe");
+    tp->checkEqInt(ca.isAlpha(), 1, "Char.isAlpha: 'a'");
+    tp->checkEqInt(cZ.isAlpha(), 1, "Char.isAlpha: 'Z'");
+    tp->checkEqInt(c1.isAlpha(), 0, "Char.isAlpha: '1'");
+    tp->checkEqInt(cus.isAlpha(), 0, "Char.isAlpha: '_'");
+    tp->checkEqInt(csp.isSpace(), 1, "Char.isSpace: space");
+    tp->checkEqInt(ctab.isSpace(), 1, "Char.isSpace: tab");
+    tp->checkEqInt(cnl.isSpace(), 1, "Char.isSpace: newline");
+    tp->checkEqInt(ca.isSpace(), 0, "Char.isSpace: 'a'");
+    tp->checkEqInt(cA.isUpper(), 1, "Char.isUpper: 'A'");
+    tp->checkEqInt(ca.isUpper(), 0, "Char.isUpper: 'a'");
+    tp->checkEqInt(c1.isUpper(), 0, "Char.isUpper: '1'");
+    tp->checkEqInt(ca.isLower(), 1, "Char.isLower: 'a'");
+    tp->checkEqInt(cA.isLower(), 0, "Char.isLower: 'A'");
+    tp->checkEqInt(c1.isLower(), 0, "Char.isLower: '1'");
+    tp->checkEqInt(ca.toUpper(), 'A', "Char.toUpper: 'a'");
+    tp->checkEqInt(cz.toUpper(), 'Z', "Char.toUpper: 'z'");
+    tp->checkEqInt(c1.toUpper(), '1', "Char.toUpper: non-letter unchanged");
+    tp->checkEqInt(cus.toUpper(), '_', "Char.toUpper: punctuation unchanged");
+    tp->checkEqInt(cA.toLower(), 'a', "Char.toLower: 'A'");
+    tp->checkEqInt(cZ.toLower(), 'z', "Char.toLower: 'Z'");
+    tp->checkEqInt(c1.toLower(), '1', "Char.toLower: non-letter unchanged");
+    tp->checkEqInt(cus.toLower(), '_', "Char.toLower: punctuation unchanged");
+
+    return tp->report();
+}

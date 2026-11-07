@@ -27,6 +27,7 @@
 #ifndef CT_STD_STR_STRING_SHIM_H
 #define CT_STD_STR_STRING_SHIM_H
 
+#include <stdlib.h>
 #include <string.h>
 
 /* Length in bytes (0 when `s` is NULL). */
@@ -182,6 +183,38 @@ static inline int std_str_compare(const char *a, const char *b)
     }
     if (a[i] == b[i]) return 0;
     return (a[i] == 0) ? -1 : 1;
+}
+
+/* The `memcpy` shape behind `dst.copyFrom(src, n)`: copy exactly `n` bytes from
+   `src` into the receiver. No NUL is appended -- `n` is the whole contract, so
+   a missing pointer or a non-positive count copies nothing. */
+static inline void std_str_copy_from(char *dst, const char *src, int n)
+{
+    if (!dst || !src || n <= 0) return;
+    memcpy(dst, src, (size_t)n);
+}
+
+/* The `memcpy` shape behind `src.copyTo(dst, n)`: the same bytes, the other way
+   round -- `n` bytes of the receiver into `dst`. */
+static inline void std_str_copy_to(const char *src, char *dst, int n)
+{
+    if (!src || !dst || n <= 0) return;
+    memcpy(dst, src, (size_t)n);
+}
+
+/* The C parser behind `s.toInt()`: 0 for a missing receiver, otherwise exactly
+   `atoi` (no error report; overflow is the C library's undefined behaviour). */
+static inline int std_str_to_int(const char *s)
+{
+    if (!s) return 0;
+    return atoi(s);
+}
+
+/* The C parser behind `s.toDouble()`: `atof`, 0 for a missing receiver. */
+static inline double std_str_to_double(const char *s)
+{
+    if (!s) return 0.0;
+    return atof(s);
 }
 
 #endif

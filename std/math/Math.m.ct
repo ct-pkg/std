@@ -1,0 +1,26 @@
+/*
+ * Math.m.ct - the namespace half of std::math (C's `math.h`).
+ *
+ * The host is the namespace, so calls read `std::math::Math.sqrt(x)`. Each
+ * recipe is one direct C call: no wrapper, no interface value, no vtable.
+ * Linking needs `-lm`, which the package's `ldflags` carries into the command
+ * `ct install` prints; on platforms where libm is part of libc it is a no-op.
+ *
+ * `Math` is the scalar pair; the methods that hang off a value (`x.sqrt()`,
+ * `x.round()`) are in `Real.m.ct`.
+ *
+ * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ */
+#include <math.h>
+
+namespace std::math;
+
+pub trait Math {
+    double sqrt(double x);
+    double fabs(double x);
+}
+
+map trait Math for namespace std::math {
+    sqrt(x) -> sqrt(x);
+    fabs(x) -> fabs(x);
+}

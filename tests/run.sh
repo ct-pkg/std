@@ -17,10 +17,10 @@
 #     -> ct build -I . --cflags "-Wall -Wextra" -> run
 #
 # `main.ct` is the regression matrix, `first.ct` is the opening program a module
-# tutorial prints and `guide.ct` is the complete program that tutorial quotes.
-# Every program in the directory is compiled and run, so a snippet cannot rot in
-# the docs alone. `tests/fs` receives a directory with exactly two entries and a
-# file path outside it, so its listing assertions are deterministic.
+# README prints and `guide.ct` is the runnable example set that README's tutorial
+# is built on. Every program in the directory is compiled and run, so a snippet
+# cannot rot in the docs alone. `tests/fs` receives a directory with exactly two
+# entries and a file path outside it, so its listing assertions are deterministic.
 #
 # Discovery is explicit: every fixture passes `-I .`; the compiler has no
 # default include root (D17-2).
@@ -56,14 +56,14 @@ echo
 
 echo "== layout (the package must not be empty) =="
 layout_bad=""
-for mod in str fs utf8 vec map arena test; do
+for mod in str io fs utf8 vec map arena test num math; do
     [ -d "std/$mod" ] || layout_bad="$layout_bad std/$mod(missing)"
 done
 if [ -z "$(find tests -mindepth 2 -name '*.ct' 2>/dev/null | head -1)" ]; then
     layout_bad="$layout_bad tests/*/*.ct(no fixtures)"
 fi
 if [ -z "$layout_bad" ]; then
-    ok "seven modules and at least one fixture per package"
+    ok "ten modules and at least one fixture per package"
 else
     bad "layout" "$layout_bad"
 fi
@@ -119,6 +119,7 @@ for dir in tests/*/; do
             # One output path per program: several fixtures live in the same
             # directory and the first one to run creates the file.
             fs) cmd+=("$work/fsdir" "$work/$base.out.txt") ;;
+            io) cmd+=("$work/$base.io.txt") ;;
         esac
         "${cmd[@]}" >"$out/$base.stdout" 2>"$out/$base.stderr"
         rc=$?

@@ -1,10 +1,10 @@
-/* Section 2 of std/fs/tutorial.md, verbatim.
+/* File-system coverage; the working docs are in std/fs/README.md.
  *
- * The gate builds and runs every *.ct in test/std/fs/, and passes two
+ * The gate builds and runs every *.ct in tests/fs/, and passes two
  * arguments: a directory it created with exactly two files in it, and a file
  * path outside that directory. Run it by hand the same way:
  *
- *   ct build -I . test/std/fs/first.ct -o /tmp/first
+ *   ct build -I . tests/fs/first.ct -o /tmp/first
  *   /tmp/first /tmp /tmp/ct-fs-first.txt
  */
 import std::fs::Fs;

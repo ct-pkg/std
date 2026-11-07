@@ -1,0 +1,123 @@
+/* std::vec - the VEC_MIN_CAP growth boundaries (8 -> 9, 16 -> 17), the empty
+ * vector, NULL out pointers, repeated elements, and free() twice / reuse. */
+import std::vec::Vec;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    VecInt vi;
+    VecStr vs;
+    VecInt *ip = &vi;
+    VecStr *sp = &vs;
+    int *nullout = 0;
+    char **nullstr = 0;
+    int i;
+    int x;
+    char *s;
+    char *s0 = "s0";
+    char *s1 = "s1";
+    char *s2 = "s2";
+    char *s3 = "s3";
+    char *s4 = "s4";
+    char *s5 = "s5";
+    char *s6 = "s6";
+    char *s7 = "s7";
+    char *s8 = "s8";
+
+    tp->init();
+
+    /* ---- VecInt: the empty vector ------------------------------------- */
+    ip->init();
+    tp->checkEqInt(ip->len(), 0, "VecInt.len: fresh");
+    tp->checkEqInt(ip->at(0, &x), -1, "VecInt.at: empty");
+    tp->checkEqInt(ip->at(0, nullout), -1, "VecInt.at: empty with NULL out");
+    tp->checkEqInt(ip->pop(&x), -1, "VecInt.pop: empty");
+    tp->checkEqInt(ip->pop(nullout), -1, "VecInt.pop: empty with NULL out");
+
+    /* ---- VecInt: exactly 8, then the 9th element ---------------------- */
+    for (i = 0; i < 8; i++) {
+        tp->checkEqInt(ip->push(i), 0, "VecInt.push: fill to VEC_MIN_CAP");
+    }
+    tp->checkEqInt(ip->len(), 8, "VecInt.len: exactly VEC_MIN_CAP");
+    tp->checkEqInt(ip->at(7, &x), 0, "VecInt.at: the eighth element");
+    tp->checkEqInt(x, 7, "VecInt.at: the eighth value");
+    tp->checkEqInt(ip->push(8), 0, "VecInt.push: the ninth element grows the array");
+    tp->checkEqInt(ip->len(), 9, "VecInt.len: after the first growth");
+    tp->checkEqInt(ip->at(8, &x), 0, "VecInt.at: the ninth element");
+    tp->checkEqInt(x, 8, "VecInt.at: the ninth value");
+
+    /* ---- VecInt: exactly 16, then the 17th element -------------------- */
+    for (i = 9; i < 16; i++) {
+        tp->checkEqInt(ip->push(i), 0, "VecInt.push: fill to 16");
+    }
+    tp->checkEqInt(ip->len(), 16, "VecInt.len: exactly 16");
+    tp->checkEqInt(ip->push(16), 0, "VecInt.push: the seventeenth element");
+    tp->checkEqInt(ip->len(), 17, "VecInt.len: after the second growth");
+    tp->checkEqInt(ip->at(16, &x), 0, "VecInt.at: the seventeenth element");
+    tp->checkEqInt(x, 16, "VecInt.at: the seventeenth value");
+    tp->checkEqInt(ip->at(8, nullout), 0, "VecInt.at: a NULL out pointer is allowed");
+    tp->checkEqInt(ip->at(-1, &x), -1, "VecInt.at: before the start");
+    tp->checkEqInt(ip->at(17, &x), -1, "VecInt.at: past the end");
+
+    /* ---- VecInt: pop, duplicates, free and reuse ---------------------- */
+    tp->checkEqInt(ip->pop(nullout), 0, "VecInt.pop: NULL out still removes");
+    tp->checkEqInt(ip->len(), 16, "VecInt.len: after a NULL-out pop");
+    tp->checkEqInt(ip->pop(&x), 0, "VecInt.pop: with an out pointer");
+    tp->checkEqInt(x, 15, "VecInt.pop: value");
+    tp->checkEqInt(ip->push(5), 0, "VecInt.push: duplicate value");
+    tp->checkEqInt(ip->push(5), 0, "VecInt.push: duplicate value again");
+    tp->checkEqInt(ip->pop(&x), 0, "VecInt.pop: the first duplicate");
+    tp->checkEqInt(x, 5, "VecInt.pop: the first duplicate value");
+    tp->checkEqInt(ip->pop(&x), 0, "VecInt.pop: the second duplicate");
+    tp->checkEqInt(x, 5, "VecInt.pop: the second duplicate value");
+
+    ip->free();
+    tp->checkEqInt(ip->len(), 0, "VecInt.len: after free");
+    tp->checkEqInt(ip->pop(&x), -1, "VecInt.pop: after free");
+    tp->checkEqInt(ip->at(0, &x), -1, "VecInt.at: after free");
+    ip->free();
+    tp->checkEqInt(ip->len(), 0, "VecInt.len: a second free is safe");
+    ip->init();
+    tp->checkEqInt(ip->len(), 0, "VecInt.len: after reuse init");
+    tp->checkEqInt(ip->push(1), 0, "VecInt.push: after reuse");
+    tp->checkEqInt(ip->len(), 1, "VecInt.len: after reuse");
+    tp->checkEqInt(ip->at(0, &x), 0, "VecInt.at: after reuse");
+    tp->checkEqInt(x, 1, "VecInt.at: after reuse value");
+    ip->free();
+
+    /* ---- VecStr: enough elements to grow ------------------------------ */
+    sp->init();
+    tp->checkEqInt(sp->len(), 0, "VecStr.len: fresh");
+    tp->checkEqInt(sp->push(s0), 0, "VecStr.push: s0");
+    tp->checkEqInt(sp->push(s1), 0, "VecStr.push: s1");
+    tp->checkEqInt(sp->push(s2), 0, "VecStr.push: s2");
+    tp->checkEqInt(sp->push(s3), 0, "VecStr.push: s3");
+    tp->checkEqInt(sp->push(s4), 0, "VecStr.push: s4");
+    tp->checkEqInt(sp->push(s5), 0, "VecStr.push: s5");
+    tp->checkEqInt(sp->push(s6), 0, "VecStr.push: s6");
+    tp->checkEqInt(sp->push(s7), 0, "VecStr.push: s7");
+    tp->checkEqInt(sp->push(s8), 0, "VecStr.push: s8 grows the array");
+    tp->checkEqInt(sp->len(), 9, "VecStr.len: after growth");
+    tp->checkEqInt(sp->at(8, &s), 0, "VecStr.at: the last element");
+    tp->checkEqStr(s, "s8", "VecStr.at: the last value");
+    tp->checkEqInt(sp->at(9, &s), -1, "VecStr.at: past the end");
+    tp->checkEqInt(sp->at(0, nullstr), 0, "VecStr.at: a NULL out pointer is allowed");
+    tp->checkEqInt(sp->pop(nullstr), 0, "VecStr.pop: NULL out still removes");
+    tp->checkEqInt(sp->len(), 8, "VecStr.len: after a NULL-out pop");
+    tp->checkEqInt(sp->pop(&s), 0, "VecStr.pop: with an out pointer");
+    tp->checkEqStr(s, "s7", "VecStr.pop: value");
+    sp->free();
+    tp->checkEqInt(sp->len(), 0, "VecStr.len: after free");
+    sp->free();
+    tp->checkEqInt(sp->len(), 0, "VecStr.len: a second free is safe");
+    sp->init();
+    tp->checkEqInt(sp->push(s0), 0, "VecStr.push: after reuse");
+    tp->checkEqInt(sp->len(), 1, "VecStr.len: after reuse");
+    tp->checkEqInt(sp->at(0, &s), 0, "VecStr.at: after reuse");
+    tp->checkEqStr(s, "s0", "VecStr.at: after reuse value");
+    sp->free();
+
+    return tp->report();
+}

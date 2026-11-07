@@ -1,7 +1,7 @@
 /* std::arena - alignment, overflow blocks, reset and the freed arena.
  *
- * Every call is the OO spelling from `ArenaOps.m.ct`; the receiver is the
- * pointer, so `ap->init(block)` rather than `a.init(...)`. */
+ * Every call is the OO spelling from `ArenaOps` in `Arena.h.ct`; the receiver
+ * is the pointer, so `ap->init(block)` rather than `a.init(...)`. */
 import std::arena::Arena;
 import std::test::Test;
 

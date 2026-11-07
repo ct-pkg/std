@@ -1,0 +1,87 @@
+/* std::io - the error paths (a missing file, a directory, a bad mode), the
+ * read/write direction rules, n == 0 / n < 0 / NULL buffers, append, the
+ * idempotent close, and the variadic printf with several argument types. */
+import std::io::Io;
+import std::io::Stdout;
+import std::io::File;
+import std::test::Test;
+
+int main(int argc, char **argv)
+{
+    Test t;
+    Test *tp = &t;
+    IoFile *f;
+    IoFile *missing;
+    IoFile *dir;
+    char buf[32];
+    char *path;
+    char *nullbuf = 0;
+    char *dot = ".";
+
+    tp->init();
+    path = (argc > 1) ? argv[1] : "std-io-coverage.txt";
+
+    /* ---- open failures ------------------------------------------------- */
+    missing = "/nonexistent-dir/ct-std-io-coverage".open("r");
+    tp->checkTrue(missing == 0, "Path.open: missing path returns NULL");
+    tp->checkEqInt(missing.close(), 0, "File.close: NULL handle is success");
+    missing = path.open("q");
+    tp->checkTrue(missing == 0, "Path.open: an invalid mode returns NULL");
+    dir = dot.open("w");
+    tp->checkTrue(dir == 0, "Path.open: a directory cannot be opened for writing");
+
+    /* ---- write side ---------------------------------------------------- */
+    f = path.open("w");
+    tp->checkTrue(f != 0, "Path.open: create for writing");
+    tp->checkEqInt(f.write("hello", 5), 5, "File.write: returns the byte count");
+    tp->checkEqInt(f.write("", 0), 0, "File.write: n == 0 writes nothing");
+    tp->checkEqInt(f.write(nullbuf, 0), 0, "File.write: NULL buffer with n == 0 is allowed");
+    tp->checkEqInt(f.write(nullbuf, 1), -1, "File.write: NULL buffer with n > 0 fails");
+    tp->checkEqInt(f.write("x", -1), -1, "File.write: a negative count fails");
+    tp->checkEqInt(f.read(buf, 1), 0, "File.read: a write-only handle reads 0 bytes");
+    tp->checkEqInt(f.close(), 0, "File.close: succeeds");
+    tp->checkEqInt(f.close(), 0, "File.close: second close is idempotent");
+    tp->checkEqInt(f.close(), 0, "File.close: third close is idempotent");
+    tp->checkEqInt(f.write("x", 1), -1, "File.write: after close fails");
+    tp->checkEqInt(f.read(buf, 1), -1, "File.read: after close fails");
+
+    /* ---- read side ----------------------------------------------------- */
+    f = path.open("r");
+    tp->checkTrue(f != 0, "Path.open: open for reading");
+    tp->checkEqInt(f.read(buf, 0), 0, "File.read: n == 0 reads nothing");
+    tp->checkEqInt(f.read(buf, -1), -1, "File.read: a negative count fails");
+    tp->checkEqInt(f.read(nullbuf, 1), -1, "File.read: NULL buffer fails");
+    tp->checkEqInt(f.write("x", 1), 0, "File.write: a read-only handle writes 0 bytes");
+    tp->checkEqInt(f.read(buf, 5), 5, "File.read: returns the byte count");
+    buf[5] = 0;
+    tp->checkEqStr(buf, "hello", "File.read: content");
+    tp->checkEqInt(f.read(buf, 1), 0, "File.read: EOF returns 0");
+    tp->checkEqInt(f.close(), 0, "File.close: the read handle closes");
+
+    /* ---- append -------------------------------------------------------- */
+    f = path.open("a");
+    tp->checkTrue(f != 0, "Path.open: append mode");
+    tp->checkEqInt(f.write("cd", 2), 2, "File.write: append");
+    tp->checkEqInt(f.close(), 0, "File.close: the append handle closes");
+    f = path.open("r");
+    tp->checkEqInt(f.read(buf, 7), 7, "File.read: appended length");
+    buf[7] = 0;
+    tp->checkEqStr(buf, "hellocd", "File.read: appended content");
+    tp->checkEqInt(f.close(), 0, "File.close: appended file closes");
+
+    /* ---- printf: the return value is the byte count -------------------- */
+    tp->checkEqInt(std::io::printf(""), 0, "io::printf: empty format");
+    tp->checkEqInt(std::io::printf("%d", 42), 2, "io::printf: one int");
+    tp->checkEqInt(std::io::printf("%s", ""), 0, "io::printf: empty string");
+    tp->checkEqInt(std::io::printf("%d %s %.2f %c", 42, "hi", 3.5, 'x'), 12,
+                   "io::printf: int, string, double and char");
+    std::io::Stdout.putchar('\n');
+
+    /* ---- Stdout -------------------------------------------------------- */
+    tp->checkEqInt(std::io::Stdout.putchar('x'), 'x', "Stdout.putchar: returns the char");
+    tp->checkEqInt(std::io::Stdout.fflush(), 0, "Stdout.fflush: succeeds");
+    tp->checkTrue(std::io::Stdout.puts("") >= 0, "Stdout.puts: succeeds");
+    tp->checkEqInt(std::io::Stdout.fflush(), 0, "Stdout.fflush: after puts");
+
+    return tp->report();
+}

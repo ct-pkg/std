@@ -1,0 +1,139 @@
+/* std::math - the namespace pair (Math), the float host (Float) and the double
+ * host (Real): non-finite values, signed zeros, the extreme magnitudes, the
+ * toStr capacity contract and the four-slot toString ring. */
+import std::math::Math;
+import std::math::Real;
+import std::test::Test;
+
+#include <float.h>
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[64];
+    char sent[8];
+    char *nullbuf = 0;
+    char *r0;
+    char *r1;
+    char *r2;
+    char *r3;
+    char *r4;
+    double zero = 0.0;
+    double nzero = -0.0;
+    double one = 1.0;
+    double x = 16.0;
+    double neg = -3.5;
+    double d26 = 2.6;
+    double d25 = 2.5;
+    double dn25 = -2.5;
+    double half = -0.5;
+    double nan = zero / zero;
+    double inf = one / zero;
+    double ninf = -one / zero;
+    double dmax = DBL_MAX;
+    double dmin = DBL_MIN;
+    double dtiny = 5e-324;
+    double sqneg;
+    float fneg = -2.5f;
+    float fz = -0.0f;
+    float f9 = 9.0f;
+    float fhalf = -0.5f;
+    float f25 = 2.5f;
+    float fn25 = -2.5f;
+
+    tp->init();
+
+    /* ---- Math: the namespace host ------------------------------------- */
+    tp->checkTrue(std::math::Math.sqrt(zero) == 0.0, "Math.sqrt: 0");
+    tp->checkTrue(std::math::Math.sqrt(x) == 4.0, "Math.sqrt: 16");
+    tp->checkTrue(std::math::Math.sqrt(2.25) == 1.5, "Math.sqrt: 2.25");
+    sqneg = std::math::Math.sqrt(-one);
+    tp->checkEqInt(sqneg.isNan(), 1, "Math.sqrt: a negative argument is NaN");
+    tp->checkTrue(std::math::Math.fabs(neg) == 3.5, "Math.fabs: -3.5");
+    tp->checkTrue(std::math::Math.fabs(nzero) == 0.0, "Math.fabs: -0 is 0");
+    tp->checkEqInt(signbit(std::math::Math.fabs(nzero)), 0, "Math.fabs: -0 loses its sign");
+    tp->checkEqInt(std::math::Math.fabs(ninf).isInf(), 1, "Math.fabs: -inf is inf");
+    tp->checkEqInt(std::math::Math.fabs(nan).isNan(), 1, "Math.fabs: NaN stays NaN");
+
+    /* ---- Float -------------------------------------------------------- */
+    tp->checkTrue(fneg.abs() == 2.5f, "Float.abs: -2.5");
+    tp->checkEqInt(signbit(fz.abs()), 0, "Float.abs: -0 loses its sign");
+    tp->checkTrue(f9.sqrt() == 3.0f, "Float.sqrt: 9");
+    tp->checkTrue(fhalf.floor() == -1.0f, "Float.floor: -0.5");
+    tp->checkTrue(fhalf.ceil() == 0.0f, "Float.ceil: -0.5 is zero");
+    tp->checkEqInt(signbit(fhalf.ceil()), 1, "Float.ceil: -0.5 keeps a negative zero");
+    tp->checkTrue(fneg.floor() == -3.0f, "Float.floor: -2.5");
+    tp->checkTrue(fneg.ceil() == -2.0f, "Float.ceil: -2.5");
+    tp->checkTrue(fneg.round() == -3.0f, "Float.round: -2.5 rounds away from zero");
+    tp->checkTrue(f25.round() == 3.0f, "Float.round: 2.5 rounds away from zero");
+    tp->checkTrue(fn25.round() == -3.0f, "Float.round: -2.5");
+
+    /* ---- Real: arithmetic --------------------------------------------- */
+    tp->checkTrue(x.sqrt() == 4.0, "Real.sqrt: 16");
+    tp->checkTrue(neg.abs() == 3.5, "Real.abs: -3.5");
+    tp->checkTrue(neg.floor() == -4.0, "Real.floor: -3.5");
+    tp->checkTrue(neg.ceil() == -3.0, "Real.ceil: -3.5");
+    tp->checkTrue(neg.round() == -4.0, "Real.round: -3.5");
+    tp->checkTrue(d25.round() == 3.0, "Real.round: 2.5");
+    tp->checkTrue(dn25.round() == -3.0, "Real.round: -2.5");
+    tp->checkTrue(half.floor() == -1.0, "Real.floor: -0.5");
+    tp->checkTrue(half.ceil() == 0.0, "Real.ceil: -0.5 is zero");
+    tp->checkEqInt(signbit(half.ceil()), 1, "Real.ceil: -0.5 keeps a negative zero");
+    tp->checkEqInt(signbit(nzero.floor()), 1, "Real.floor: -0 keeps its sign");
+    tp->checkEqInt(signbit(nzero.ceil()), 1, "Real.ceil: -0 keeps its sign");
+    tp->checkEqInt(signbit(nzero.round()), 1, "Real.round: -0 keeps its sign");
+
+    /* ---- Real: classification ----------------------------------------- */
+    tp->checkEqInt(nan.isNan(), 1, "Real.isNan: NaN");
+    tp->checkEqInt(one.isNan(), 0, "Real.isNan: 1");
+    tp->checkEqInt(inf.isInf(), 1, "Real.isInf: +inf");
+    tp->checkEqInt(ninf.isInf(), 1, "Real.isInf: -inf");
+    tp->checkEqInt(one.isInf(), 0, "Real.isInf: 1");
+    tp->checkEqInt(inf.isNan(), 0, "Real.isNan: inf is not NaN");
+
+    /* ---- Real: toStr --------------------------------------------------- */
+    buf[0] = 0;
+    tp->checkTrue(d26.toStr(buf, 4) == buf, "Real.toStr: returns the buffer");
+    tp->checkEqStr(buf, "2.6", "Real.toStr: cap exactly");
+    tp->checkTrue(d26.toStr(buf, 3) == buf, "Real.toStr: cap one short returns the buffer");
+    tp->checkEqStr(buf, "2.", "Real.toStr: cap one short truncates silently");
+    tp->checkTrue(d26.toStr(nullbuf, 32) == 0, "Real.toStr: NULL buffer returns NULL");
+    sent[0] = 'X'; sent[1] = 'Y'; sent[2] = 'Z'; sent[3] = 0;
+    tp->checkTrue(d26.toStr(sent, 0) == sent, "Real.toStr: cap 0 returns the buffer");
+    tp->checkEqStr(sent, "XYZ", "Real.toStr: cap 0 leaves it untouched");
+    tp->checkEqStr(nzero.toStr(buf, 8), "-0", "Real.toStr: negative zero");
+    tp->checkEqStr(inf.toStr(buf, 16), "inf", "Real.toStr: +inf");
+    tp->checkEqStr(ninf.toStr(buf, 16), "-inf", "Real.toStr: -inf");
+    tp->checkTrue(nan.toStr(buf, 16) == buf, "Real.toStr: NaN writes something");
+    tp->checkEqInt(isnan(strtod(buf, 0)), 1, "Real.toStr: NaN text reads back as NaN");
+
+    /* ---- Real: extreme magnitudes round-trip --------------------------- */
+    r0 = dmax.toString();
+    tp->checkTrue(r0 != 0, "Real.toString: DBL_MAX returns a pointer");
+    tp->checkTrue(strlen(r0) < 32, "Real.toString: DBL_MAX fits a ring slot");
+    tp->checkTrue(strtod(r0, 0) == dmax, "Real.toString: DBL_MAX round-trips");
+    r1 = dmin.toString();
+    tp->checkTrue(strtod(r1, 0) == dmin, "Real.toString: DBL_MIN round-trips");
+    r2 = dtiny.toString();
+    tp->checkTrue(strtod(r2, 0) == dtiny, "Real.toString: the smallest subnormal round-trips");
+
+    /* ---- Real: the four-slot toString ring ----------------------------- */
+    r0 = one.toString();
+    r1 = nzero.toString();
+    r2 = neg.toString();
+    r3 = d26.toString();
+    tp->checkTrue(r0 != r1 && r1 != r2 && r2 != r3 && r0 != r3,
+                  "Real.toString: four live results take four slots");
+    r4 = d25.toString();
+    tp->checkTrue(r4 == r0, "Real.toString: the fifth call reuses slot 0");
+    tp->checkEqStr(r0, "2.5", "Real.toString: slot 0 now holds the fifth value");
+    tp->checkEqStr(r1, "-0", "Real.toString: slot 1 stayed intact");
+    tp->checkEqStr(r2, "-3.5", "Real.toString: slot 2 value");
+    tp->checkEqStr(r3, "2.6", "Real.toString: slot 3 value");
+
+    return tp->report();
+}

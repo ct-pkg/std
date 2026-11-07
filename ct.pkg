@@ -1,19 +1,21 @@
 # std - the CT standard library, published as a normal ct-pkg package.
 #
 # The repository root is the package root; the `std/` directory under it is the
-# namespace root, so `-I vendor/std` resolves `import std::<mod>::<Unit>` exactly
-# as the in-tree layout did (same shape as the `clib` package).
+# namespace root, so `-I vendor/std` resolves `import std::<mod>::<Unit>`.
 #
 # Version policy: 0.x means the surface may break in a minor bump. See README.md.
 #
-# `requires` is measured, not guessed. Against a compiler built from tag
-# v0.19.1: the seven units themselves compile (four .h.ct emit C, the three
-# .m.ct are imported by a probe that runs 9 checks / 0 failures), while the
-# fixtures and doc examples fail 5 passed / 5 failed because they use
-# string-literal method receivers ("hi".len()), a post-0.19.1 language feature.
-# So the package is installable on 0.19.1 but its examples are not; 0.20.0 is
-# the first release expected to carry the feature. Recheck when it is tagged.
+# `requires` is measured, not guessed. The CT-side `IoFile` alias uses `pub type`,
+# a 0.20.0 language feature: a v0.19.1 compiler cannot parse it, so 0.20.0 is the
+# floor for the package as a whole.
+#
+# The version line restarted at 0.1.0; 0.1.0 also adds `std::io` (printf, puts,
+# putchar, getchar, fflush, and file open/read/write/close) next to `std::num`
+# and `std::math`. `-lm` rides in `ldflags` because std::math calls sqrt / fabs
+# / isnan / isinf; on platforms where libm is part of libc it is a no-op, on
+# the others it is required.
 name = std
 version = 0.1.0
 licence = GPL-3.0-or-later WITH GCC-exception-3.1
 requires = ct >= 0.20.0
+ldflags = -lm

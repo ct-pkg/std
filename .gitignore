@@ -1,6 +1,8 @@
 # Build output of `ct build` and of tests/run.sh.
 .ctbuild/
+build/
 *.bin
+.DS_Store
 
 # Installed packages of a consumer project, never part of this package.
 vendor/

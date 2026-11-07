@@ -1,12 +1,12 @@
-/* The runnable half of std/fs/tutorial.md.
+/* Broader file-system coverage; the working docs are in std/fs/README.md.
  *
- * Every "runnable" snippet in that tutorial is a block of this file; the gate
- * builds and runs it (test/std/run.sh drives every *.ct in this directory) and
- * passes argv[1] (a directory with exactly two entries) and argv[2] (a file
- * path outside it), so the listing assertions are deterministic.
+ * The gate builds and runs it (tests/run.sh drives every *.ct in this
+ * directory) and passes argv[1] (a directory with exactly two entries) and
+ * argv[2] (a file path outside it), so the listing assertions are
+ * deterministic.
  *
  * Build and run by hand:
- *   ct build -I . test/std/fs/guide.ct -o /tmp/guide
+ *   ct build -I . tests/fs/guide.ct -o /tmp/guide
  *   /tmp/guide /tmp /tmp/ct-fs-guide.txt
  */
 import std::fs::Fs;

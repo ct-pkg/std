@@ -85,7 +85,10 @@ impl TestOps for Test {
 
     int report()
     {
-        printf("%d checks, %d failures\n", self->checks, self->failures);
+        /* `fprintf(stdout, ...)` rather than `printf(...)`: in a compilation
+           that also imports std::io, a bare `printf` resolves to the CT
+           `std::io::printf` and fails as an unqualified cross-namespace call. */
+        fprintf(stdout, "%d checks, %d failures\n", self->checks, self->failures);
         if (self->failures == 0) return 0;
         return 1;
     }

@@ -1,0 +1,17 @@
+#include <stdio.h>
+
+namespace std::io;
+
+pub trait Stdout {
+    int puts(const char *s);
+    int putchar(int c);
+    int getchar();
+    int fflush();
+}
+
+map trait Stdout for namespace std::io {
+    puts(s) -> puts(s);
+    putchar(c) -> putchar(c);
+    getchar() -> getchar();
+    fflush() -> std_io_flush();
+}

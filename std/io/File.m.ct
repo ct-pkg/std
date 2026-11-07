@@ -1,0 +1,23 @@
+namespace std::io;
+
+pub type IoFile = struct ct_io_file;
+
+pub trait Path {
+    IoFile *open(const char *mode);
+}
+
+map trait Path for type char * {
+    open(path, mode) -> std_io_open(path, mode);
+}
+
+pub trait File {
+    int read(char *buf, int n);
+    int write(const char *buf, int n);
+    int close();
+}
+
+map trait File for type IoFile * {
+    read(f, buf, n) -> std_io_read(f, buf, n);
+    write(f, buf, n) -> std_io_write(f, buf, n);
+    close(f) -> std_io_close(f);
+}

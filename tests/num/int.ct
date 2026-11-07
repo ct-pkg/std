@@ -1,0 +1,27 @@
+/* std::num - the `int` host (Int), the smallest complete example.
+ *
+ * `int` is an ordinary host: the same method set as `Long` / `LLong`, under
+ * its own type key, so an `int` and a `long` never borrow each other's methods.
+ * The receiver must be a variable on compilers before 0.20.0; the literal
+ * spelling `(5).toString()` is rejected there.
+ *
+ * This program is compiled and run by tests/run.sh. */
+import std::num::Num;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[16];
+    int n = 65;
+    int lo = 5;
+
+    tp->init();
+
+    tp->checkEqStr(n.toString(), "65", "toString");
+    tp->checkEqStr(n.toBase(16, buf, 16), "41", "toBase 16");
+    tp->checkEqInt(lo.clamp(0, 3), 3, "clamp");
+
+    return tp->report();
+}

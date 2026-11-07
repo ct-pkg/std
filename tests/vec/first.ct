@@ -1,9 +1,9 @@
-/* Section 2 of std/vec/tutorial.md, verbatim.
+/* Section 3 of std/vec/README.md, verbatim.
  *
- * The gate builds and runs every *.ct in test/std/vec/, so the tutorial's
+ * The gate builds and runs every *.ct in tests/vec/, so the README's
  * opening program is compiled on every run instead of rotting in the docs.
  *
- *   ct build -I . test/std/vec/first.ct -o /tmp/first && /tmp/first
+ *   ct build -I . tests/vec/first.ct -o /tmp/first && /tmp/first
  */
 import std::vec::Vec;
 import std::test::Test;

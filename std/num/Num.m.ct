@@ -1,0 +1,112 @@
+/*
+ * Num.m.ct - integer and character method spellings for std::num.
+ *
+ * Four type hosts. `Int` / `Long` / `LLong` carry the integer surface, one per
+ * width, and `Char` carries the ctype surface. The type keys keep `int`,
+ * `long`, `long long` and `char` apart (`long` and `long int` fold together;
+ * `char` does not promote into `int`), so the same method names may repeat
+ * across hosts. Each host is mapped exactly once -- no `const int` twin. The
+ * `int` recipes reuse the `long long` helpers in `Num.shim.h`; there is no
+ * second implementation.
+ *
+ * Every binding is a zero-cost static mapping. The helpers in `Num.shim.h` are
+ * `static inline`, so the calls stay direct -- no wrapper, no interface value,
+ * no vtable.
+ *
+ * `toString()` is the convenience form: four static 32-byte slots handed out
+ * round-robin, **not thread-safe**; two calls inside one expression take two
+ * different slots, and a fifth live result reuses the first. Use
+ * `toStr(buf, cap)` when the buffer's lifetime or thread matters.
+ * `toStr` truncates silently; `toBase` never does -- it returns NULL when the
+ * sign and every digit do not fit.
+ *
+ * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ */
+#include <ctype.h>
+#include <stdlib.h>
+
+namespace std::num;
+
+/* The most common integer host. `abs` is C's `int abs(int)`; the rest go
+   through the `long long` helpers in the shim and narrow on return. */
+pub trait Int {
+    int   abs();
+    int   clamp(int lo, int hi);
+    int   max(int other);
+    int   min(int other);
+    char *toStr(char *out, int cap);
+    char *toString();
+    char *toBase(int base, char *out, int cap);
+}
+
+map trait Int for type int {
+    abs(v) -> abs(v);
+    clamp(v, lo, hi) -> std_num_clamp(v, lo, hi);
+    max(v, other) -> std_num_max(v, other);
+    min(v, other) -> std_num_min(v, other);
+    toStr(v, out, cap) -> std_num_to_str(v, out, cap);
+    toString(v) -> std_num_to_string(v);
+    toBase(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
+}
+
+/* The portable integer host. `labs` keeps `long` in and `long` out. */
+pub trait Long {
+    long  abs();
+    long  clamp(long lo, long hi);
+    long  max(long other);
+    long  min(long other);
+    char *toStr(char *out, int cap);
+    char *toString();
+    char *toBase(int base, char *out, int cap);
+}
+
+map trait Long for type long {
+    abs(v) -> labs(v);
+    clamp(v, lo, hi) -> std_num_clamp(v, lo, hi);
+    max(v, other) -> std_num_max(v, other);
+    min(v, other) -> std_num_min(v, other);
+    toStr(v, out, cap) -> std_num_to_str(v, out, cap);
+    toString(v) -> std_num_to_string(v);
+    toBase(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
+}
+
+pub trait LLong {
+    long long abs();
+    long long clamp(long long lo, long long hi);
+    long long max(long long other);
+    long long min(long long other);
+    char     *toStr(char *out, int cap);
+    char     *toString();
+    char     *toBase(int base, char *out, int cap);
+}
+
+map trait LLong for type long long {
+    abs(v) -> llabs(v);
+    clamp(v, lo, hi) -> std_num_clamp(v, lo, hi);
+    max(v, other) -> std_num_max(v, other);
+    min(v, other) -> std_num_min(v, other);
+    toStr(v, out, cap) -> std_num_to_str(v, out, cap);
+    toString(v) -> std_num_to_string(v);
+    toBase(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
+}
+
+/* The ctype surface, hosted on `char` so it stays off `int`. */
+pub trait Char {
+    int isDigit();
+    int isAlpha();
+    int isSpace();
+    int isUpper();
+    int isLower();
+    int toUpper();
+    int toLower();
+}
+
+map trait Char for type char {
+    isDigit(v) -> std_num_is_digit(v);
+    isAlpha(v) -> std_num_is_alpha(v);
+    isSpace(v) -> std_num_is_space(v);
+    isUpper(v) -> std_num_is_upper(v);
+    isLower(v) -> std_num_is_lower(v);
+    toUpper(v) -> std_num_char_upper(v);
+    toLower(v) -> std_num_char_lower(v);
+}

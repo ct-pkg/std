@@ -1,0 +1,133 @@
+/* std::map - init() capacity rounding, the empty table, NULL keys and out
+ * pointers, clear/free idempotence, post-free refusal, overwrite semantics,
+ * the 32-slot boundary and the MapIntPtr free_fn ownership rule. */
+import std::map::Map;
+import std::test::Test;
+
+#include <stdlib.h>
+
+static int g_freed = 0;
+
+static void count_free(void *p)
+{
+    g_freed++;
+    free(p);
+}
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    MapStrInt m;
+    MapStrInt *sm = &m;
+    MapStrInt m2;
+    MapStrInt *sm2 = &m2;
+    MapIntPtr pm;
+    MapIntPtr *im = &pm;
+    MapIntPtr full;
+    MapIntPtr *fm = &full;
+    MapIntPtr owned;
+    MapIntPtr *om = &owned;
+    void (*nullfn)(void *) = 0;
+    int *nullout = 0;
+    void **nullvoid = 0;
+    char *nullkey = 0;
+    int i;
+    int v;
+    void *out;
+    int va = 10;
+    int vb = 20;
+    int vc = 30;
+    int *nums[4];
+
+    tp->init();
+
+    /* ---- MapStrInt: empty, insert, clear, free ------------------------ */
+    tp->checkEqInt(sm->init(0), 0, "MapStrInt.init: want 0 rounds up to 16");
+    tp->checkEqInt(sm->len(), 0, "MapStrInt.len: fresh");
+    tp->checkEqInt(sm->get("missing", &v), -1, "MapStrInt.get: empty table");
+    tp->checkEqInt(sm->put(nullkey, 1), -1, "MapStrInt.put: NULL key");
+    tp->checkEqInt(sm->get(nullkey, &v), -1, "MapStrInt.get: NULL key");
+    tp->checkEqInt(sm->put("a", 1), 0, "MapStrInt.put: first key");
+    tp->checkEqInt(sm->len(), 1, "MapStrInt.len: after one put");
+    tp->checkEqInt(sm->get("a", nullout), 0, "MapStrInt.get: a NULL out pointer is allowed");
+    tp->checkEqInt(sm->get("a", &v), 0, "MapStrInt.get: the first key");
+    tp->checkEqInt(v, 1, "MapStrInt.get: the first value");
+    tp->checkEqInt(sm->put("a", 2), 0, "MapStrInt.put: overwrite");
+    tp->checkEqInt(sm->len(), 1, "MapStrInt.len: an overwrite does not grow");
+    tp->checkEqInt(sm->get("a", &v), 0, "MapStrInt.get: the overwritten key");
+    tp->checkEqInt(v, 2, "MapStrInt.get: the overwritten value");
+    sm->clear();
+    tp->checkEqInt(sm->len(), 0, "MapStrInt.len: after clear");
+    tp->checkEqInt(sm->get("a", &v), -1, "MapStrInt.get: after clear");
+    sm->clear();
+    tp->checkEqInt(sm->len(), 0, "MapStrInt.len: a second clear is safe");
+    tp->checkEqInt(sm->put("b", 3), 0, "MapStrInt.put: after clear");
+    tp->checkEqInt(sm->len(), 1, "MapStrInt.len: after a post-clear put");
+    sm->free();
+    sm->free();
+    tp->checkEqInt(sm->len(), 0, "MapStrInt.len: a second free is safe");
+    tp->checkEqInt(sm->put("c", 4), -1, "MapStrInt.put: after free");
+    tp->checkEqInt(sm->get("c", &v), -1, "MapStrInt.get: after free");
+
+    /* ---- MapStrInt: init(1) still gets the minimum capacity ----------- */
+    tp->checkEqInt(sm2->init(1), 0, "MapStrInt.init: want 1 rounds up to 16");
+    tp->checkEqInt(sm2->len(), 0, "MapStrInt.len: init(1)");
+    tp->checkEqInt(sm2->put("k", 5), 0, "MapStrInt.put: init(1)");
+    tp->checkEqInt(sm2->len(), 1, "MapStrInt.len: init(1) after put");
+    sm2->free();
+
+    /* ---- MapIntPtr: key 0, a negative key and overwrite ---------------- */
+    tp->checkEqInt(im->init(0, nullfn), 0, "MapIntPtr.init: want 0 with a NULL free_fn");
+    tp->checkEqInt(im->put(0, &va), 0, "MapIntPtr.put: key 0");
+    tp->checkEqInt(im->put(-7, &vb), 0, "MapIntPtr.put: a negative key");
+    tp->checkEqInt(im->len(), 2, "MapIntPtr.len: two keys");
+    tp->checkEqInt(im->get(0, &out), 0, "MapIntPtr.get: key 0");
+    tp->checkEqInt(*(int *)out, 10, "MapIntPtr.get: key 0 value");
+    tp->checkEqInt(im->get(-7, &out), 0, "MapIntPtr.get: the negative key");
+    tp->checkEqInt(*(int *)out, 20, "MapIntPtr.get: the negative key value");
+    tp->checkEqInt(im->put(0, &vc), 0, "MapIntPtr.put: overwrite key 0");
+    tp->checkEqInt(im->len(), 2, "MapIntPtr.len: an overwrite does not grow");
+    tp->checkEqInt(im->get(0, &out), 0, "MapIntPtr.get: the overwritten key");
+    tp->checkEqInt(*(int *)out, 30, "MapIntPtr.get: the overwritten value");
+    tp->checkEqInt(im->get(99, &out), -1, "MapIntPtr.get: an absent key");
+    tp->checkEqInt(im->get(0, nullvoid), 0, "MapIntPtr.get: a NULL out pointer is allowed");
+    im->clear();
+    tp->checkEqInt(im->len(), 0, "MapIntPtr.len: after clear");
+    tp->checkEqInt(im->get(0, &out), -1, "MapIntPtr.get: after clear");
+    im->clear();
+    tp->checkEqInt(im->len(), 0, "MapIntPtr.len: a second clear is safe");
+    im->free();
+    im->free();
+    tp->checkEqInt(im->put(0, &va), -1, "MapIntPtr.put: after free");
+
+    /* ---- MapIntPtr: 32 slots (init(17) rounds up) ---------------------- */
+    tp->checkEqInt(fm->init(17, nullfn), 0, "MapIntPtr.init: want 17 rounds up to 32");
+    for (i = 0; i < 32; i++) {
+        tp->checkEqInt(fm->put(i, &va), 0, "MapIntPtr.put: fill the 32 slots");
+    }
+    tp->checkEqInt(fm->len(), 32, "MapIntPtr.len: 32 slots full");
+    tp->checkEqInt(fm->put(32, &va), -1, "MapIntPtr.put: the 33rd key is refused");
+    tp->checkEqInt(fm->get(31, &out), 0, "MapIntPtr.get: the last slot");
+    tp->checkEqInt(fm->get(32, &out), -1, "MapIntPtr.get: the refused key");
+    fm->free();
+
+    /* ---- MapIntPtr: free_fn runs exactly once per live value ---------- */
+    g_freed = 0;
+    tp->checkEqInt(om->init(4, count_free), 0, "MapIntPtr.init: with a free_fn");
+    for (i = 0; i < 4; i++) {
+        nums[i] = (int *)malloc(sizeof(int));
+        if (!nums[i]) return 1;
+        *nums[i] = i;
+        tp->checkEqInt(om->put(i, nums[i]), 0, "MapIntPtr.put: owned value");
+    }
+    om->clear();
+    tp->checkEqInt(g_freed, 4, "MapIntPtr.clear: free_fn ran once per value");
+    tp->checkEqInt(om->len(), 0, "MapIntPtr.len: after an owned clear");
+    om->clear();
+    tp->checkEqInt(g_freed, 4, "MapIntPtr.clear: a second clear frees nothing");
+    om->free();
+    tp->checkEqInt(g_freed, 4, "MapIntPtr.free: calls clear but has nothing to free");
+
+    return tp->report();
+}

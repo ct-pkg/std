@@ -1,11 +1,11 @@
-/* The runnable half of std/str/tutorial.md.
+/* Broader String coverage; the working docs are in std/str/README.md.
  *
- * Every "runnable" snippet in that tutorial is a block of this file; the gate
- * builds and runs it (test/std/run.sh drives every *.ct in this directory), so
- * a broken example fails the build instead of rotting in the docs.
+ * The gate builds and runs it (tests/run.sh drives every *.ct in this
+ * directory), so a broken example fails the build instead of rotting in the
+ * docs.
  *
  * Build and run by hand:
- *   ct build -I . test/std/str/guide.ct -o /tmp/guide && /tmp/guide
+ *   ct build -I . tests/str/guide.ct -o /tmp/guide && /tmp/guide
  */
 import std::str::String;
 import std::test::Test;

@@ -1,0 +1,20 @@
+/* std::str::String - the two C parsers behind toInt / toDouble. */
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char *num = "42";
+    char *flt = "3.5";
+    char *bad = "abc";
+
+    tp->init();
+
+    tp->checkEqInt(num.toInt(), 42, "toInt");
+    tp->checkEqInt((int)flt.toDouble(), 3, "toDouble");
+    tp->checkEqInt(bad.toInt(), 0, "toInt on a non-number");
+
+    return tp->report();
+}

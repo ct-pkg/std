@@ -1,0 +1,77 @@
+/* std::arena - init(0), negative and zero requests, the exact block boundary,
+ * 8-byte alignment, reset (including pointer reuse and reset twice), freeAll
+ * twice, and reuse through init after freeAll. */
+import std::arena::Arena;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    Arena a;
+    Arena *ap = &a;
+    void *p;
+    void *p0;
+    void *p1;
+    void *p2;
+    void *q;
+    char *bytes;
+    int i;
+
+    tp->init();
+
+    /* ---- degenerate capacities ---------------------------------------- */
+    tp->checkEqInt(ap->init(0), 0, "Arena.init: 0 is raised to the 16-byte floor");
+    tp->checkTrue(ap->alloc(1) != 0, "Arena.alloc: init(0) still has a 16-byte block");
+    tp->checkTrue(ap->alloc(-1) == 0, "Arena.alloc: a negative request");
+    tp->checkTrue(ap->alloc(0) == 0, "Arena.alloc: a zero request");
+    ap->freeAll();
+
+    /* ---- the block boundary ------------------------------------------- */
+    tp->checkEqInt(ap->init(8), 0, "Arena.init: 8-byte blocks");
+    p0 = ap->alloc(1);
+    p1 = ap->alloc(1);
+    p2 = ap->alloc(1);
+    tp->checkTrue(p0 != 0, "Arena.alloc: the first aligned slot");
+    tp->checkTrue(p1 != 0, "Arena.alloc: the second slot in the same block");
+    tp->checkTrue(p2 != 0, "Arena.alloc: the request that crosses the 16-byte block");
+    tp->checkTrue(p2 != p0 && p2 != p1, "Arena.alloc: the crossing request gets new memory");
+    tp->checkEqInt((int)((long)p0 % 8), 0, "Arena.alloc: the first pointer is 8-byte aligned");
+    tp->checkEqInt((int)((long)p2 % 8), 0, "Arena.alloc: the crossing pointer is 8-byte aligned");
+
+    /* ---- alignment for every request size 1..8 ------------------------ */
+    for (i = 1; i <= 8; i++) {
+        p = ap->alloc(i);
+        tp->checkTrue(p != 0, "Arena.alloc: sizes 1..8 all succeed");
+        tp->checkEqInt((int)((long)p % 8), 0, "Arena.alloc: sizes 1..8 are 8-byte aligned");
+    }
+
+    /* ---- many tiny requests stay writable ----------------------------- */
+    for (i = 0; i < 32; i++) {
+        bytes = (char *)ap->alloc(1);
+        if (!bytes) {
+            tp->checkTrue(bytes != 0, "Arena.alloc: 32 tiny requests succeed");
+            continue;
+        }
+        *bytes = (char)i;
+        tp->checkEqInt((int)*bytes, i, "Arena.alloc: each tiny request is writable");
+    }
+
+    /* ---- reset: twice, and the first block is reused ------------------ */
+    ap->reset();
+    ap->reset();
+    q = ap->alloc(8);
+    tp->checkTrue(q == p0, "Arena.reset: the first block is reused from offset 0");
+    ap->reset();
+    tp->checkTrue(ap->alloc(8) == p0, "Arena.reset: a second cycle reuses it again");
+
+    /* ---- freeAll: twice, then reuse through init ---------------------- */
+    ap->freeAll();
+    ap->freeAll();
+    tp->checkTrue(ap->alloc(8) == 0, "Arena.alloc: after freeAll");
+    tp->checkEqInt(ap->init(8), 0, "Arena.init: after freeAll");
+    tp->checkTrue(ap->alloc(8) != 0, "Arena.alloc: after a fresh init");
+    ap->freeAll();
+
+    return tp->report();
+}

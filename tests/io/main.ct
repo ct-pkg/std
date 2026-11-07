@@ -1,0 +1,56 @@
+/*
+ * tests/io/main.ct - std::io regression matrix.
+ *
+ * Covers the parts with observable semantics: the failure return values (NULL
+ * from open, -1 from read/write after close), the byte counts, the idempotent
+ * close, and one real roundtrip through the filesystem. `printf` is checked
+ * only for its return value; its bytes go to stdout and are not captured.
+ */
+import std::io::Io;
+import std::io::Stdout;
+import std::io::File;
+import std::test::Test;
+
+int main(int argc, char **argv)
+{
+    Test t;
+    Test *tp;
+    IoFile *f;
+    IoFile *missing;
+    char buf[16];
+    char *path;
+    int n;
+
+    tp = &t;
+    tp->init();
+
+    /* The driver passes a per-program path; running the binary by hand writes
+       next to the current directory instead. */
+    path = (argc > 1) ? argv[1] : "std-io-test.txt";
+
+    missing = "/nonexistent-dir/ct-std-io".open("r");
+    tp->checkTrue(missing == 0, "open of a missing path returns NULL");
+    tp->checkEqInt(missing.close(), 0, "close(NULL) is a no-op success");
+    tp->checkEqInt(missing.read(buf, 1), -1, "read on a NULL handle returns -1");
+
+    f = path.open("w");
+    tp->checkTrue(f != 0, "open for write");
+    tp->checkEqInt(f.write("hello", 5), 5, "write returns the byte count");
+    tp->checkEqInt(f.close(), 0, "close succeeds");
+    tp->checkEqInt(f.close(), 0, "second close is idempotent");
+    tp->checkEqInt(f.write("x", 1), -1, "write after close returns -1");
+
+    f = path.open("r");
+    tp->checkTrue(f != 0, "open for read");
+    n = f.read(buf, 5);
+    tp->checkEqInt(n, 5, "read returns the byte count");
+    buf[n] = 0;
+    tp->checkEqStr(buf, "hello", "roundtrip content");
+    tp->checkEqInt(f.read(buf, 1), 0, "read at EOF returns 0");
+    tp->checkEqInt(f.close(), 0, "close of the read handle");
+
+    tp->checkEqInt(std::io::printf(""), 0, "printf with an empty format writes nothing");
+    std::io::Stdout.putchar('\n');
+
+    return tp->report();
+}

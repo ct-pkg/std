@@ -1,0 +1,61 @@
+/* std::num - the integer surfaces (Int / Long / LLong) and the ctype surface (Char).
+ *
+ * Every check uses a variable as the receiver: literal receivers are not valid
+ * on a compiler without that feature. */
+import std::num::Num;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[32];
+    long v = 65;
+    long a = 5;
+    long b = 9;
+    long neg = -77;
+    long long ll = -88;
+    int iv = 65;
+    int ia = 5;
+    int ib = 9;
+    int ineg = -77;
+    char digit = '7';
+    char letter = 'a';
+    char upper = 'A';
+
+    tp->init();
+
+    tp->checkEqInt((int)v.abs(), 65, "long abs");
+    tp->checkEqInt((int)neg.abs(), 77, "long abs of a negative");
+    tp->checkEqInt((int)a.clamp(0, 3), 3, "clamp");
+    tp->checkEqInt((int)a.max(b), 9, "max");
+    tp->checkEqInt((int)a.min(b), 5, "min");
+    tp->checkEqStr(v.toStr(buf, 32), "65", "toStr");
+    tp->checkEqStr(a.toString(), "5", "toString");
+    tp->checkEqStr(v.toBase(16, buf, 32), "41", "toBase 16");
+    tp->checkTrue(v.toBase(16, buf, 2) == 0, "toBase refuses to truncate");
+
+    tp->checkEqInt((int)ll.abs(), 88, "long long abs");
+    tp->checkEqStr(ll.toString(), "-88", "long long toString");
+    tp->checkEqStr(ll.toBase(2, buf, 32), "-1011000", "long long toBase 2");
+
+    tp->checkEqInt(iv.abs(), 65, "int abs");
+    tp->checkEqInt(ineg.abs(), 77, "int abs of a negative");
+    tp->checkEqInt(ia.clamp(0, 3), 3, "int clamp");
+    tp->checkEqInt(ia.max(ib), 9, "int max");
+    tp->checkEqInt(ia.min(ib), 5, "int min");
+    tp->checkEqStr(iv.toStr(buf, 32), "65", "int toStr");
+    tp->checkEqStr(ia.toString(), "5", "int toString");
+    tp->checkEqStr(iv.toBase(16, buf, 32), "41", "int toBase 16");
+    tp->checkTrue(iv.toBase(16, buf, 2) == 0, "int toBase refuses to truncate");
+
+    tp->checkEqInt(digit.isDigit(), 1, "isDigit");
+    tp->checkTrue(letter.isAlpha(), "isAlpha");
+    tp->checkTrue(!digit.isAlpha(), "isAlpha on a digit");
+    tp->checkEqInt(letter.toUpper(), 'A', "toUpper");
+    tp->checkEqInt(upper.toLower(), 'a', "toLower");
+    tp->checkTrue(upper.isUpper(), "isUpper");
+    tp->checkTrue(letter.isLower(), "isLower");
+
+    return tp->report();
+}
