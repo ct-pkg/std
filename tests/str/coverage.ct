@@ -1,6 +1,6 @@
 /* std::str - the empty string, a string of one repeated byte, every find
  * miss, the full slice bounds matrix, NULL / zero-capacity buffers, the
- * in-place case folding, the memcpy pair and the two C parsers. */
+ * out-buffer case folding, the memcpy copyTo shape and the two C parsers. */
 import std::str::String;
 import std::test::Test;
 
@@ -38,10 +38,11 @@ int main(void)
     tp->checkEqStr(buf, "", "String.concat: two empties value");
     tp->checkEqInt(empty.compare(""), 0, "String.compare: empty vs empty");
     emptybuf[0] = 0;
-    tp->checkEqInt(emptybuf.toLower(), 0, "String.toLower: empty succeeds");
-    tp->checkEqStr(emptybuf, "", "String.toLower: empty stays empty");
-    tp->checkEqInt(emptybuf.toUpper(), 0, "String.toUpper: empty succeeds");
-    tp->checkEqStr(emptybuf, "", "String.toUpper: empty stays empty");
+    tp->checkEqInt(emptybuf.toLower(buf, 1), 0, "String.toLower: empty succeeds");
+    tp->checkEqStr(buf, "", "String.toLower: empty stays empty");
+    tp->checkEqInt(emptybuf.toUpper(buf, 1), 0, "String.toUpper: empty succeeds");
+    tp->checkEqStr(buf, "", "String.toUpper: empty stays empty");
+    tp->checkEqInt(emptybuf.toUpper(buf, 0), -1, "String.toUpper: cap 0 fails");
 
     /* ---- one repeated byte --------------------------------------------- */
     tp->checkEqInt(same.len(), 4, "String.len: 'aaaa'");
@@ -86,17 +87,17 @@ int main(void)
     tp->checkEqInt(nul.concat("cd", buf, 32), -1, "String.concat: NULL left side");
     tp->checkEqInt("ab".concat(nul, buf, 32), -1, "String.concat: NULL right side");
 
-    /* ---- in-place case folding ----------------------------------------- */
-    tp->checkEqInt("abc123!".copy(word, 16), 0, "String.copy: lower sample");
-    tp->checkEqInt(word.toLower(), 0, "String.toLower: already lower");
+    /* ---- case folding: the receiver is read, the result goes to `word` -- */
+    tp->checkEqInt("abc123!".toLower(word, 16), 0, "String.toLower: already lower");
     tp->checkEqStr(word, "abc123!", "String.toLower: leaves digits and punctuation");
-    tp->checkEqInt(word.toUpper(), 0, "String.toUpper: from lower");
+    tp->checkEqInt("abc123!".toUpper(word, 16), 0, "String.toUpper: from lower");
     tp->checkEqStr(word, "ABC123!", "String.toUpper: value");
-    tp->checkEqInt("aBc".copy(word, 16), 0, "String.copy: mixed sample");
-    tp->checkEqInt(word.toUpper(), 0, "String.toUpper: mixed");
+    tp->checkEqInt("aBc".toUpper(word, 16), 0, "String.toUpper: mixed");
     tp->checkEqStr(word, "ABC", "String.toUpper: mixed value");
-    tp->checkEqInt(word.toLower(), 0, "String.toLower: mixed");
+    tp->checkEqInt("aBc".toLower(word, 16), 0, "String.toLower: mixed");
     tp->checkEqStr(word, "abc", "String.toLower: mixed value");
+    tp->checkEqInt("aBc".toUpper(word, 3), -1, "String.toUpper: needs room for the NUL");
+    tp->checkEqInt(nul.toUpper(word, 16), -1, "String.toUpper: NULL receiver");
 
     /* ---- compare, including a NULL receiver ---------------------------- */
     tp->checkEqInt("ab".compare("abc"), -1, "String.compare: shorter prefix");
@@ -105,15 +106,7 @@ int main(void)
     tp->checkEqInt(nul.compare("a"), -1, "String.compare: NULL is less than 'a'");
     tp->checkEqInt("a".compare(nul), 1, "String.compare: 'a' is greater than NULL");
 
-    /* ---- copyFrom / copyTo: exactly n bytes, no NUL --------------------- */
-    dst[0] = 'X'; dst[1] = 'Y'; dst[2] = 'Z'; dst[3] = 0;
-    dst.copyFrom("abc", 3);
-    dst[3] = 0;
-    tp->checkEqStr(dst, "abc", "String.copyFrom: three bytes");
-    dst.copyFrom("xyz", 0);
-    tp->checkEqStr(dst, "abc", "String.copyFrom: n == 0 is a no-op");
-    dst.copyFrom(nul, 3);
-    tp->checkEqStr(dst, "abc", "String.copyFrom: NULL source is a no-op");
+    /* ---- copyTo: exactly n bytes, no NUL -------------------------------- */
     src[0] = 'a'; src[1] = 'b'; src[2] = 'c'; src[3] = 0;
     dst[0] = 'X'; dst[1] = 'Y'; dst[2] = 'Z'; dst[3] = 0;
     src.copyTo(dst, 3);
@@ -121,6 +114,8 @@ int main(void)
     tp->checkEqStr(dst, "abc", "String.copyTo: three bytes");
     src.copyTo(dst, 0);
     tp->checkEqStr(dst, "abc", "String.copyTo: n == 0 is a no-op");
+    src.copyTo(nul, 3);
+    tp->checkEqStr(dst, "abc", "String.copyTo: NULL destination is a no-op");
 
     /* ---- the C parsers ------------------------------------------------- */
     tp->checkEqInt("-42".toInt(), -42, "String.toInt: negative");

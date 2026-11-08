@@ -17,7 +17,7 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `String.m.ct` | `pub trait String` + `map trait String for type char *`（15 个方法） |
+| `String.m.ct` | `pub trait String` + `map trait String for type char *`（14 个方法） |
 | `String.shim.h` | `std_str_*` 的 `static inline` 实现，编译器自动 include |
 
 引入方式：`import std::str::String;`。
@@ -90,10 +90,9 @@ copy rc=0 value=Hello, ct
 | `copy(out, cap)` | `int copy(char *out, int cap)` | 成功 0；放不下（含 NUL）返回 `-1` |
 | `slice(start, end, out, cap)` | `int slice(int start, int end, char *out, int cap)` | 半开区间 `[start, end)`；越界或放不下返回 `-1` |
 | `concat(other, out, cap)` | `int concat(const char *other, char *out, int cap)` | 成功 0；放不下返回 `-1` |
-| `toLower()` | `int toLower()` | **原地**改小写，成功 0；`NULL` 返回 `-1` |
-| `toUpper()` | `int toUpper()` | **原地**改大写，成功 0；`NULL` 返回 `-1` |
+| `toLower(out, cap)` | `int toLower(char *out, int cap)` | 结果写 `out`，成功 0；放不下或 `NULL` 返回 `-1` |
+| `toUpper(out, cap)` | `int toUpper(char *out, int cap)` | 结果写 `out`，成功 0；放不下或 `NULL` 返回 `-1` |
 | `compare(other)` | `int compare(const char *other)` | 字典序，负 / 0 / 正；`NULL` 当空串 |
-| `copyFrom(src, n)` | `void copyFrom(const char *src, int n)` | `memcpy` 形状：恰好 `n` 字节，不补 NUL，不查容量 |
 | `copyTo(dst, n)` | `void copyTo(char *dst, int n)` | `memcpy` 形状：接收者的恰好 `n` 字节写进 `dst` |
 | `toInt()` | `int toInt()` | `atoi`；`NULL` 返回 0，溢出是 C 的未定义行为 |
 | `toDouble()` | `double toDouble()` | `atof`；`NULL` 返回 0.0 |
@@ -149,15 +148,11 @@ int main(void)
     n = s.compare(other);
     std::io::printf("compare rc=%d\n", n < 0 ? -1 : (n > 0 ? 1 : 0));
 
-    seed.copy(word, 8);
-    word.toLower();
+    seed.toLower(word, 8);
     std::io::printf("lower=%s\n", word);
-    word.toUpper();
+    seed.toUpper(word, 8);
     std::io::printf("upper=%s\n", word);
 
-    raw.copyFrom(hw, 5);
-    raw[5] = 0;
-    std::io::printf("copyFrom=%s\n", raw);
     hw.copyTo(raw, 5);
     raw[5] = 0;
     std::io::printf("copyTo=%s\n", raw);
@@ -175,7 +170,6 @@ slice past end rc=-1
 compare rc=-1
 lower=hello
 upper=HELLO
-copyFrom=hello
 copyTo=hello
 toInt=42 toDouble=2.5
 ```
@@ -188,7 +182,7 @@ toInt=42 toDouble=2.5
 
 ### 5.3 产出新字符串：缓冲区由调用方给
 
-`copy` / `slice` / `concat` 都不分配内存：
+`copy` / `slice` / `concat` / `toLower` / `toUpper` 都不分配内存：
 
 1. `cap` 包含结尾 NUL，`"Hello, ct"` 是 9 字节，`cap` 至少 10；
 2. 放不下返回 `-1`，不会截断，也不会扩容；
@@ -196,9 +190,9 @@ toInt=42 toDouble=2.5
 
 `slice` 是半开区间：`slice(0, 5, ...)` 得到 `"Hello"`。
 
-### 5.4 `copyFrom` / `copyTo`：`memcpy` 的 OO 写法
+### 5.4 `copyTo`：`memcpy` 的 OO 写法
 
-它们与 `copy` 的规则不同：
+它与 `copy` 的规则不同：
 
 - `n` 是**字节数本身**，不包含也不追加 NUL；
 - 不检查目标容量，也不返回状态（`void`）；
@@ -206,17 +200,23 @@ toInt=42 toDouble=2.5
 
 想得到 C 字符串，自己留位置并写 `raw[n] = 0;`。
 
-### 5.5 原地大小写：只改写自己的缓冲区
+旧版还有一个写接收者的镜像方法 `copyFrom`，已移除：`dst.copyFrom(src, n)` 现在写成
+`src.copyTo(dst, n)`，语义完全等价。
 
-`toLower` / `toUpper` **不返回新字符串**，返回状态码，改的是接收者指向的内存。
-先 `char *seed = "Hello"; seed.copy(word, 8);` 拷到自己的数组，再 `word.toLower()`；
-此时 `word` 是 `"hello"`。
+### 5.5 大小写转换：接收者只读，结果写 `out`
+
+`toLower` / `toUpper` 与 `copy` 同构：读接收者，把转换结果写进调用方的 `out + cap`，
+NUL 结尾，放不下返回 `-1`。
+
+```ct
+char out[8];
+"Hello".toLower(out, 8);   /* out == "hello"，返回 0 */
+"Hello".toUpper(out, 5);   /* 放不下，返回 -1，out 内容不可用 */
+```
+
+因为不写接收者，**字面量可以直接当接收者**，不需要先 `copy` 到自己的数组。
 
 转换只覆盖 ASCII 的 `A-Z` / `a-z`，不做 locale、也不处理非 ASCII 字节。
-
-类型键会丢掉 `const`，所以在支持字面量接收者的 0.20.0 上，对字符串字面量调用 `toLower()`
-**能编译通过**，然后写只读页，运行期未定义；0.19.1 会先报 receiver 错误。
-编译器不会替你拦内存可写性。
 
 ### 5.6 字节不是字符
 
@@ -248,6 +248,7 @@ import std::io::Io;
 int main(void)
 {
     char key[16];
+    char upper[16];
     char val[16];
     char *line = "count=42";
     int pos;
@@ -257,8 +258,8 @@ int main(void)
     line.slice(0, pos, key, 16);
     line.slice(pos + 1, line.len(), val, 16);
     n = val.toInt();
-    key.toUpper();
-    std::io::printf("key=%s value=%d\n", key, n);
+    key.toUpper(upper, 16);
+    std::io::printf("key=%s value=%d\n", upper, n);
     return 0;
 }
 ```
@@ -276,7 +277,7 @@ key=COUNT value=42
 | 安全复制 | `if (s.copy(buf, sizeof buf) < 0) { /* 缓冲区太小 */ }` |
 | 取前缀 / 后缀 | `s.slice(0, 5, out, cap)` / `s.slice(s.len() - 3, s.len(), out, cap)` |
 | 拼接 | `a.concat(b, out, cap)` |
-| 原地转大写 | 先 `copy` 到自己的数组，再 `word.toUpper()` |
+| 转大写 | `s.toUpper(out, cap)` |
 | 找子串位置 | `int pos = s.find("needle"); if (pos >= 0) { ... }` |
 | 得到长度的十进制文本 | `s.len().toString()`（`int` 宿主，0.19.1 可用） |
 
@@ -325,17 +326,17 @@ import std::str::String;
 
 int main(void)
 {
-    "abc".toLower();
+    char out[8];
+    "abc".toLower(out, 8);
     return 0;
 }
 ```
 
 ```text
-main.ct:5:1: error: method receiver must be a variable, an element, a call or a field chain
+main.ct:6:1: error: method receiver must be a variable, an element, a call or a field chain
 ```
 
-先赋给变量：`char *s = "abc"; s.toLower();`（注意这仍然会改只读内存，正确做法是先 `copy`）。
-字面量接收者需要 0.20.0。
+先赋给变量：`char *s = "abc"; s.toLower(out, 8);`。字面量接收者需要 0.20.0。
 
 ### 7.4 少给参数
 
@@ -360,12 +361,12 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 
 - **不分配、无动态字符串**：没有 `append` / `format` / `replace`；产出永远走 `out + cap`。
 - **字节单位**：`len` / `find` / `slice` 都是字节；没有码点索引。
-- **原地方法不防只读内存**：`toLower` / `toUpper` 对字面量调用在 0.19.1 上先报 receiver 错误，
-  在 0.20.0 上编译通过但写只读页；正确做法是先 `copy` 到自己的缓冲区。
+- **没有写接收者的方法**：`toLower` / `toUpper` 与 `copy` 一样把结果写进 `out + cap`，
+  字面量接收者因此永远安全。
 - **大小写只覆盖 ASCII**：`toLower` / `toUpper` 按 `A-Z` / `a-z` 逐字节转换，不做 locale。
 - **`char *` 上的方法名全局共享**：同一接收者上两个可见 trait 声明同名方法，调用点报
   `ambiguous type-host map for method 'x' on type 'char *'`。本模块占用
-  `len` / `find` / `findChar` / `startsWith` / `endsWith` / `copy` / `copyFrom` / `copyTo` /
+  `len` / `find` / `findChar` / `startsWith` / `endsWith` / `copy` / `copyTo` /
   `slice` / `concat` / `toLower` / `toUpper` / `compare` / `toInt` / `toDouble`；
   新增 `char *` trait 前先 grep。
 - **字面量接收者需要 0.20.0**；0.19.1 只接受变量、元素、调用和字段链。
@@ -377,7 +378,7 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写：教程并入本 README，删除 `tutorial.md`；API 未变。 |
+| `0.1.0` | 未打 tag、未发布 | 当前版本。`toLower` / `toUpper` 改为 out 缓冲（`s.toUpper(out, cap)`）；移除写接收者的 `copyFrom`，`dst.copyFrom(src, n)` 改成 `src.copyTo(dst, n)`。 |
 
 编译器下限 `ct >= 0.19.1`。0.19.1 上库本体与本文档中的程序均可编译运行；
 字面量接收者写法需要 0.20.0。

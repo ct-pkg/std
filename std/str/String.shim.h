@@ -1,7 +1,7 @@
 /*
  * String.shim.h - the C surface behind std::str::String.
  *
- * `String.m.ct` maps the OO spellings (`s.len()`, `s.toLower()`) onto the
+ * `String.m.ct` maps the OO spellings (`s.len()`, `s.toLower(out, cap)`) onto the
  * `std_str_*` functions below. A mapping unit cannot declare functions or carry
  * `#ct-raw` code (a `.m.ct` prologue allows only `#include` / `#define`), so the
  * definitions live here: the compiler auto-detects `<base>.shim.h` next to a
@@ -147,27 +147,37 @@ static inline int std_str_concat(const char *a, const char *b, char *out, int ca
     return 0;
 }
 
-/* Lower-case `s` in place; -1 when `s` is NULL. */
-static inline int std_str_lower(char *s)
+/* Lower-case `s` into `out`; -1 when a pointer is missing or `out` cannot hold
+   `s` plus the NUL. The receiver is only read. */
+static inline int std_str_lower(const char *s, char *out, int cap)
 {
+    int n;
     int i;
 
-    if (!s) return -1;
-    for (i = 0; s[i]; i++) {
-        if (s[i] >= 'A' && s[i] <= 'Z') s[i] = (char)(s[i] - 'A' + 'a');
+    if (!s || !out || cap <= 0) return -1;
+    n = std_str_len(s);
+    if (n + 1 > cap) return -1;
+    for (i = 0; i < n; i++) {
+        out[i] = (s[i] >= 'A' && s[i] <= 'Z') ? (char)(s[i] - 'A' + 'a') : s[i];
     }
+    out[n] = 0;
     return 0;
 }
 
-/* Upper-case `s` in place; -1 when `s` is NULL. */
-static inline int std_str_upper(char *s)
+/* Upper-case `s` into `out`; -1 when a pointer is missing or `out` cannot hold
+   `s` plus the NUL. The receiver is only read. */
+static inline int std_str_upper(const char *s, char *out, int cap)
 {
+    int n;
     int i;
 
-    if (!s) return -1;
-    for (i = 0; s[i]; i++) {
-        if (s[i] >= 'a' && s[i] <= 'z') s[i] = (char)(s[i] - 'a' + 'A');
+    if (!s || !out || cap <= 0) return -1;
+    n = std_str_len(s);
+    if (n + 1 > cap) return -1;
+    for (i = 0; i < n; i++) {
+        out[i] = (s[i] >= 'a' && s[i] <= 'z') ? (char)(s[i] - 'a' + 'A') : s[i];
     }
+    out[n] = 0;
     return 0;
 }
 
@@ -185,17 +195,9 @@ static inline int std_str_compare(const char *a, const char *b)
     return (a[i] == 0) ? -1 : 1;
 }
 
-/* The `memcpy` shape behind `dst.copyFrom(src, n)`: copy exactly `n` bytes from
-   `src` into the receiver. No NUL is appended -- `n` is the whole contract, so
-   a missing pointer or a non-positive count copies nothing. */
-static inline void std_str_copy_from(char *dst, const char *src, int n)
-{
-    if (!dst || !src || n <= 0) return;
-    memcpy(dst, src, (size_t)n);
-}
-
-/* The `memcpy` shape behind `src.copyTo(dst, n)`: the same bytes, the other way
-   round -- `n` bytes of the receiver into `dst`. */
+/* The `memcpy` shape behind `src.copyTo(dst, n)`: exactly `n` bytes of the
+   receiver into `dst`. No NUL is appended -- `n` is the whole contract, so a
+   missing pointer or a non-positive count copies nothing. */
 static inline void std_str_copy_to(const char *src, char *dst, int n)
 {
     if (!src || !dst || n <= 0) return;

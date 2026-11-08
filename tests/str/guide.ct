@@ -45,12 +45,13 @@ int main(void)
     tp->checkEqStr(buf, "Hello, ct", "concat result");
     tp->checkEqInt("Hello, ".concat("ct", buf, 9), -1, "concat needs room for the NUL");
 
-    /* 3. In place: only ever on a buffer you own, never on a literal. */
-    tp->checkEqInt("Hello".copy(word, 8), 0, "seed a mutable buffer");
-    tp->checkEqInt(word.toLower(), 0, "toLower");
-    tp->checkEqStr(word, "hello", "toLower rewrites the buffer");
-    tp->checkEqInt(word.toUpper(), 0, "toUpper");
-    tp->checkEqStr(word, "HELLO", "toUpper rewrites the buffer");
+    /* 3. Case folding: the receiver is only read, the result goes to a buffer.
+       A literal receiver is safe here because nothing writes through it. */
+    tp->checkEqInt("Hello".toLower(word, 8), 0, "toLower");
+    tp->checkEqStr(word, "hello", "toLower result");
+    tp->checkEqInt("Hello".toUpper(word, 8), 0, "toUpper");
+    tp->checkEqStr(word, "HELLO", "toUpper result");
+    tp->checkEqInt("Hello".toUpper(word, 5), -1, "toUpper needs room for the NUL");
 
     /* 4. Bytes, not characters: "é" is one character and two bytes. */
     tp->checkEqInt("é".len(), 2, "len counts bytes");

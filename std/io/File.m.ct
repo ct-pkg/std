@@ -1,5 +1,11 @@
 namespace std::io;
 
+/* `ct_io_file` is a private C type declared in File.shim.h. The alias below
+   gives callers the only name they see (`IoFile`), so `File` maps onto
+   `IoFile *` rather than the shared `void *` host. The `std_io_*` helpers keep
+   their C signatures: they receive and return `ct_io_file *`, which is exactly
+   what `IoFile *` denotes. */
+
 pub type IoFile = struct ct_io_file;
 
 pub trait Path {

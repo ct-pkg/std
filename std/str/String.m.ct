@@ -14,17 +14,21 @@
  * unit of std::str; the C surface lives in the shim pair next to it, not in a
  * `.h.ct`.
  *
- * Naming: `toLower` / `toUpper` MUTATE IN PLACE and return a status code, not a
- * new string -- the `to` prefix does not mean "returns a fresh value" here.
- * `copy` / `slice` / `concat` keep their short names for the same reason: their
- * output is the caller-supplied buffer plus capacity, never a new allocation,
- * so a `toXxx` name would wrongly suggest a fresh value. `copyFrom` / `copyTo`
- * are the `memcpy` spellings: exactly `n` bytes, no NUL, no capacity check.
+ * Every method here reads the receiver. Anything that produces bytes --
+ * `copy`, `slice`, `concat`, `toLower`, `toUpper` -- writes into a
+ * caller-supplied buffer plus capacity and returns a status code; nothing
+ * allocates and nothing mutates the receiver. The `to` prefix therefore does
+ * not mean "returns a fresh value" either: `s.toUpper(out, cap)` still needs
+ * the caller's buffer.
+ *
+ * `copyTo` is the one raw shape: exactly `n` bytes of the receiver into `dst`,
+ * no NUL and no capacity check. Its mirror image `copyFrom`, which wrote the
+ * receiver, is gone: `dst.copyFrom(src, n)` is now `src.copyTo(dst, n)`.
  *
  * The host is `char *`. The compiler's type key drops a top-level `const`, so
  * a `const char *` receiver (a literal, or a `const char *` field) matches the
- * same host -- including the in-place `toLower` / `toUpper`, which the compiler
- * will not reject on a literal.
+ * same host. That is harmless now: no method writes through the receiver, so a
+ * literal is safe everywhere in this module.
  *
  * This unit is the only import: `import std::str::String;` brings the trait and
  * the shim, so the generated `.c` has the definitions it needs. The C functions
@@ -51,10 +55,9 @@ pub trait String {
     int copy(char *out, int cap);
     int slice(int start, int end, char *out, int cap);
     int concat(const char *other, char *out, int cap);
-    int toLower();
-    int toUpper();
+    int toLower(char *out, int cap);
+    int toUpper(char *out, int cap);
     int compare(const char *other);
-    void copyFrom(const char *src, int n);
     void copyTo(char *dst, int n);
     int toInt();
     double toDouble();
@@ -69,10 +72,9 @@ map trait String for type char * {
     copy(s, out, cap) -> std_str_copy(s, out, cap);
     slice(s, start, end, out, cap) -> std_str_slice(s, start, end, out, cap);
     concat(s, other, out, cap) -> std_str_concat(s, other, out, cap);
-    toLower(s) -> std_str_lower(s);
-    toUpper(s) -> std_str_upper(s);
+    toLower(s, out, cap) -> std_str_lower(s, out, cap);
+    toUpper(s, out, cap) -> std_str_upper(s, out, cap);
     compare(s, other) -> std_str_compare(s, other);
-    copyFrom(s, src, n) -> std_str_copy_from(s, src, n);
     copyTo(s, dst, n) -> std_str_copy_to(s, dst, n);
     toInt(s) -> std_str_to_int(s);
     toDouble(s) -> std_str_to_double(s);

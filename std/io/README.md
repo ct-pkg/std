@@ -21,7 +21,7 @@
 | `Io.h.ct` | `pub struct Io` + `pub int printf(const char *fmt, ...)`（`va_list` + `vprintf`） |
 | `Stdout.m.ct` + `Stdout.shim.h` | `pub trait Stdout` + `map trait Stdout for namespace std::io` |
 | `File.m.ct` + `File.shim.h` | `pub type IoFile`、`pub trait Path`（宿主 `char *`）+ `pub trait File`（宿主 `IoFile *`） |
-| `File.shim.h` | C tag `ct_io_file` 与 `std_io_*` 实现（CT 别名在 `File.m.ct`） |
+| `File.shim.h` | C tag `ct_io_file` 与 `std_io_*` 实现（`ct_io_file` 只在本文件内可见） |
 
 引入方式（按需）：
 
@@ -83,9 +83,10 @@ second line
 read 5 bytes: hello
 ```
 
-`IoFile` 是 CT 可见的类型名；C 侧 tag 仍是 `struct ct_io_file`，helper 符号仍是
-`ct_io_file_*`，一个字没改。字面量接收者（`"/tmp/x".open("r")`）需要 **0.20.0**；
-v0.19.1 请先赋给 `char *` 变量。
+CT 侧的句柄类型是 `IoFile *`：`File.m.ct` 用 `pub type IoFile = struct ct_io_file;`
+给 C 侧的不透明句柄起了一个 CT 私名。C tag 仍是 `struct ct_io_file`，helper 符号
+仍是 `std_io_*`，一个字没改。这个别名需要 **0.20.3**；字面量接收者
+（`"/tmp/x".open("r")`）需要 **0.20.0**，v0.19.1 请先赋给 `char *` 变量。
 
 ## 4. API 全表
 
@@ -341,7 +342,9 @@ main.ct:5:1: error: method receiver must be a variable, an element, a call or a 
   [`std::str`](../str/README.md)，`exists` / `readFile` / `writeFile` / `list` 属于
   [`std::fs`](../fs/README.md)，`decode` / `codepointCount` / `encode` 属于
   [`std::utf8`](../utf8/README.md)。
-- **`IoFile *` 是唯一句柄类型**：不要用 `void *`（会与其它包的 `close` 撞宿主）。
+- **`IoFile *` 是唯一句柄类型**：不要用 `void *` 当句柄宿主——`void *` 无法限定调用
+  范围，任何 `void *` 变量都会凭空获得 `read` / `write` / `close`，别的包一旦也挂
+  `void *` 宿主就会歧义。
 - **字面量接收者需要 0.20.0**。
 - **多给实参不报错**：与 `std::str` 相同的编译器行为（SH-56）。
 
@@ -349,6 +352,6 @@ main.ct:5:1: error: method receiver must be a variable, an element, a call or a 
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.1.0` | 未打 tag、未发布 | 当前版本。`IoFile` 成为 CT 可见类型名（C tag 仍 `struct ct_io_file`）；文档重写，教程并入本 README，删除 `docs/tutorial.md`。 |
+| `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写，教程并入本 README，删除 `docs/tutorial.md`。句柄在 CT 侧为 `IoFile *`（`pub type IoFile = struct ct_io_file;`；C tag 仍 `struct ct_io_file`）。 |
 
-编译器下限 `ct >= 0.19.1`。
+编译器下限 `ct >= 0.20.3`。

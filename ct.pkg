@@ -5,9 +5,12 @@
 #
 # Version policy: 0.x means the surface may break in a minor bump. See README.md.
 #
-# `requires` is measured, not guessed. The CT-side `IoFile` alias uses `pub type`,
-# a 0.20.0 language feature: a v0.19.1 compiler cannot parse it, so 0.20.0 is the
-# floor for the package as a whole.
+# `requires` is measured, not guessed. Literal receivers (`"/tmp/x".open("r")`,
+# `"abc".len()`) are rejected by v0.19.1 with "method receiver must be a
+# variable, an element, a call or a field chain", so 0.20.0 is the floor for
+# that feature. `std::io` names its handle with a type alias
+# (`pub type IoFile = struct ct_io_file;`), and type aliases only parse from
+# 0.20.3 on, so 0.20.3 is the floor for the package as a whole.
 #
 # The version line restarted at 0.1.0; 0.1.0 also adds `std::io` (printf, puts,
 # putchar, getchar, fflush, and file open/read/write/close) next to `std::num`
@@ -17,5 +20,5 @@
 name = std
 version = 0.1.0
 licence = GPL-3.0-or-later WITH GCC-exception-3.1
-requires = ct >= 0.20.0
+requires = ct >= 0.20.3
 ldflags = -lm

@@ -44,21 +44,21 @@ int main(void)
     tp->checkEqInt("ab".concat("cd", buf, 5), 0, "concat fits exactly");
     tp->checkEqInt("ab".concat("cd", buf, 4), -1, "concat needs room for the NUL");
 
-    tp->checkEqInt(buf.toLower(), 0, "toLower");
-    tp->checkEqStr(buf, "abcd", "toLower value");
-    tp->checkEqInt(buf.toUpper(), 0, "toUpper");
-    tp->checkEqStr(buf, "ABCD", "toUpper value");
+    tp->checkEqInt(buf.toLower(word, 16), 0, "toLower");
+    tp->checkEqStr(word, "abcd", "toLower value");
+    tp->checkEqInt(buf.toUpper(word, 16), 0, "toUpper");
+    tp->checkEqStr(word, "ABCD", "toUpper value");
 
     tp->checkEqInt("abc".compare("abd"), -1, "compare less");
     tp->checkEqInt("abc".compare("abc"), 0, "compare equal");
     tp->checkEqInt("abd".compare("abc"), 1, "compare greater");
 
-    /* The same methods on a mutable local, so in-place edits are visible. */
-    tp->checkEqInt("Hello!".copy(word, 16), 0, "copy into word");
-    tp->checkEqInt(word.toLower(), 0, "toLower on word");
-    tp->checkEqStr(word, "hello!", "toLower in place");
-    tp->checkEqInt(word.toUpper(), 0, "toUpper on word");
-    tp->checkEqStr(word, "HELLO!", "toUpper in place");
+    /* The receiver is only read, so a literal works and `word` receives it. */
+    tp->checkEqInt("Hello!".toLower(word, 16), 0, "toLower on a literal");
+    tp->checkEqStr(word, "hello!", "toLower value");
+    tp->checkEqInt("Hello!".toUpper(word, 16), 0, "toUpper on a literal");
+    tp->checkEqStr(word, "HELLO!", "toUpper value");
+    tp->checkEqInt("Hello!".toUpper(word, 6), -1, "toUpper needs room for the NUL");
 
     return tp->report();
 }

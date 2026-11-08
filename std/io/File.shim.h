@@ -4,12 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* The handle is opaque to CT: `IoFile *` is the only spelling callers see.
-   It wraps `FILE *` instead of exposing it, and a dedicated type (rather than
-   `void *`) keeps `close` from colliding with png's `Handle.close`.
+/* The handle is opaque to CT: callers only ever hold an `IoFile *`, and
+   File.m.ct declares `pub type IoFile = struct ct_io_file;`. `ct_io_file`
+   wraps `FILE *` instead of exposing it and stays private to this shim, so no
+   cast appears at the call site and no `-Wincompatible-pointer-types` warning
+   is raised.
 
-   The C tag and every `ct_io_file_*` symbol stay as they are. CT does not see
-   this typedef: File.m.ct declares `pub type IoFile = struct ct_io_file;`. */
+   The C tag and every `std_io_*` symbol stay as they are. */
 typedef struct ct_io_file ct_io_file;
 
 struct ct_io_file {
