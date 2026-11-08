@@ -17,7 +17,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 的 `<stdlib.h>`（`realloc` / `free`）；`ct.pkg` 的约束是 `requires ct >= 0.19.1`。
+依赖 C 的 `<stdlib.h>`（`realloc` / `free`）；`ct.pkg` 的约束是 `requires ct >= 0.20.3`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -31,7 +31,7 @@
 包安装后（详见[包根 README](../../README.md#安装)）：
 
 ```sh
-ct get std@^0.1.0
+ct get std@^0.2.0
 ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
 ```
 
@@ -457,7 +457,7 @@ main.ct:8:39: error: passing 'struct std_vec_VecInt' to parameter of incompatibl
   vptr），vptr（`__vecintops_vptr` / `__vecstroops_vptr`）出现在导出的 `Vec.h` 里。
 - **方法不能被内联**：`at()` / `len()` 经 vtable 分派，固定付出一次间接跳转；这是 `use`
   结构体的机制属性，不要为个别方法退回直接调用。
-- **字面量接收者需要 0.20.0**：v0.19.1 只接受变量、元素、调用和字段链。
+- **字面量接收者从 0.20.0 起可用**（本包下限 0.20.3）：v0.19.1 只接受变量、元素、调用和字段链。
 - **没有析构**：`VecInt` 放在别的结构体里时，谁持有谁负责调用 `free()`。
 
 ## 9. 版本与变更记录
@@ -466,5 +466,5 @@ main.ct:8:39: error: passing 'struct std_vec_VecInt' to parameter of incompatibl
 | --- | --- | --- |
 | `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写：教程并入本 README，删除 `tutorial.md`；API 未变。 |
 
-编译器下限 `ct >= 0.19.1`。本文所有程序均在 v0.19.1 上编译运行通过；字面量接收者写法需要
-0.20.0。
+编译器下限 `ct >= 0.20.3`。本文所有程序均在 v0.20.3 上编译运行通过；字面量接收者写法从
+0.20.0 起可用。

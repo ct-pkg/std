@@ -14,7 +14,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 的 `<stdlib.h>` / `<ctype.h>` / `<stdio.h>`；`ct.pkg` 的约束是 `requires ct >= 0.19.1`。
+依赖 C 的 `<stdlib.h>` / `<ctype.h>` / `<stdio.h>`；`ct.pkg` 的约束是 `requires ct >= 0.20.3`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -33,7 +33,7 @@
 包安装后（详见[包根 README](../../README.md#安装)）：
 
 ```sh
-ct get std@^0.1.0
+ct get std@^0.2.0
 ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
 ```
 
@@ -72,7 +72,7 @@ digit=1 alpha=1 upper=A
 ```
 
 `int` 宿主是后加的：在此之前只有 `Long` / `LLong` / `Char`，`(5).toString()` 这类写法没有落点。
-字面量接收者本身需要 **0.20.0**；v0.19.1 先写 `int n = 5;`，再用 `n.toString()`。
+字面量接收者本身从 **0.20.0** 起可用（本包下限 0.20.3）；v0.19.1 先写 `int n = 5;`，再用 `n.toString()`。
 
 ## 4. API 全表
 
@@ -314,4 +314,4 @@ main.ct:4:1: error: no method 'toString' for type 'int'
 | --- | --- | --- |
 | `0.1.0` | 未打 tag、未发布 | 当前版本。新增 `Int`（`int`）宿主，补上最常用的整数类型；此前只有 `Long` / `LLong` / `Char`。文档重写：教程并入本 README，删除 `docs/tutorial.md`。 |
 
-编译器下限 `ct >= 0.19.1`。
+编译器下限 `ct >= 0.20.3`。

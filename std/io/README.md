@@ -14,7 +14,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 标准库的 `<stdio.h>` / `<stdarg.h>`；`ct.pkg` 的约束是 `requires ct >= 0.19.1`。
+依赖 C 标准库的 `<stdio.h>` / `<stdarg.h>`；`ct.pkg` 的约束是 `requires ct >= 0.20.3`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -32,7 +32,7 @@
 包安装后（详见[包根 README](../../README.md#安装)）：
 
 ```sh
-ct get std@^0.1.0
+ct get std@^0.2.0
 ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
 ```
 
@@ -86,7 +86,7 @@ read 5 bytes: hello
 CT 侧的句柄类型是 `IoFile *`：`File.m.ct` 用 `pub type IoFile = struct ct_io_file;`
 给 C 侧的不透明句柄起了一个 CT 私名。C tag 仍是 `struct ct_io_file`，helper 符号
 仍是 `std_io_*`，一个字没改。这个别名需要 **0.20.3**；字面量接收者
-（`"/tmp/x".open("r")`）需要 **0.20.0**，v0.19.1 请先赋给 `char *` 变量。
+（`"/tmp/x".open("r")`）从 **0.20.0** 起可用（本包下限 0.20.3），v0.19.1 请先赋给 `char *` 变量。
 
 ## 4. API 全表
 

@@ -14,7 +14,7 @@
 ## 2. 依赖与安装
 
 依赖 POSIX 头文件 `<stdio.h>` / `<dirent.h>` / `<sys/stat.h>`；`ct.pkg` 的约束是
-`requires ct >= 0.19.1`。
+`requires ct >= 0.20.3`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -28,7 +28,7 @@
 包安装后（详见[包根 README](../../README.md#安装)）：
 
 ```sh
-ct get std@^0.1.0
+ct get std@^0.2.0
 ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
 ```
 
@@ -63,7 +63,7 @@ int main(void)
 exists=1 bytes=5 data=hello
 ```
 
-字面量接收者（`"/tmp/x".exists()`）需要 **0.20.0**；v0.19.1 先赋给 `char *` 变量。
+字面量接收者（`"/tmp/x".exists()`）从 **0.20.0** 起可用（本包下限 0.20.3）；v0.19.1 先赋给 `char *` 变量。
 
 ## 4. API 全表
 
@@ -303,4 +303,4 @@ main.ct:5:1: error: method receiver must be a variable, an element, a call or a 
 | --- | --- | --- |
 | `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写：教程并入本 README，删除 `tutorial.md`；API 未变。 |
 
-编译器下限 `ct >= 0.19.1`。
+编译器下限 `ct >= 0.20.3`。

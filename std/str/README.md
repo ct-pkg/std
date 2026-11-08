@@ -13,7 +13,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 标准库的 `<string.h>` / `<stdlib.h>`；`ct.pkg` 的约束是 `requires ct >= 0.19.1`。
+依赖 C 标准库的 `<string.h>` / `<stdlib.h>`；`ct.pkg` 的约束是 `requires ct >= 0.20.3`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -25,7 +25,7 @@
 包安装后（详见[包根 README](../../README.md#安装)）：
 
 ```sh
-ct get std@^0.1.0
+ct get std@^0.2.0
 ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
 ```
 
@@ -369,7 +369,7 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
   `len` / `find` / `findChar` / `startsWith` / `endsWith` / `copy` / `copyTo` /
   `slice` / `concat` / `toLower` / `toUpper` / `compare` / `toInt` / `toDouble`；
   新增 `char *` trait 前先 grep。
-- **字面量接收者需要 0.20.0**；0.19.1 只接受变量、元素、调用和字段链。
+- **字面量接收者从 0.20.0 起可用**（本包下限 0.20.3）；0.19.1 只接受变量、元素、调用和字段链。
 - **多给实参不报错**（SH-56）：`s.copy(buf, 8, 9)` 编译通过，`9` 被丢弃；少给才报
   `a map call has fewer arguments than its binding`。
 - **`toInt` / `toDouble` 不做错误报告**：与 `atoi` / `atof` 一致，非法输入不抛错。
@@ -380,5 +380,5 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 | --- | --- | --- |
 | `0.1.0` | 未打 tag、未发布 | 当前版本。`toLower` / `toUpper` 改为 out 缓冲（`s.toUpper(out, cap)`）；移除写接收者的 `copyFrom`，`dst.copyFrom(src, n)` 改成 `src.copyTo(dst, n)`。 |
 
-编译器下限 `ct >= 0.19.1`。0.19.1 上库本体与本文档中的程序均可编译运行；
-字面量接收者写法需要 0.20.0。
+编译器下限 `ct >= 0.20.3`。本文所有程序均在 v0.20.3 上编译运行通过；
+字面量接收者写法从 0.20.0 起可用。
