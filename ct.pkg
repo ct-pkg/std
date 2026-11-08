@@ -18,7 +18,7 @@
 # / isnan / isinf; on platforms where libm is part of libc it is a no-op, on
 # the others it is required.
 name = std
-version = 0.1.0
+version = 0.2.0
 licence = GPL-3.0-or-later WITH GCC-exception-3.1
 requires = ct >= 0.20.3
 ldflags = -lm

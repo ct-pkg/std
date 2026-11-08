@@ -21,7 +21,7 @@
 
 ```
 name = std
-version = 0.1.0
+version = 0.2.0
 requires = ct >= 0.20.3
 ldflags = -lm
 ```
@@ -32,7 +32,7 @@ ldflags = -lm
 ### 安装
 
 ```sh
-ct get std@^0.1.0      # 解析并写入 ct.lock、vendor/std/
+ct get std@^0.2.0      # 解析并写入 ct.lock、vendor/std/
 ct verify              # 核对 vendor/ 与 lock 的摘要
 ct install             # 打印建议的构建命令
 ```
@@ -57,11 +57,12 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 ### 离线 / 钉版本
 
 把 `vendor/` 连同 `ct.lock` 一起提交，CI 里用 `ct install --check`（或 `ct verify`）即可离线构建。
-需要某个具体版本时，在 `ct.pkg` 里写 `dep = std@0.1.0` 并提交 `ct.lock`。
+需要某个具体版本时，在 `ct.pkg` 里写 `dep = std@0.2.0` 并提交 `ct.lock`。
 
 ### 当前发布状态
 
-`0.1.0` **尚未打 tag、尚未发布**。在 `v0.1.0` 打出来之前本包不可通过索引安装。
+`0.2.0` 是当前版本，tag 为 `v0.2.0`。`v0.1.0` 仍指向旧接口（`toLower()` / `toUpper()` 原地改写、
+`copyFrom` 仍在、`requires` 为 0.20.0），不要拿它配本 README。
 索引只收录每个仓库最高的 `v*` tag，不保留历史版本，所以老编译器无法从索引取到与它兼容的旧版 std；
 需要旧版时只能用 `file://` 路径安装，或手工 checkout 对应 tag 的 `vendor/std`。
 
@@ -103,8 +104,8 @@ int main(void)
 file=ct-pkg bytes=6 upper=CT-PKG
 ```
 
-接收者必须写成变量（`path`、`buf`、`n`、`word`）。字面量接收者 `"abc".len()` 在 v0.19.1 报
-`method receiver must be a variable, an element, a call or a field chain`，需要 **0.20.0**。
+接收者必须写成变量（`path`、`buf`、`n`、`word`）。本包下限是 **ct 0.20.3**；字面量接收者
+`"abc".len()` 从 0.20.0 起可用，低于 0.20.3 的编译器不满足 `ct.pkg` 的 `requires`。
 
 ## 4. API 全表（按宿主分组）
 
@@ -112,7 +113,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 | 模块 | 入口 import | 宿主 | 方法数 | 文档 |
 | --- | --- | --- | --- | --- |
-| `std::str` | `std::str::String` | `char *` | 15 | [str/README.md](std/str/README.md) |
+| `std::str` | `std::str::String` | `char *` | 14 | [str/README.md](std/str/README.md) |
 | `std::io` | `std::io::Io` / `Stdout` / `File` | namespace、`char *`、`IoFile *` | 1 + 4 + 1 + 3 | [io/README.md](std/io/README.md) |
 | `std::fs` | `std::fs::Fs` | `char *` | 4 | [fs/README.md](std/fs/README.md) |
 | `std::utf8` | `std::utf8::Utf8Ops` | `char *` | 3 | [utf8/README.md](std/utf8/README.md) |
@@ -123,7 +124,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | `std::arena` | `std::arena::Arena` | `Arena *` | 4 | [arena/README.md](std/arena/README.md) |
 | `std::test` | `std::test::Test` | `Test *` | 5 | [test/README.md](std/test/README.md) |
 
-### 4.2 `char *` 宿主（23 个方法，名字全局共享）
+### 4.2 `char *` 宿主（22 个方法，名字全局共享）
 
 同一接收者类型上，**方法名不能重复**：任意两个可见 trait 声明同名方法，调用点就报
 `ambiguous type-host map for method 'x' on type 'char *'`。按名字判定，不看参数个数。
@@ -234,8 +235,9 @@ int main(void)
 main.ct:5:1: error: method receiver must be a variable, an element, a call or a field chain
 ```
 
-v0.19.1 只接受变量、元素、调用、字段链作接收者。先写 `char *s = "abc";` 再 `s.len()`。
-调用结果可以直接链式：`s.len().toString()` 合法（`s.len()` 是调用）。字面量接收者需要 **0.20.0**。
+这个错误来自低于 0.20.0 的编译器（v0.19.1 只接受变量、元素、调用、字段链作接收者）；本包下限
+是 **ct 0.20.3**。先写 `char *s = "abc";` 再 `s.len()`。调用结果可以直接链式：
+`s.len().toString()` 合法（`s.len()` 是调用）。
 
 ### 7.2 忘了 import
 
@@ -297,7 +299,7 @@ main.ct:4:1: error: no method 'len' for type 'char *'
 | `codepoint`（码点） | UTF-8 里一个字符的编号；一个码点占 1..4 字节，码点数不等于字节数 | `Utf8Ops.codepointCount()` 数码点，`decode()` 返回本次消耗的 1..4 字节，`encode()` 写 1..4 字节且不补 NUL；解码拒绝代理区（U+D800..U+DFFF）和超过 U+10FFFF 的值 |
 | `NUL` | 值为 0x00 的字节，C 字符串的终止符，不是 `NULL` 指针 | `len()` 不计 NUL，`cap` 必须给它留位置；`read` / `write` / `encode` 都不自动补 NUL |
 | `iterator`（迭代器） | 遍历容器的游标；本包没有实现 | `Vec` / `Map` 都不提供迭代器；最接近的失效规则是 `Arena.alloc()` 的指针在 `reset()` / `freeAll()` 后作废、`MapStrInt` 的键被改写后条目再也查不到 |
-| `literal receiver`（字面量接收者） | 直接拿字面量作方法接收者 | `"abc".len()`；v0.19.1 报 `method receiver must be a variable, an element, a call or a field chain`，需要 0.20.0 |
+| `literal receiver`（字面量接收者） | 直接拿字面量作方法接收者 | `"abc".len()`；0.20.0 起可用，本包下限 0.20.3。v0.19.1 报 `method receiver must be a variable, an element, a call or a field chain` |
 | `chaining`（链式调用） | 把一个方法调用的结果继续当接收者 | `s.len().toString()` 合法，因为 `s.len()` 是调用而不是字面量 |
 | `Drop` | 语言内建的析构钩子 | 包单元里的 `Drop` 发射为 `static`，消费者不可见，所以本包只提供显式 `free()` / `reset()` / `freeAll()` / `clear()` |
 | `static slot`（静态环形槽） | 函数内的静态缓冲区，跨调用复用 | `Num.shim.h` 与 `Real.shim.h` 的 `toString` 各用四个 32 字节静态槽轮转；第五个活结果会覆盖第一个，非线程安全 |
@@ -306,7 +308,8 @@ main.ct:4:1: error: no method 'len' for type 'char *'
 
 - **索引只收录最新 tag**：没有历史版本，老编译器取不到匹配的旧版 std。
 - **`requires` 只告警**：装得上不代表文档示例能编译。
-- **字面量接收者需要 0.20.0**：v0.19.1 上所有示例都写成变量接收者。
+- **编译器下限 0.20.3**：`pub type IoFile` 别名需要 0.20.3；字面量接收者从 0.20.0 起可用。低于
+  0.20.3 的编译器不满足 `requires`（只告警，不代表能编过）。
 - **`char *` 方法名全局共享**：新增 trait 必须避开 22 个已有名字。
 - **`const` 不参与类型键**：字面量能直接当 `String` 接收者，因为该 trait 没有写接收者的方法。
 - **`num.toString` / `math.toString` 非线程安全**：四个静态槽轮转。
@@ -317,7 +320,31 @@ main.ct:4:1: error: no method 'len' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写：包根 README 改为总览；十个模块 README 全部吸收各自教程并删除教程文件；新建 `math/README.md`。API 未变。 |
+| `0.2.0` | 当前版本，已打 `v0.2.0` | **破坏性变更**（见 §10.1）：`toLower` / `toUpper` 改为写 `out + cap`，移除 `copyFrom`，编译器下限提到 0.20.3。 |
+| `0.1.0` | 已打 `v0.1.0`（旧接口） | 文档重写：包根 README 改为总览；十个模块 README 全部吸收各自教程并删除教程文件；新建 `math/README.md`。API 未变。 |
+
+### 10.1 `0.2.0` 破坏性变更（BREAKING）
+
+升级到 `0.2.0` 前逐条核对：
+
+1. **`String.toLower` / `String.toUpper` 换了签名**。旧写法是原地改写接收者、返回状态码：
+   `word.toLower()`；新写法与 `copy` 同构，接收者只读，结果写调用方缓冲区：
+   `s.toLower(out, cap)` / `s.toUpper(out, cap)`（`cap` 含结尾 NUL，放不下返回 `-1`）。
+   好处是字面量接收者不再有写只读页的风险。
+2. **`String.copyFrom` 已删除**。旧写法 `dst.copyFrom(src, n)` 改成 `src.copyTo(dst, n)`，
+   语义完全等价（恰好 `n` 字节、不补 NUL、不查容量）。
+3. **编译器下限从 0.19.1 / 0.20.0 提到 0.20.3**。`std::io` 的 `pub type IoFile = struct ct_io_file;`
+   需要 0.20.3；字面量接收者需要 0.20.0。`ct.pkg` 的 `requires` 已改为 `ct >= 0.20.3`。
+4. **`char *` 上的方法数从 15 降到 14**（少一个 `copyFrom`）。同宿主方法名唯一，新增 trait 前
+   仍按 §4.2 查名。
+
+迁移对照：
+
+| `0.1.0` | `0.2.0` |
+| --- | --- |
+| `word.toLower()` | `word.toLower(out, cap)`（`out` 是调用方缓冲区） |
+| `word.toUpper()` | `word.toUpper(out, cap)` |
+| `dst.copyFrom(src, n)` | `src.copyTo(dst, n)` |
 
 版本策略：
 
@@ -327,7 +354,7 @@ main.ct:4:1: error: no method 'len' for type 'char *'
 | `0.x` 期间 | 破坏性改动走 minor（`0.1.0` → `0.2.0`），修复走 patch；不承诺向后兼容 |
 | `1.0.0` 之后 | 破坏性改动走 major |
 | tag | `v<version>`；索引只认 `v*` 且取最高一个 |
-| 编译器下限 | `ct >= 0.19.1`，写在 `ct.pkg` 的 `requires` |
+| 编译器下限 | `ct >= 0.20.3`，写在 `ct.pkg` 的 `requires` |
 
 打 tag 之后索引里的摘要会覆盖包目录下除 `.git`、`vendor`、`.ctcache` 外的所有文件，
 包括 `README.md`、`tests/`、`.github/`。所以打 tag 前必须让所有文件定稿；tag 之后任何文件改动
