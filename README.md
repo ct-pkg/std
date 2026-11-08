@@ -22,7 +22,7 @@
 ```
 name = std
 version = 0.1.0
-requires = ct >= 0.19.1
+requires = ct >= 0.20.3
 ldflags = -lm
 ```
 
@@ -85,8 +85,7 @@ int main(void)
 
     path.writeFile(s);
     n = path.readFile(buf, 64);
-    buf.copy(word, 16);
-    word.toUpper();
+    buf.toUpper(word, 16);
     std::io::printf("file=%s bytes=%s upper=%s\n", buf, n.toString(), word);
     return 0;
 }
@@ -132,13 +131,13 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 | 模块 | 方法 |
 | --- | --- |
-| `String` | `len` `find` `findChar` `startsWith` `endsWith` `copy` `slice` `concat` `toLower` `toUpper` `compare` `copyFrom` `copyTo` `toInt` `toDouble` |
+| `String` | `len` `find` `findChar` `startsWith` `endsWith` `copy` `slice` `concat` `toLower` `toUpper` `compare` `copyTo` `toInt` `toDouble` |
 | `FsOps` | `exists` `readFile` `writeFile` `list` |
 | `Utf8Ops` | `decode` `codepointCount` `encode` |
 | `Path`（`std::io`） | `open` |
 
-合计 15 + 4 + 3 + 1 = **23**。`const char *` 也匹配同一宿主：类型键丢掉顶层 `const`，
-所以对字符串字面量调用原地方法（`toLower` / `toUpper`）不会被编译器拦住，写只读内存是未定义行为。
+合计 14 + 4 + 3 + 1 = **22**。`const char *` 也匹配同一宿主：类型键丢掉顶层 `const`，
+但 `String` 里已没有任何写接收者的方法，字面量接收者不会踩到只读内存。
 
 ### 4.3 其它宿主
 
@@ -146,7 +145,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | --- | --- | --- |
 | namespace `std::io` | `Stdout` | `puts` `putchar` `getchar` `fflush` |
 | namespace `std::io` | `Io` | `printf(fmt, ...)`（变参，`va_list` + `vprintf`） |
-| `IoFile *` | `File` | `read` `write` `close`（`IoFile` 是 `typedef struct ct_io_file IoFile;`） |
+| `IoFile *` | `File` | `read` `write` `close`（`pub type IoFile = struct ct_io_file;`，C tag 私有） |
 | `int` | `Int` | `abs` `clamp` `max` `min` `toStr` `toString` `toBase` |
 | `long` | `Long` | 同上 7 个 |
 | `long long` | `LLong` | 同上 7 个 |
@@ -174,7 +173,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | --- | --- | --- |
 | `char *` 上的值方法 | `s.len()`、`path.exists()`、`buf.encode(cp, cap)` | 最常用；`encode` 的接收者是输出缓冲区 |
 | 命名空间函数 | `std::io::printf(...)`、`std::math::Math.sqrt(x)` | 必须带全命名空间 |
-| C 不透明句柄 | `path.open("w")` 返回 `IoFile *`，再 `f.read(...)` / `f.close()` | 句柄不是堆对象，关闭后置空 |
+| C 不透明句柄 | `path.open("w")` 返回 `IoFile *`，再 `f.read(...)` / `f.close()` | 句柄包装私有 `FILE *`；`close()` 可重复调用，但不回收包装体 |
 | CT 自有类型 | `vp->push(1)`、`mp->put("k", 1)`、`ap->alloc(8)`、`tp->report()` | 先声明值再取地址；裸 `malloc` 的 vptr 是垃圾 |
 
 ### 5.2 两种实现，两个代价
@@ -206,7 +205,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | --- | --- | --- |
 | 字符串长度 | `s.len()` | `std::str` |
 | 子串 | `s.slice(start, end, buf, cap)`（半开区间） | `std::str` |
-| 原地大小写 | `buf.toLower()` / `buf.toUpper()`，返回 0 / -1 | `std::str` |
+| 大小写转换 | `s.toLower(out, cap)` / `s.toUpper(out, cap)`，返回 0 / -1 | `std::str` |
 | 字符串转数字 | `s.toInt()` / `s.toDouble()` | `std::str` |
 | 数字转文本 | `n.toString()` 或 `n.toStr(buf, cap)` | `std::num` |
 | 进制转换 | `n.toBase(16, buf, cap)` | `std::num` |
@@ -265,18 +264,56 @@ main.ct:4:1: error: no method 'len' for type 'char *'
 `std::math` 调用 `sqrt` / `fabs` / `isnan` / `isinf`。libm 单独提供的平台上需要 `-lm`：
 `ct build ... --ldflags "-lm"`，或用 `ct install` 打印的命令（`ct.pkg` 的 `ldflags` 已带）。
 
-## 8. 限制与未支持
+## 8. 术语表（Glossary）
+
+按本包的实际用法收录，不追求通用编程词典。术语列保留源码里的原名；「本包中的所指」只写
+本包能对上的类型、方法或文件。
+
+| 术语 | 含义 | 本包中的所指 |
+| --- | --- | --- |
+| `std` | 包名，也是 `import` 的命名空间前缀 | 仓库根是包根，`std/` 子目录是命名空间根；`import std::str::String` 对应 `std/str/String.m.ct` |
+| `.m.ct` | 映射式单元：只接受 `#include` / `#define` 作前导，没有函数体，方法经 `map trait` 转发 | `str/String.m.ct`、`fs/Fs.m.ct`、`utf8/Utf8Ops.m.ct`、`io/Stdout.m.ct`、`io/File.m.ct`、`math/Math.m.ct`、`math/Real.m.ct`、`num/Num.m.ct` |
+| `.h.ct` | 可写 `pub trait` / `pub struct` / `impl` 与函数体的单元；本包的原生 OO 都走它 | `vec/Vec.h.ct`、`map/Map.h.ct`、`arena/Arena.h.ct`、`test/Test.h.ct`；`io/Io.h.ct` 只放 `printf` 与标记用的 `Io` struct |
+| `host`（宿主） | 方法挂载的接收者类型；同一宿主上方法名必须唯一 | `char *`、`IoFile *`、`int` / `long` / `long long` / `char`、`float` / `double`、`VecInt *` / `VecStr *`、`MapStrInt *` / `MapIntPtr *`、`Arena *`、`Test *`，以及 namespace `std::io` / `std::math` |
+| `map trait` | `.m.ct` 专有声明，把 trait 方法逐条映射成 C 调用，调用点展开，没有 vtable | `String.m.ct` 的 `map trait String for type char *`、`File.m.ct` 的 `map trait File for type IoFile *`、`Stdout.m.ct` 的 `map trait Stdout for namespace std::io` |
+| `pub trait` | 方法集声明；映射式里配 `map trait`，原生 OO 里配 `impl` | `String`、`FsOps`、`Utf8Ops`、`Path`、`File`、`Stdout`、`Int` / `Long` / `LLong` / `Char`、`Math` / `Float` / `Real`、`VecIntOps` / `VecStrOps`、`MapStrIntOps` / `MapIntPtrOps`、`ArenaOps`、`TestOps` |
+| `impl` | 为已声明的 `pub trait` 写方法体的块 | `Vec.h.ct` 的 `impl VecIntOps for VecInt`、`Map.h.ct` 的 `impl MapStrIntOps for MapStrInt`、`Arena.h.ct` 的 `impl ArenaOps for Arena` |
+| `use` | `struct ... use Trait` 把 vtable 指针追加到结构体尾部，并绑定该 trait | `struct Arena { ... } use ArenaOps`、`struct Test { ... } use TestOps` |
+| `vptr` | 由 `use` 追加的 vtable 指针，方法调用经它间接分派 | 生成代码里的 `__vptr`，以及导出头里的 `__arenaops_vptr`；`sizeof(Arena) == 32`（24 字节字段 + 8 字节 vptr） |
+| `shim` | 与 `.m.ct` 同名的 `.shim.h`，C 实现在里面且是 `static inline`，每个消费单元各复制一份 | `String.shim.h`、`Fs.shim.h`、`Utf8Ops.shim.h`、`Stdout.shim.h`、`File.shim.h`、`Num.shim.h`、`Real.shim.h` |
+| `pub type` | CT 侧的类型别名，只改 CT 名字，不改任何 C 符号 | `File.m.ct` 的 `pub type IoFile = struct ct_io_file;`；C tag 仍是 `struct ct_io_file`，helper 仍是 `std_io_*` |
+| `IoFile` | CT 侧唯一可见的不透明文件句柄类型，包装私有的 `struct ct_io_file`（内含 `FILE *`） | `Path.open` 返回 `IoFile *`；`File.read` / `File.write` / `File.close` 挂在 `IoFile *` 上 |
+| `handle`（句柄）与裸指针 | 句柄是包装私有 C 状态的不透明指针，只能经方法使用；裸指针没有附加语义 | `IoFile *` 是句柄，`close()` 关闭内部 `FILE *`；`char *` / `void *` 是裸指针，`f.close()` 不是 `free(f)` |
+| `char *` | 全仓共享的映射宿主，任何模块都能往上挂 trait，代价是方法名全局唯一 | `String`、`FsOps`、`Utf8Ops` 和 `Path` 都映射到它上面；新增方法前先查 §4.2 |
+| `type key`（类型键） | 编译器给宿主去重的键，丢弃顶层 `const` | `const char *` 与 `char *` 是同一宿主；字面量能直接作接收者，因为 `String` 没有写接收者的方法 |
+| `borrow`（借用） | 只保存指针，不复制，也不负责释放 | `VecStr` 的元素和 `MapStrInt` 的键都是借用；`free()` / `clear()` 不回收它们 |
+| `ownership`（所有权） | 资源由谁负责释放 | 本包不提供析构；`Vec.free()` 只释放数组，`MapIntPtr` 的值交给 `free_fn`，`Arena.freeAll()` 释放全部块，`IoFile` 的包装体由 `open` 分配而 `close` 不回收 |
+| `free_fn` | `MapIntPtr` 的逐值释放回调 | `MapIntPtrOps.init(want, free_fn)` 记住它；`clear()` / `free()` 对每个值调用一次 |
+| `cap` | 容量；单位随宿主而变 | `String` / `FsOps` 与 `num` / `math` 的文本化方法是缓冲区字节数（含结尾 NUL 的位置）；`Utf8Ops.encode` 的 `cap` 只是可用字节数，不写 NUL；`Vec` 是元素个数；`Map` 是槽位数；`Arena` 是首块字节数 |
+| `len()` | 当前长度；单位随宿主而变 | `String.len()` 数字节（不含 NUL），`Vec.len()` 数元素，`Map.len()` 数条目 |
+| `n` | 结构体字段或方法参数里的计数值 | `Vec` / `Map` 的 `n` 字段是元素 / 条目数；`read` / `write` / `copyTo` / `alloc` 的 `n` 参数是字节数 |
+| `arena` | bump 分配器及其生命周期 | `std::arena` 的 `Arena`：`init(block)` 拿第一块（`block < 16` 按 16），`alloc(n)` 返回 8 字节对齐且不初始化的内存，`reset()` 释放副块并保留首块，`freeAll()` 全部释放 |
+| `slice` | 取子串；结果是写进调用方缓冲区的状态码，不是视图 | `String.slice(start, end, out, cap)` 按字节取半开区间 `[start, end)`，结果写入 `out` 并补 NUL；越界或放不下返回 `-1` |
+| `codepoint`（码点） | UTF-8 里一个字符的编号；一个码点占 1..4 字节，码点数不等于字节数 | `Utf8Ops.codepointCount()` 数码点，`decode()` 返回本次消耗的 1..4 字节，`encode()` 写 1..4 字节且不补 NUL；解码拒绝代理区（U+D800..U+DFFF）和超过 U+10FFFF 的值 |
+| `NUL` | 值为 0x00 的字节，C 字符串的终止符，不是 `NULL` 指针 | `len()` 不计 NUL，`cap` 必须给它留位置；`read` / `write` / `encode` 都不自动补 NUL |
+| `iterator`（迭代器） | 遍历容器的游标；本包没有实现 | `Vec` / `Map` 都不提供迭代器；最接近的失效规则是 `Arena.alloc()` 的指针在 `reset()` / `freeAll()` 后作废、`MapStrInt` 的键被改写后条目再也查不到 |
+| `literal receiver`（字面量接收者） | 直接拿字面量作方法接收者 | `"abc".len()`；v0.19.1 报 `method receiver must be a variable, an element, a call or a field chain`，需要 0.20.0 |
+| `chaining`（链式调用） | 把一个方法调用的结果继续当接收者 | `s.len().toString()` 合法，因为 `s.len()` 是调用而不是字面量 |
+| `Drop` | 语言内建的析构钩子 | 包单元里的 `Drop` 发射为 `static`，消费者不可见，所以本包只提供显式 `free()` / `reset()` / `freeAll()` / `clear()` |
+| `static slot`（静态环形槽） | 函数内的静态缓冲区，跨调用复用 | `Num.shim.h` 与 `Real.shim.h` 的 `toString` 各用四个 32 字节静态槽轮转；第五个活结果会覆盖第一个，非线程安全 |
+
+## 9. 限制与未支持
 
 - **索引只收录最新 tag**：没有历史版本，老编译器取不到匹配的旧版 std。
 - **`requires` 只告警**：装得上不代表文档示例能编译。
 - **字面量接收者需要 0.20.0**：v0.19.1 上所有示例都写成变量接收者。
-- **`char *` 方法名全局共享**：新增 trait 必须避开 23 个已有名字。
-- **`const` 不参与类型键**：原地方法能对字符串字面量调用，后果自负。
+- **`char *` 方法名全局共享**：新增 trait 必须避开 22 个已有名字。
+- **`const` 不参与类型键**：字面量能直接当 `String` 接收者，因为该 trait 没有写接收者的方法。
 - **`num.toString` / `math.toString` 非线程安全**：四个静态槽轮转。
 - **`num.toStr` 静默截断**：容量不够得到短文本，不报错。
 - **没有泛型**：容器只有 `VecInt` / `VecStr` / `MapStrInt` / `MapIntPtr` 四个单态类型。
 
-## 9. 版本与变更记录
+## 10. 版本与变更记录
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
