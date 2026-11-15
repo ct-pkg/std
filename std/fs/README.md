@@ -327,7 +327,7 @@ main.ct:5:1: error: method receiver must be a variable, an element, a call or a 
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.3.0` | 未打 tag | ① 新增 `mkdir` / `remove` / `rename` 与 `FsEnv.get_last_error`（`errno` 快照，每翻译单元一份）；② `read_file` 对目录返回 `-1`（此前静默返回 `0` 并给出空字符串），普通文件、空文件、含 `'\0'` 文件的行为不变；③ 全量改名到 `snake_case`：`readFile` → `read_file`、`writeFile` → `write_file`，无别名、无兼容层。 |
+| `0.3.0` | 已打 `v0.3.0` | ① 新增 `mkdir` / `remove` / `rename` 与 `FsEnv.get_last_error`（`errno` 快照，每翻译单元一份）；② `read_file` 对目录返回 `-1`（此前静默返回 `0` 并给出空字符串），普通文件、空文件、含 `'\0'` 文件的行为不变；③ 全量改名到 `snake_case`：`readFile` → `read_file`、`writeFile` → `write_file`，无别名、无兼容层。 |
 | `0.1.0` | 未打 tag、未发布 | 文档重写：教程并入本 README，删除 `tutorial.md`；API 未变。 |
 
 编译器下限 `ct >= 0.30.0`。

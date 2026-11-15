@@ -25,7 +25,7 @@
 name = std
 publisher = ct
 ns-root = .
-version = 0.3.0
+version = 0.3.1
 requires = ct >= 0.30.0
 ldflags = -lm
 ```
@@ -71,7 +71,8 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 
 ### 当前发布状态
 
-`0.3.0` 是当前版本，**未打 tag**（`0.2.0` 的 tag 仍指向 `v0.2.0` 的旧内容，不含本版修正）。
+`0.3.1` 是当前版本，已打 `v0.3.1`；`v0.3.0` 指向 `0.3.0` 的内容。`0.3.1` 只订正文档状态
+（把「`0.3.0` 未打 tag」的过期描述改成已发布）并同步 `ct.pkg` 的版本号，API 无变化。
 `v0.1.0` 仍指向旧接口（`to_lower()` / `to_upper()` 原地改写、
 `copyFrom` 仍在、`requires` 为 0.20.0），不要拿它配本 README。
 索引只收录每个仓库最高的 `v*` tag，不保留历史版本，所以老编译器无法从索引取到与它兼容的旧版 std；
@@ -365,7 +366,8 @@ main.ct:4:1: error: no method 'len' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.3.0` | 当前版本，**未打 tag** | **三处破坏性变更 + 四个新接口**（见 §10.1）：删除 `std::vec` / `std::map`（`Vec` / `Map` 已是编译器内置类型，重名会让消费者撞 `'Vec' is a built-in type and cannot be redeclared`）；全量改名到 `snake_case`（25 个方法）；`fs.read_file` 对目录返回 `-1`；新增 `mkdir` / `remove` / `rename` 与 `FsEnv.get_last_error`；`requires` 抬到 `ct >= 0.30.0`。 |
+| `0.3.1` | 当前版本，已打 `v0.3.1` | 文档修正：`0.3.0` 打 tag 后仍写着「未打 tag」，本版订正该状态并同步 `ct.pkg` 版本号；API 无变化（包摘要因文档与版本号变动而更新）。 |
+| `0.3.0` | 已打 `v0.3.0` | **三处破坏性变更 + 四个新接口**（见 §10.1）：删除 `std::vec` / `std::map`（`Vec` / `Map` 已是编译器内置类型，重名会让消费者撞 `'Vec' is a built-in type and cannot be redeclared`）；全量改名到 `snake_case`（25 个方法）；`fs.read_file` 对目录返回 `-1`；新增 `mkdir` / `remove` / `rename` 与 `FsEnv.get_last_error`；`requires` 抬到 `ct >= 0.30.0`。 |
 | `0.2.0` | 已打 `v0.2.0` | **破坏性变更**（见 §10.2）：`to_lower` / `to_upper` 改为写 `out + cap`，移除 `copyFrom`，编译器下限提到 0.20.3。 |
 | `0.1.0` | 已打 `v0.1.0`（旧接口） | 文档重写：包根 README 改为总览；十个模块 README 全部吸收各自教程并删除教程文件；新建 `math/README.md`。API 未变。 |
 

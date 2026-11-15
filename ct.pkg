@@ -38,7 +38,7 @@
 name = std
 publisher = ct
 ns-root = .
-version = 0.3.0
+version = 0.3.1
 licence = GPL-3.0-or-later WITH GCC-exception-3.1
 requires = ct >= 0.30.0
 ldflags = -lm
