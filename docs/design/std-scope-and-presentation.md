@@ -142,12 +142,12 @@ CT 范式：**字符串起头 → 工厂函数进 → 方法挂既有类型 → 
 | `time`：`t.year()` `t.month()` `t.day()` `t.hour()` `t.minute()` `t.second()` `t.format(fmt, out, cap)`（`long` 宿主） | **② 方法层（M1）** | 便利性明确：`t.year()` 对 `time_year(t)`；`struct tm` 在 shim 内部用 `localtime_r` 填栈上变量，不暴露类型 |
 | `time`：`std::time::Time.from_parts(y, m, d, h, mi, s)` | ① 工厂（M1） | 工厂进：`Time.from_parts(...).format(...)`；返回 `long`，无新类型 |
 | `time`：`Timer` + `Drop` | 暂不纳入 | 真资源，但需求未出现；不进最小集 |
-| `env`：`name.get_env(out, cap)`；`std::sys::Env.set(name, value)` / `unset(name)` | ② 方法层 + ① 底座（M0） | `getenv` 返回借用指针，方法层负责拷进调用方缓冲（`get` 带 `out` 更安全）；set/unset 无接收者价值，走 namespace |
-| `process`：`std::sys::Process.get_pid()` `get_parent_pid()` `get_uid()` `get_euid()` `get_gid()` | ① 底座（M0） | 无接收者、无链式收益，五条单行 |
-| `errno`：`std::sys::Errno.get_last()` | ① 底座（M1） | `errno` 是宏，一条 `return errno;` |
-| `errno`：`code.message()` / `std::sys::Errno.message(code)` | ② 方法层（M0/M1） | `123.message()` 链式可用；底层 `strerror`，返回借用指针 |
+| `env`：`name.get_env(out, cap)`；`std::env::Env.set(name, value)` / `unset(name)` | ② 方法层 + ① 底座（M0） | `getenv` 返回借用指针，方法层负责拷进调用方缓冲（`get` 带 `out` 更安全）；set/unset 无接收者价值，走 namespace |
+| `process`：`std::process::Process.get_pid()` `get_parent_pid()` `get_uid()` `get_euid()` `get_gid()` | ① 底座（M0） | 无接收者、无链式收益，五条单行 |
+| `errno`：`std::errno::Errno.get_last()` | ① 底座（M1） | `errno` 是宏，一条 `return errno;` |
+| `errno`：`code.message()` / `std::errno::Errno.message(code)` | ② 方法层（M0/M1） | `123.message()` 链式可用；底层 `strerror`，返回借用指针 |
 | `net`：`"1.2.3.4".parse_ip(out)` | ② 方法层（M1） | `inet_pton` 出参适配 |
-| `net`：`std::sys`? 否；`std::net`：`Socket` + `"host:80".connect()` + `bind_to(port)` / `listen_backlog(n)` / `accept()` / `send_bytes` / `recv_bytes` / `shutdown_both` / `close` | **③ OO2：`Socket`**，方法本体 M0/M1 | **理由：真持有 fd**，`accept` 还会产生新 fd；零代码映射会把关闭责任丢给调用方。`connect` 是字符串起头的工厂（DNS 在 shim 内解析并释放） |
+| `net`：`std::net`：`Socket` + `"host:80".connect()` + `bind_to(port)` / `listen_backlog(n)` / `accept()` / `send_bytes` / `recv_bytes` / `shutdown_both` / `close` | **③ OO2：`Socket`**，方法本体 M0/M1 | **理由：真持有 fd**，`accept` 还会产生新 fd；零代码映射会把关闭责任丢给调用方。`connect` 是字符串起头的工厂（DNS 在 shim 内解析并释放） |
 | `net`：`Address` 值类型 / `resolve_host` | 暂不纳入（原 OO1） | v1 不建模 `addrinfo` 链表；需要多地址回退时再议 |
 
 ### 2.8 与上一版的降级对照
@@ -365,7 +365,7 @@ drop ran
 | D2 | `printf` 变参走 namespace，不是字符串起头 | CT 没有变参接收者转发 | 唯一例外；不推广 |
 | D3 | `get_dir(out, cap)` 用出参，不是 `get_dir()` 返回值 | 无接收者，且返回静态缓冲区不安全 | 若将来允许静态槽（如 `to_string`），可改成链式 |
 | D4 | `parse_long(out)` / `format_time(out, cap)` 出参 + 状态码 | 失败必须可报；链式返回值无法同时表达 | 与 `copy`/`read_line` 同类，包内已有先例 |
-| D5 | `std::sys::Env.set/Process.get_pid` 走 namespace | 无接收者 | 不强行造接收者 |
+| D5 | `std::env::Env.set` / `std::process::Process.get_pid` 走 namespace | 无接收者 | 不强行造接收者 |
 
 ## 4. 模块划分
 
@@ -384,13 +384,16 @@ std/
   math/   Math.m.ct  Real.m.ct + shim
   arena/  Arena.h.ct
   test/   Test.h.ct
-  sys/    Env.m.ct  Process.m.ct  Errno.m.ct （三组纯映射/薄方法，合并为一个模块）
+  env/     Env.m.ct                          （环境变量）
+  process/ Process.m.ct                      （进程身份）
+  errno/   Errno.m.ct                        （错误码）
   time/   Time.m.ct                          （long 宿主的时间方法 + 工厂）
   net/    Net.m.ct  Socket.h.ct              （不建 Address）
 ```
 
-`env/`、`process/`、`errno/` 合并为 `std::sys`：三组都没有类型、没有资源，拆三个模块只增加目录与
-README 维护量（是否接受见 §8 Q4）。
+`env/`、`process/`、`errno/` 各自成模块，不合并为 `std::sys`：目录划分与 libc／POSIX 原有头文件
+一一对应，C 程序员不需要再学一套分类法。此条为负责人已定裁定（见 §8.2 Q4）；OO 封装只改变调用
+形态，不引入新的分类维度。
 
 ### 4.2 import 形态
 
@@ -398,7 +401,9 @@ README 维护量（是否接受见 §8 Q4）。
 import std::str::CStrOps;     // 0.4.0 起
 import std::io::File;         // 同时带出 Path 与 File
 import std::fs::Dir;
-import std::sys::Env;
+import std::env::Env;
+import std::process::Process;
+import std::errno::Errno;
 import std::time::Time;
 import std::net::Socket;
 ```
@@ -440,7 +445,7 @@ import std::net::Socket;
 | 状态型操作 | `0` 成功 / `-1` 失败 |
 | 字节数 | `n`；`0` = EOF；`-1` = 错误 |
 | 构造资源 | `NULL`（`0`） |
-| 错误详情 | 模块 `xxxEnv.get_last_error()`；新增 `std::sys::Errno.get_last()` |
+| 错误详情 | 模块 `xxxEnv.get_last_error()`；新增 `std::errno::Errno.get_last()` |
 | 缓冲区不足 | `-1`，不截断、不返回部分结果（`num.to_str` 例外） |
 
 ### 5.4 所有权
@@ -487,7 +492,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 | --- | --- | --- | --- | --- |
 | **P0** | `String` → `CStrOps`（issue 0001，`0.4.0`） | 改名 | 无 | 旧名零命中；`tests/run.sh` 全绿；文档同步；tag |
 | **P1** | `char` 7 个 `is_*`；`math` 新族（`Float`/`Real` 方法层） | ①② | P0 | 每条 M0 转发；无宿主重名；fixture 覆盖 |
-| **P2** | 新增 `std::sys`（env / process / errno） | ①② | P1 | 无新类型；借用指针语义写进 README |
+| **P2** | 新增 `std::env` / `std::process` / `std::errno`（各一个模块） | ①② | P1 | 无新类型；借用指针语义写进 README |
 | **P3** | `stdio` 句柄映射补全（`seek`/`tell`/`rewind`/`eof`/`error`/`read_char`/`write_char`/`read_line`/`flush`） | ② | P0 | 无新类型；EOF/错误位/幂等 close 有 fixture |
 | **P4** | `std::fs` 补充（`read_link`/`resize`/`set_mode`/`resolve_path`/`is_*`/`change_dir`/`file_*`） | ② | P2 | 不引入 `FileStat`；重复 `stat` 代价写进 README |
 | **P5** | `std::time`：`now_sec`/`now_ns`/`diff_seconds`/`sleep_ms` + `long` 上 `year()`…`format()` | ①② | P2 | 不做 `TimeParts`；`tm` 只在 shim 内；时区行为写明 |
@@ -520,7 +525,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 - **Q1**：`std/io/File.m.ct` 是否拆成 `Path` / `File`？（建议不拆）
 - **Q2**：`IoFile` 包装体不释放是否修正？（破坏性）
 - **Q3**：`char *` 44 个名字是否可接受，还是要给便利层设上限、超出走新类型？
-- **Q4**：`env`/`process`/`errno` 合并为 `std::sys` 是否接受？
+- **Q4（已定）**：`env`/`process`/`errno` **不合并**为 `std::sys`，三者各自成模块，目录与 libc／POSIX 原有头文件一一对应。依据：降低 C 程序员的心智成本——做的是 OO 封装，不引入新的分类法。
 - **Q5**：是否合并 P1/P2、P3/P4 发布以减少 minor？
 - **Q6**：`net` 首期是否纳入？
 - **Q7**：`file_*` 标量查询的重复 `stat` 可接受，还是值得一个值类型？
