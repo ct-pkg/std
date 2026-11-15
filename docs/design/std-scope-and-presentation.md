@@ -82,20 +82,25 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 | `to_int` `to_double` | ② 方法层（M0） | 已有 | `-> atoi/atof` |
 | `reverse_find_char` / `compare_ignore_case` | ② 方法层（M1） | 新增 | 补齐反向查找与忽略大小写比较 |
 | `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real` | ② 方法层（M1） | 新增 | 需要 `strtol` 的 `endptr` + `errno` 才能报错；底座仍是映射 |
-| `copy_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` | ② 方法层（M1） | 新增 | 内存操作（宿主 `char *`，`void *` 挂不了方法）：`copy_from` 统一映射 `memmove`（允许重叠，不另设 `memcpy` 名字）；`fill` → `memset`；`compare_with` → `memcmp`（返回三态，不布尔化）；`find_byte` → `memchr`（返回指针或 `NULL`）；`compare_prefix` → `strncmp`（`\0` 停） |
+| `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` | ② 方法层（M1） | 新增 | 内存操作（宿主 `char *`，`void *` 挂不了方法）：`copy_from` → `memcpy`（要求源/目标不重叠，快路径）；`move_from` → `memmove`（允许重叠，内部做方向判断，略慢）；`fill` → `memset`；`compare_with` → `memcmp`（返回三态，不布尔化）；`find_byte` → `memchr`（返回指针或 `NULL`）；`compare_prefix` → `strncmp`（`\0` 停） |
+| `split_into(separator, out, cap)` | ② 方法层（C） | 新增 | 拷贝语义：按 `separator` 切分，每段拷进调用方缓冲 `out`，返回段数；缓冲不足返回所需数量；**原串一个字节都不改**。不是 libc 映射（libc 只有 `strtok`/`strtok_r`，且会改写源串），底层可用 `strtok_r` 或自行扫描 |
 
-`memcpy` / `memmove` 合并为一个 `copy_from`：`memmove` 允许源/目标重叠，是 `memcpy` 的安全超集；
-统一用它可消除“该选哪个”的成本，方法层编译期展开、无运行时开销。既有 `copy_to`
-（`src.copy_to(dst, n)`）是同一能力、方向相反；按“方向只保留一个”，0.4.0 起统一为
-`dst.copy_from(src, n)`，`copy_to` 退场（破坏性改名，随 issue 0001 同批通告）。
+`memcpy` / `memmove` 不合并，拆成 `copy_from` / `move_from` 两个名字：前者要求不重叠、是快路径，
+后者允许重叠（含原地左移/右移）、内部多一次方向判断。合并成一个名字会让所有普通拷贝都付
+`memmove` 的检查成本；「是否可能重叠」应由调用点声明，而不是牺牲快路径换取少一个名字。
+既有 `copy_to`（`src.copy_to(dst, n)`）是同一能力、方向相反；按“方向只保留一个”，0.4.0 起统一为
+`dst.copy_from(src, n)` 或 `dst.move_from(src, n)`，`copy_to` 退场（破坏性改名，随 issue 0001 同批通告）。
 
-另：`String` → `CStrOps`（issue 0001，`0.4.0`），除 `copy_to` → `copy_from` 外方法名不变。
+`split_into` 属 ② 便利层，不是 libc 映射：`strtok`/`strtok_r` 会就地写入 `\0` 改写源串，语义不同，
+不能直接对外暴露；`split_into` 只读源串、每段另行拷出。
+
+另：`String` → `CStrOps`（issue 0001，`0.4.0`），除 `copy_to` → `copy_from`/`move_from` 外方法名不变。
 
 ### 2.2 `std::num`（4 个宿主）
 
 | API | 形态 | 状态 |
 | --- | --- | --- |
-| `absolute_value` `clamp` `max` `min` `to_base` | ② 方法层（M0/M1） | 已有（原名 `abs`） |
+| `abs` `clamp` `max` `min` `to_base` | ② 方法层（M0/M1） | 已有 |
 | `to_str` `to_string` | ② 方法层（M1，`snprintf`） | 已有 |
 | `is_digit` `is_alpha` `is_space` `is_upper` `is_lower` `to_upper` `to_lower` | ② 方法层（M0） | 已有 |
 | `is_alnum` `is_punctuation` `is_printable` `is_graphical` `is_control` `is_blank` `is_hex_digit` | ② 方法层（M0） | 新增（`char` 宿主，各 1 行） |
@@ -104,13 +109,18 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 
 | API | 形态 | 状态 |
 | --- | --- | --- |
-| `absolute_value` `square_root` `floor` `ceiling` `round`（`Float`/`Real`） | ② 方法层（M0） | 已有 |
+| `abs` `sqrt` `floor` `ceil` `round`（`Float`/`Real`） | ② 方法层（M0） | 已有 |
 | `is_nan` `is_infinite`（`Real`） | ② 方法层（M0/M1） | 已有 |
-| `power` `exponential` `exponential_base_two` `exponential_minus_one` `natural_logarithm` `logarithm_base_two` `logarithm_base_ten` `logarithm_one_plus` | ② 方法层（M0） | 新增：`2.0.power(10.0)` 优于 `Math.power(2.0, 10.0)` |
-| `sine` `cosine` `tangent` `arc_sine` `arc_cosine` `arc_tangent` `arc_tangent_two` `hyperbolic_sine` `hyperbolic_cosine` `hyperbolic_tangent` `hypotenuse` `cube_root` | ② 方法层（M0） | 新增 |
-| `floating_remainder` `remainder` `positive_difference` `fused_multiply_add` `copy_sign` | ② 方法层（M0） | 新增 |
+| `pow` `exp` `expm1` `log` `log2` `log10` `log1p` | ② 方法层（M0） | 新增：`2.0.pow(10.0)` 优于 `Math.pow(2.0, 10.0)` |
+| `sin` `cos` `tan` `asin` `acos` `atan` `atan2` `sinh` `cosh` `tanh` `hypot` `cbrt` | ② 方法层（M0） | 新增 |
+| `fmod` `remainder` `fdim` `fma` `copysign` | ② 方法层（M0） | 新增 |
 | `truncate` `min` `max` `is_nan` `is_infinite`（`Float` 补齐） | ② 方法层（M0） | 新增 |
-| `Math.square_root` / `Math.absolute_value`（namespace） | ① 底座（M0） | 已有，保留；新能力不再往 namespace 加（见 §3.6 D1） |
+| `Math.sqrt` / `Math.fabs`（namespace） | ① 底座（M0） | 已有，保留；新能力不再往 namespace 加（见 §3.6 D1） |
+
+数学记号（`pow`/`exp`/`log`/`sin`/`sqrt`/`abs`/`fabs` 等）按负责人裁定保留原记号，不再展开：它们是
+数学界通用写法，展开成 `sine`／`natural_logarithm`／`absolute_value` 反而更难读。只有看不出意思的
+`frexp`/`modf`/`ldexp`（以及 `expm1`/`log1p`，保留 `exponential_minus_one`/`logarithm_one_plus`）才改名，
+规则见 §5.1。
 
 ### 2.4 `std::io`
 
@@ -161,7 +171,7 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 | `env`：`name.get_env(out, cap)`；`std::env::Env.set(name, value)` / `unset(name)` | ② 方法层 + ① 底座（M0） | `getenv` 返回借用指针，方法层负责拷进调用方缓冲（`get` 带 `out` 更安全）；set/unset 无接收者价值，走 namespace |
 | `process`：`std::process::Process.get_pid()` `get_parent_pid()` `get_uid()` `get_effective_uid()` `get_gid()` | ① 底座（M0） | 无接收者、无链式收益，五条单行；控制/信号见 §2.9 |
 | `errno`：`std::errno::Errno.get_last()` | ① 底座（M1） | `errno` 是宏，一条 `return errno;` |
-| `errno`：`code.message()` / `std::errno::Errno.message(code)` | ② 方法层（M0/M1） | `123.message()` 链式可用；底层 `strerror`，返回借用指针 |
+| `errno`：`code.error_message()` / `std::errno::Errno.error_message(code)` | ② 方法层（M0/M1） | `123.error_message()` 链式可用；底层 `strerror`，返回借用指针 |
 | `net`：`"1.2.3.4".parse_ip(out)` | ② 方法层（M1） | `inet_pton` 出参适配 |
 | `net`：`std::net`：`Socket` + `"host:80".connect()` + `bind_to(port)` / `listen_backlog(n)` / `accept()` / `send_bytes` / `receive_bytes` / `shutdown_both` / `close`；UDP 收发；`resolve_host`；`set_socket_option` | **③ OO2：`Socket`**，方法本体 M0/M1 | **一次做全**（负责人已定裁定，见 §8.2 Q6）：UDP、`resolve_host`、`set_socket_option` 与 TCP 同轮交付。**理由：真持有 fd**，`accept` 还会产生新 fd；零代码映射会把关闭责任丢给调用方。`connect` 是字符串起头的工厂（DNS 在 shim 内解析并释放） |
 | `net`：`Address` | **不建模（负责人已定）** | 主机用 `char *`、端口用 `int`，方法寄生在这两个宿主上；`receive_from` 无法用返回值同时给出数据与来源，改用出参回报来源地址，形如 `sock.receive_from(buf, len, ipbuf, &port)`。依据：静态映射优先、能力寄生在基本类型上，不引入值类型。 |
@@ -222,7 +232,7 @@ struct 作为它的对等类型」**，一旦引入就多出装箱/拆箱、拷�
 | A2 | `char *` → 内置 `Str`（已存在，非本包） | `char *` 能挂方法（`CStrOps` 就是），但**不拥有**；长度要每次 `strlen`，且无法表达「内嵌 `\0` + 长度」 | 拥有堆缓冲 + 显式长度 + `Drop`；非 NUL 结尾也能安全传递 | 装箱：每次构造一次 `malloc`；拷贝：带 `Drop` 的值不能浅拷贝，复制必须深拷贝或显式 `clone`；所有权：与借用 `char *` 混用时边界要写清；互操作：所有 libc/shim 入口仍要 `.data` 取裸指针，`const char *` 与 `Str` 两套 API 并存；命名/文档：同一能力两种写法（`"s".len()` vs `s.len()`），必须规定「何时用哪个」 | 已存在；本包只消费，不新增（policy 待评估） |
 | A3 | `DIR *` → 本方案 `Dir` | C 侧 `DIR` 是不透明类型，CT 看不到定义；裸指针无法挂方法（需要可命名的 CT 类型），且必须 `closedir` | 可命名、可 `Drop`、`close` 幂等；`next()` 等方法有接收者 | 装箱：每个目录句柄一个 `malloc`（约一个指针 + 状态）；拷贝：句柄不可拷贝，需禁止或只允许 `own` 转移；所有权：与 `open_dir()` 的工厂语义绑定；互操作：`readdir` 的 `struct dirent` 仍在 shim 内，返回的是拷出的名字，调用方拿不到原始 `dirent`；命名/文档：`Dir` 与 `FsOps.list` 两种列举方式并存，需说明取舍 | 待评估（本方案建议做，但不拍板） |
 | A4 | `int`（fd）→ 本方案 `Socket` | `int` 本身是合法宿主（`Int` 已存在），技术上能挂 `send`/`close`，但会把 socket 方法挂到**所有整数**上 | 可命名、可 `Drop`、`accept()` 产出新句柄，所有权清晰 | 装箱：每个 socket 一个包装 struct；拷贝：fd 不可拷贝，需禁止；所有权：`accept` 产生新 `own`，与 `open_socket` 一致；互操作：需要 fd 时得开 `raw_fd()`（是否暴露待定），否则无法和 `select`/`poll` 等未包裹能力配合；命名/文档：`Socket` 与 `Fd` 的边界要写明 | 待评估（本方案建议做，但不拍板） |
-| A5 | 数组/列表（未来，如「目录项数组」「split 结果」） | CT 的 `char *` 承载不了「多个字符串」；调用方缓冲（`list(out, cap)`）在数量不定时不好用 | 可命名、可遍历、可 `Drop`；长度与容量显式 | 装箱：每个列表一个 struct + 元素缓冲；拷贝：元素是 `char *` 还是 `Str` 决定深浅拷贝；所有权：元素释放责任在列表；互操作：与现有 `list`/`read_file` 的缓冲式 API 并存；命名/文档：`StrList` 之类的名字要避免与内置 `Vec` 重复 | 待评估（本方案 v1 不引入；用缓冲式 API 规避） |
+| A5 | 数组/列表（未来，如「目录项数组」「`split_into` 的分段结果」） | CT 的 `char *` 承载不了「多个字符串」；调用方缓冲（`list(out, cap)`）在数量不定时不好用 | 可命名、可遍历、可 `Drop`；长度与容量显式 | 装箱：每个列表一个 struct + 元素缓冲；拷贝：元素是 `char *` 还是 `Str` 决定深浅拷贝；所有权：元素释放责任在列表；互操作：与现有 `list`/`read_file` 的缓冲式 API 并存；命名/文档：`StrList` 之类的名字要避免与内置 `Vec` 重复 | 待评估（本方案 v1 不引入；用缓冲式 API 规避） |
 
 不属本节的两类（放在 §2.8 处理，不要混进来）：
 
@@ -249,18 +259,18 @@ import std::io::Io;
 
 int main(void)
 {
-    std::io::printf("square_root=%.1f\n", std::math::Math.square_root(9.0));
-    std::io::printf("absolute_value=%.1f\n", std::math::Math.absolute_value(-2.5));
+    std::io::printf("sqrt=%.1f\n", std::math::Math.sqrt(9.0));
+    std::io::printf("fabs=%.1f\n", std::math::Math.fabs(-2.5));
     return 0;
 }
 ```
 
 ```
-square_root=3.0
-absolute_value=2.5
+sqrt=3.0
+fabs=2.5
 ```
 
-这是标准 M0：声明用展开名 `square_root`，shim 内映射到 libc `sqrt`（对应关系见 §6.2）。
+这是标准 M0：声明沿用数学记号 `sqrt`，shim 一行转发到 libc `sqrt`，名字与 C 侧一致。
 
 **挂法二：类型宿主方法**（接收者是值）——见 §3.2。
 
@@ -377,7 +387,7 @@ drop ran
 
 | 编号 | 偏离 | 为什么保留 | 取舍/后续 |
 | --- | --- | --- | --- |
-| D1 | `std::math::Math.square_root(x)` 是函数式，不是 `x.square_root()` | 历史接口已按 §5.1 展开；数学写法普遍 | 新 math 能力一律走 `Float`/`Real` 方法层；namespace 不再扩张，长期可考虑让 `Math` 退役 |
+| D1 | `std::math::Math.sqrt(x)` 是函数式，不是 `x.sqrt()` | 数学记号可读性最好，且是历史接口（§5.1 保留记号、不展开） | 新 math 能力一律走 `Float`/`Real` 方法层；namespace 不再扩张，长期可考虑让 `Math` 退役 |
 | D2 | 变参格式化/解析不封装（`scanf`/`sprintf`/`fprintf`） | CT 无变参声明机制，shim 也绕不开；`printf` 仅保留 0.3.0 遗留、不再扩展 | 不做；成对替代见 §2.9（`to_string`/`concat`、`parse_*`、格式化+`write`） |
 | D3 | `get_dir(out, cap)` 用出参，不是 `get_dir()` 返回值 | 无接收者，且返回静态缓冲区不安全 | 若将来允许静态槽（如 `to_string`），可改成链式 |
 | D4 | `parse_long(out)` / `format_time(out, cap)` 出参 + 状态码 | 失败必须可报；链式返回值无法同时表达 | 与 `copy`/`read_line` 同类，包内已有先例 |
@@ -442,8 +452,12 @@ import std::net::Socket;
 - 守 §5.1：`snake_case`、动词开头；`get_` / `set_` / `has_` / `is_` / `to_` / `from_` 合规。
 - **方法层一律用展开式**：能读出「动作 + 对象」的 `snake_case`，不再豁免 libc 缩写。
   例：`frexp` → `split_exponent`、`ldexp` → `scale_by_power_of_two`、`modf` → `split_fraction`、
-  `qsort` → `sort`、`bsearch` → `binary_search`、`strtol` → `parse_long`、`atoi` → `to_int`。
-- 只有已成为通用词的缩写保留：`http`、`utf8`、`pid` 等；`isalnum` → `is_alnum` 这类拆分照旧。
+  `qsort` → `sort`、`bsearch` → `binary_search`、`strtol` → `parse_long`、`atoi` → `to_int`、
+  `strerror` → `error_message`。
+- **例外一：数学记号保留原样。** `pow`、`exp`、`log`、`sin`、`sqrt`、`abs`、`fabs` 等是数学界通用记号，
+  展开成 `sine`／`natural_logarithm`／`absolute_value` 反而更难读，因此不展开；只有看不出意思的
+  `frexp`/`modf`/`ldexp`、`expm1`/`log1p` 才展开。
+- **例外二：已成为通用词的缩写保留**：`http`、`utf8`、`pid` 等；`isalnum` → `is_alnum` 这类拆分照旧。
 - 方案只立展开名这一套；§6.2 的映射表是**查证索引**，用来从展开名反查对应 libc 函数，不构成第二套写法。
 - **便利层也受同宿主唯一名约束**：补方法前必须查表。
 
@@ -451,16 +465,18 @@ import std::net::Socket;
 
 | 宿主 | 现状 | 本版新增 | 合计（最坏） |
 | --- | --- | --- | --- |
-| `char *` | 25（`README.md:145-153`） | `reverse_find_char` `compare_ignore_case` `parse_long` `parse_long_long` `parse_unsigned_long` `parse_real` `open_dir` `read_link` `resize` `set_mode` `resolve_path` `is_readable` `is_writable` `change_dir` `file_size` `file_mode` `file_mtime` `parse_ip` `connect` `fill` `compare_with` `find_byte` `compare_prefix` `copy_from`（24 个新增名；`copy_from` 替代既有 `copy_to`，净增 23，即 25 − 1 + 24；名字均按 §5.1 展开） | 48 |
+| `char *` | 25（`README.md:145-153`） | `reverse_find_char` `compare_ignore_case` `parse_long` `parse_long_long` `parse_unsigned_long` `parse_real` `open_dir` `read_link` `resize` `set_mode` `resolve_path` `is_readable` `is_writable` `change_dir` `file_size` `file_mode` `file_mtime` `parse_ip` `connect` `fill` `compare_with` `find_byte` `compare_prefix` `copy_from` `move_from` `split_into`（26 个新增名；`copy_from`/`move_from` 替代既有 `copy_to`，净增 25，即 25 − 1 + 26；名字均按 §5.1 展开） | 50 |
 | `long` | 7 | 0（时间不挂 `long`，Q8 已定） | 7 |
-| `float`/`double` | 5 / 9 | math 新族（约 20，均按 §5.1 展开） | 25 / 29 |
+| `float`/`double` | 5 / 9 | math 新族（约 20，均按 §5.1 命名，记号保留原样） | 25 / 29 |
 | `char` | 7 | 7 个 `is_*`（`is_alnum` / `is_punctuation` / `is_printable` / `is_graphical` / `is_control` / `is_blank` / `is_hex_digit`） | 14 |
 
-改名不改变名字数量：`char *` 仍为 48，`char` 仍为 14；展开名未与既有同宿主名冲突。
+`char *` 从 48 增至 50：本版把 `memcpy`/`memmove` 拆成 `copy_from`/`move_from`，并新增 `split_into`。
+换名本身不改变名字数量（math 回退记号、`message` → `error_message` 都是一换一），`char` 仍为 14；
+展开名与既有同宿主名无冲突。
 
 冲突处理：`open` 已被 `Path` 占用 → 目录用 `open_dir`；`read`/`write`/`close` 不再占 `char *`；
-`copy_from` 取代既有 `copy_to`（`src.copy_to(dst, n)` → `dst.copy_from(src, n)`），内存版只保留一个
-方向；`copy` 仍是带容量 / `\0` 的字符串拷贝；
+`copy_from`/`move_from` 取代既有 `copy_to`（`src.copy_to(dst, n)` → `dst.copy_from(src, n)` 或
+`dst.move_from(src, n)`），内存版只保留一个方向、但区分是否允许重叠；`copy` 仍是带容量 / `\0` 的字符串拷贝；
 `long` 不再新增时间方法（Q8 已定），因此没有 `format` 与既有 `to_str`/`to_string` 的冲突。
 
 ### 5.3 失败表达
@@ -477,12 +493,13 @@ import std::net::Socket;
 
 ### 5.4 所有权
 
-- **借用（默认）**：方法层不拥有输入、只写调用方缓冲；`env` / `errno.message` 返回**借用**指针，
+- **借用（默认）**：方法层不拥有输入、只写调用方缓冲；`env` / `errno.error_message` 返回**借用**指针，
   生命周期到下一次同类调用（README 必须写）。
 - **持有**：`Dir` / `Socket` 已定；`Fd` / `Timer` 若按 §1.1 判为资源类型，同样按此规则处理。
   `pub struct X { ... } use Drop;` + 显式 `impl Drop`
   （字段胶水不释放指针字段，`ct-lang/docs/language-spec.md:2549`）；`own X *p = ...`；`close()` 幂等。
 - **值类型**：不新增（`FileStat` / `TimeParts` 不建值类型，`Address` 不建模）。
+- **拷贝语义的输入**：`split_into` 只读源串，不写入、不移动原串；每段写入调用方缓冲。
 - 内部工厂返回类型必须写成 `struct X *`（`own` 看字面量）。
 
 ## 6. 文档呈现
@@ -516,17 +533,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 | `parse_long` | `strtol` |
 | `parse_long_long` | `strtoll` |
 | `parse_unsigned_long` | `strtoul` |
-| `absolute_value` | `abs` / `fabs` |
-| `square_root` | `sqrt` |
-| `ceiling` | `ceil` |
-| `power` | `pow` |
-| `exponential` / `exponential_base_two` / `exponential_minus_one` | `exp` / `exp2` / `expm1` |
-| `natural_logarithm` / `logarithm_base_two` / `logarithm_base_ten` / `logarithm_one_plus` | `log` / `log2` / `log10` / `log1p` |
-| `sine` / `cosine` / `tangent` | `sin` / `cos` / `tan` |
-| `arc_sine` / `arc_cosine` / `arc_tangent` / `arc_tangent_two` | `asin` / `acos` / `atan` / `atan2` |
-| `hyperbolic_sine` / `hyperbolic_cosine` / `hyperbolic_tangent` | `sinh` / `cosh` / `tanh` |
-| `hypotenuse` / `cube_root` | `hypot` / `cbrt` |
-| `floating_remainder` / `positive_difference` / `fused_multiply_add` / `copy_sign` | `fmod` / `fdim` / `fma` / `copysign` |
+| `exponential_minus_one` / `logarithm_one_plus` | `expm1` / `log1p` |
 | `is_infinite` | `isinf` |
 | `is_printable` / `is_graphical` / `is_control` / `is_punctuation` / `is_hex_digit` | `isprint` / `isgraph` / `iscntrl` / `ispunct` / `isxdigit` |
 | `put_string` / `put_char` / `get_char` / `flush` | `puts` / `putchar` / `getchar` / `fflush` |
@@ -534,6 +541,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 | `make_directory` | `mkdir` |
 | `now_seconds` / `now_nanoseconds` / `sleep_milliseconds` | `time` / `clock_gettime` / `nanosleep` |
 | `get_effective_uid` | `geteuid` |
+| `error_message` | `strerror` |
 | `receive_bytes` / `set_socket_option` / `receive_from` | `recv` / `setsockopt` / `recvfrom` |
 | `sort` / `binary_search` / `scan_directory` | `qsort` / `bsearch` / `scandir` |
 | `scale_by_power_of_two` / `split_exponent` / `split_fraction` | `ldexp` / `frexp` / `modf` |
@@ -542,7 +550,11 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 | `pipe_open` / `execute*` | `popen` / `exec*` |
 | `wide_string_length` / `multibyte_to_wide_string` / `wide_to_multibyte_string` | `wcslen` / `mbstowcs` / `wcstombs` |
 | `reverse_find_char` | `strrchr` |
-| `copy_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` | `memmove`（含 `memcpy`）/ `memset` / `memcmp` / `memchr` / `strncmp` |
+| `copy_from` / `move_from` | `memcpy` / `memmove` |
+| `fill` / `compare_with` / `find_byte` / `compare_prefix` | `memset` / `memcmp` / `memchr` / `strncmp` |
+
+`split_into` 不列入本索引：libc 只有会改写源串的 `strtok`/`strtok_r`，没有等价函数；它是 ② 便利层的
+拷贝式切分（见 §2.1）。
 
 维护规则：新增 API 一次改三处（§4 表、模块 README、查证索引），缺一处视为未完成。
 
@@ -555,7 +567,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 | 序 | 内容 | 层 | 依赖 | 阶段验收 |
 | --- | --- | --- | --- | --- |
 | **P0** | `String` → `CStrOps`（issue 0001，`0.4.0`） | 改名 | 无 | 旧名零命中；`tests/run.sh` 全绿；文档同步 |
-| **P1** | `char` 7 个 `is_*`；`char *` 内存方法（`copy_from`/`fill`/`compare_with`/`find_byte`/`compare_prefix`）；`math` 新族（`Float`/`Real` 方法层）；`sort`/`binary_search`、`scale_by_power_of_two`/`split_exponent`/`split_fraction` ① 直连 | ①② | P0 | 每条 M0/M1 转发；无宿主重名；重叠拷贝夹具；三态/指针返回验证；回调/出参用法写明 |
+| **P1** | `char` 7 个 `is_*`；`char *` 内存方法（`copy_from`/`move_from`/`fill`/`compare_with`/`find_byte`/`compare_prefix`）与 `split_into`；`math` 新族（`Float`/`Real` 方法层）；`sort`/`binary_search`、`scale_by_power_of_two`/`split_exponent`/`split_fraction` ① 直连 | ①② | P0 | 每条 M0/M1 转发；无宿主重名；重叠/不重叠拷贝夹具；三态/指针返回验证；回调/出参用法写明 |
 | **P2** | 新增 `std::env` / `std::process`（含控制/信号）/ `std::errno` / `std::locale` / `std::wchar`（各一个模块） | ①② | P1 | 无新类型；借用指针语义、`fork` 后状态、`set_locale` 全局影响写进 README |
 | **P3** | `stdio` 句柄映射补全（`seek`/`tell`/`rewind`/`at_end_of_file`/`has_error`/`read_char`/`write_char`/`read_line`/`flush`）；`Fd` 形态判定（按 §1.1）；变参格式化/解析按 §2.9 成对替代，不封装（`printf` 仅保留遗留） | ②/③（`Fd` 待判） | P0 | EOF/错误位/幂等 close 有 fixture；`Fd` 判定结论落档；`to_string`/`concat`、`parse_*`、格式化+`write` 样例覆盖 |
 | **P4** | `std::fs` 补充（`read_link`/`resize`/`set_mode`/`resolve_path`/`is_*`/`change_dir`/`file_*`）；`scan_directory` ① 直连 | ①② | P2 | 不引入 `FileStat` 值类型；重复 `stat` 代价写进 README；回调与数组释放写明 |
@@ -573,7 +585,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 | 风险 | 说明 | 缓解 |
 | --- | --- | --- |
-| 便利层铺宽 → 名字通胀 | `char *` 25 → 48；`long` 保持 7（Q8 已定不挂时间） | 每个名字必须给出「比函数式省多少」；同宿主查表 |
+| 便利层铺宽 → 名字通胀 | `char *` 25 → 50；`long` 保持 7（Q8 已定不挂时间） | 每个名字必须给出「比函数式省多少」；同宿主查表 |
 | 宿主污染 | 领域方法挂基础类型会让所有同类型值获得该方法（如 `size.year()`） | Q8 已定：时间不挂 `long`，走 `Time` namespace；其他宿主按 §5.2 查表 |
 | 时区/线程安全 | `localtime_r` 无时区参数；`strerror` 静态缓冲 | 文档写明「本地时区」与 `strerror` 非线程安全 |
 | `own` 初始化式很窄 | 只认 `malloc`/`calloc`/`struct X *` 工厂；强转与别名不认（实测） | 工厂返回类型写 `struct X *`；每个新类型加 `own` 样例 |
@@ -590,7 +602,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 - **Q1**：`std/io/File.m.ct` 是否拆成 `Path` / `File`？（建议不拆）
 - **Q2**：`IoFile` 包装体不释放是否修正？（破坏性）
-- **Q3**：`char *` 48 个名字是否可接受，还是要给便利层设上限、超出走新类型？
+- **Q3**：`char *` 50 个名字是否可接受，还是要给便利层设上限、超出走新类型？
 - **Q4（已定）**：`env`/`process`/`errno` **不合并**为 `std::sys`，三者各自成模块，目录与 libc／POSIX 原有头文件一一对应。依据：降低 C 程序员的心智成本——做的是 OO 封装，不引入新的分类法。
 - **Q5（不再适用）**：P0–P7 改为施工顺序，不按相发布；合并相邻相发布的讨论随之取消，版本节奏见 §7 / §8.1。
 - **Q6（已定）**：`net` 一次做全，UDP、`resolve_host`、`set_socket_option` 全部纳入，不再留在暂不排期。依据：不做半截模块——只封一半会让使用者不知道到底该用封装还是退回 libc。`Address` 不建类型（已定）：主机用 `char *`、端口用 `int`，方法寄生在这两个宿主上；`receive_from(buf, len, ipbuf, &port)` 以出参回报来源。依据：静态映射优先、能力寄生在基本类型上，不引入值类型。
@@ -603,7 +615,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 ### 8.3 本文可被证伪的假设
 
-1. 「便利层铺宽是净收益」——若评审认为 48 个 `char *` 名字的维护成本过高，需按 Q3 收缩。
+1. 「便利层铺宽是净收益」——若评审认为 50 个 `char *` 名字的维护成本过高，需按 Q3 收缩。
 2. 「时间方法可以挂 `long`」——Q8 已定否掉；时间走 `Time` namespace，不再作为假设。
 3. 「`Fd` / `Timer` 可以先不做」——全库口径已把两者纳入交付面，本条不再作为假设；形态由 §1.1 判定。
 4. 「`Address` 不建类型，多地址回退由调用方在 `resolve_host` 结果上自行处理」——若统一地址表示成为硬需求，需重开该裁定。
