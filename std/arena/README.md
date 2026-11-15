@@ -1,7 +1,7 @@
 # `std::arena` — 块式 bump 分配器（`Arena`）
 
 一次 `init` 拿一块内存，之后 `alloc(n)` 只做指针前进；没有逐个释放，只有整体回收
-（`reset` 回收副块，`freeAll` 连第一块一起放）。
+（`reset` 回收副块，`free_all` 连第一块一起放）。
 
 这是 **CT 自有类型**，走原生 OO：`pub trait` + `struct ... use Trait` + `impl` 全在
 [`Arena.h.ct`](Arena.h.ct) 里，没有 `.m.ct`、没有 shim。
@@ -16,7 +16,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 的 `<stdlib.h>`（`malloc` / `free`）；`ct.pkg` 的约束是 `requires ct >= 0.20.3`。
+依赖 C 的 `<stdlib.h>`（`malloc` / `free`）；`ct.pkg` 的约束是 `requires ct >= 0.30.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -55,17 +55,17 @@ int main(void)
 
     tp->init();
 
-    tp->checkEqInt(ap->init(32), 0, "init");
+    tp->check_eq_int(ap->init(32), 0, "init");
     p = (char *)ap->alloc(8);
-    tp->checkTrue(p != 0, "alloc");
+    tp->check_true(p != 0, "alloc");
     p[0] = 'A';
-    tp->checkEqInt(p[0], 'A', "the slice is writable");
+    tp->check_eq_int(p[0], 'A', "the slice is writable");
 
     ap->reset();
     p = (char *)ap->alloc(8);
-    tp->checkTrue(p != 0, "alloc after reset");
-    ap->freeAll();
-    tp->checkTrue(ap->alloc(8) == 0, "alloc after freeAll fails");
+    tp->check_true(p != 0, "alloc after reset");
+    ap->free_all();
+    tp->check_true(ap->alloc(8) == 0, "alloc after free_all fails");
 
     return tp->report();
 }
@@ -103,9 +103,9 @@ int main(void)
 | `init(block)` | `int init(int block)` | 分配第一块（`block < 16` 时按 16）；成功 0，分配失败 `-1` |
 | `alloc(n)` | `void *alloc(int n)` | 分配 `n` 字节，8 字节对齐；`n <= 0`、未 init 或拿不到块返回 `NULL` |
 | `reset()` | `void reset()` | 释放第一块之后的所有块，`used` 归零；第一块保留并复用 |
-| `freeAll()` | `void freeAll()` | 释放包括第一块在内的所有块；之后 `alloc` 返回 `NULL`，要再用就重新 `init` |
+| `free_all()` | `void free_all()` | 释放包括第一块在内的所有块；之后 `alloc` 返回 `NULL`，要再用就重新 `init` |
 
-`alloc` 返回的内存不初始化，内容任意。`reset()` / `freeAll()` 都可重复调用。
+`alloc` 返回的内存不初始化，内容任意。`reset()` / `free_all()` 都可重复调用。
 
 ## 5. 教程
 
@@ -125,14 +125,14 @@ int main(void)
     char *q;
 
     tp->init();
-    tp->checkEqInt(ap->init(32), 0, "init");
+    tp->check_eq_int(ap->init(32), 0, "init");
     p = (char *)ap->alloc(1);
-    tp->checkTrue(p != 0, "alloc a byte");
-    tp->checkEqInt((int)((long)p % 8), 0, "alloc is 8-byte aligned");
+    tp->check_true(p != 0, "alloc a byte");
+    tp->check_eq_int((int)((long)p % 8), 0, "alloc is 8-byte aligned");
     q = (char *)ap->alloc(8);
-    tp->checkTrue(q != 0, "alloc eight bytes");
-    tp->checkEqInt((int)(q - p), 8, "a one-byte request still takes eight bytes");
-    ap->freeAll();
+    tp->check_true(q != 0, "alloc eight bytes");
+    tp->check_eq_int((int)(q - p), 8, "a one-byte request still takes eight bytes");
+    ap->free_all();
     return tp->report();
 }
 ```
@@ -162,14 +162,14 @@ int main(void)
     int i;
 
     tp->init();
-    tp->checkEqInt(ap->init(32), 0, "init");
-    tp->checkTrue(ap->alloc(0) == 0, "alloc of zero bytes is refused");
-    tp->checkTrue(ap->alloc(-1) == 0, "alloc of a negative size is refused");
+    tp->check_eq_int(ap->init(32), 0, "init");
+    tp->check_true(ap->alloc(0) == 0, "alloc of zero bytes is refused");
+    tp->check_true(ap->alloc(-1) == 0, "alloc of a negative size is refused");
     q = (char *)ap->alloc(40);
-    tp->checkTrue(q != 0, "alloc across a block boundary");
+    tp->check_true(q != 0, "alloc across a block boundary");
     for (i = 0; i < 40; i++) q[i] = (char)i;
-    tp->checkEqInt(q[39], (char)39, "the overflow block is writable");
-    ap->freeAll();
+    tp->check_eq_int(q[39], (char)39, "the overflow block is writable");
+    ap->free_all();
     return tp->report();
 }
 ```
@@ -187,7 +187,7 @@ int main(void)
 者），挂在第一块后面，然后从新块里切。初始化时给的 `block` 不是总内存上限，只是第一块的
 大小。
 
-### 5.3 `reset()` 与 `freeAll()`
+### 5.3 `reset()` 与 `free_all()`
 
 ```ct
 import std::arena::Arena;
@@ -203,19 +203,19 @@ int main(void)
     char *p;
 
     tp->init();
-    tp->checkEqInt(ap->init(32), 0, "init");
+    tp->check_eq_int(ap->init(32), 0, "init");
     first = (char *)ap->alloc(8);
-    tp->checkTrue(first != 0, "alloc");
+    tp->check_true(first != 0, "alloc");
     ap->reset();
     p = (char *)ap->alloc(8);
-    tp->checkTrue(p != 0, "alloc after reset");
-    tp->checkTrue(p == first, "reset recycles the first block");
-    ap->freeAll();
-    tp->checkTrue(ap->alloc(8) == 0, "alloc after freeAll fails");
-    tp->checkEqInt(ap->init(32), 0, "init makes the arena usable again");
+    tp->check_true(p != 0, "alloc after reset");
+    tp->check_true(p == first, "reset recycles the first block");
+    ap->free_all();
+    tp->check_true(ap->alloc(8) == 0, "alloc after free_all fails");
+    tp->check_eq_int(ap->init(32), 0, "init makes the arena usable again");
     p = (char *)ap->alloc(8);
-    tp->checkTrue(p != 0, "alloc after re-init");
-    ap->freeAll();
+    tp->check_true(p != 0, "alloc after re-init");
+    ap->free_all();
     return tp->report();
 }
 ```
@@ -229,7 +229,7 @@ int main(void)
 | 操作 | 副块 | 第一块 | 之后能 `alloc` 吗 |
 | --- | --- | --- | --- |
 | `reset()` | 全部释放 | 保留、`used` 归零 | 能，且从第一块开头重新切 |
-| `freeAll()` | 全部释放 | 也释放 | 不能，必须先 `init` |
+| `free_all()` | 全部释放 | 也释放 | 不能，必须先 `init` |
 
 `reset()` 之后拿到的指针等于第一次分配时的地址（`p == first`），说明第一块被复用了。
 上一轮的指针虽然仍指向同一块内存，但内容随时会被覆盖——逻辑上已经失效。
@@ -256,8 +256,8 @@ int main(void)
     if (!heap) return 2;
     *heap = seed;
     p = (char *)heap->alloc(8);
-    tp->checkTrue(p != 0, "alloc through a heap pointer");
-    heap->freeAll();
+    tp->check_true(p != 0, "alloc through a heap pointer");
+    heap->free_all();
     free(heap);
     return tp->report();
 }
@@ -271,7 +271,7 @@ int main(void)
 
 方法调用展开成 `p->__vptr->alloc(p, ...)`，而 `malloc` 不会写 vptr。先让 `seed` 在声明处拿到
 vptr，再 `*heap = seed` 整体复制。此时 `seed` 与 `heap` 共享同一块 `mem`，只释放一次
-（`heap->freeAll()`），之后不要再碰 `seed`。
+（`heap->free_all()`），之后不要再碰 `seed`。
 
 ## 6. 常见配方
 
@@ -296,7 +296,7 @@ int main(void)
         std::io::printf("round %d: %s\n", i, buf);
     }
     ap->reset();
-    ap->freeAll();
+    ap->free_all();
     return 0;
 }
 ```
@@ -316,7 +316,7 @@ round 2: c
 | 分配结构体 | `Node *n = (Node *)ap->alloc(sizeof(Node));`，自己初始化字段 |
 | 分配字符串副本 | `char *p = (char *)ap->alloc(len + 1);`，自己 `copy` 并补 NUL |
 | 一轮结束 | `ap->reset()`，第一块保留 |
-| 整个 arena 结束 | `ap->freeAll()` |
+| 整个 arena 结束 | `ap->free_all()` |
 | 分阶段回收 | 每阶段一个 `Arena`，各自 `reset()` |
 
 ## 7. 排错
@@ -367,7 +367,7 @@ alloc(8) is null: 1
 ### 7.3 对活着的 arena 再 `init()`
 
 `init` 不做「先释放旧块」这件事。对已经 `init` 过的 arena 再 `init`，上一块的 `mem` 不会被
-释放——直接泄漏。要复用，先 `freeAll()` 再 `init`。
+释放——直接泄漏。要复用，先 `free_all()` 再 `init`。
 
 ### 7.4 `reset()` 之后继续用旧指针
 
@@ -377,7 +377,7 @@ alloc(8) is null: 1
 ## 8. 限制与未支持
 
 - **没有逐个释放**：没有 `free(ptr)`。想「只释放一部分」就分多个 arena，各自 `reset` /
-  `freeAll`。
+  `free_all`。
 - **`alloc` 不初始化、不清零**：内存内容任意。
 - **`alloc(0)` / `alloc(-1)` 与分配失败同返回值**：都是 `NULL`，调用方无法区分。
 - **`init` 不幂等**：对活着的 arena 再 `init` 会泄漏上一块，见 7.3。
@@ -387,7 +387,7 @@ alloc(8) is null: 1
 - **方法不能被内联**：`alloc()` 这种热路径也走一次间接跳转；这是 `use` 结构体的机制属性。
 - **裸 `malloc` 的 arena 不能直接调方法**：vptr 是垃圾，第一次 `p->alloc(...)` 就通过它跳转
   （本机实测 exit 139）。先声明值，或把初始化过的值整体赋进去——见 5.4。
-- **字面量接收者从 0.20.0 起可用**（本包下限 0.20.3）：v0.19.1 只接受变量、元素、调用和字段链。
+- **字面量接收者从 0.20.0 起可用**（本包下限 0.30.0）：v0.19.1 只接受变量、元素、调用和字段链。
 
 ## 9. 版本与变更记录
 
@@ -395,5 +395,5 @@ alloc(8) is null: 1
 | --- | --- | --- |
 | `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写：教程并入本 README，删除 `tutorial.md`；API 未变。 |
 
-编译器下限 `ct >= 0.20.3`。本文所有程序均在 v0.20.3 上编译运行通过；字面量接收者写法从
+编译器下限 `ct >= 0.30.0`。本文所有程序都有对应夹具，由 `bash tests/run.sh` 在 ct v0.53.0 上跑过；字面量接收者写法从
 0.20.0 起可用。

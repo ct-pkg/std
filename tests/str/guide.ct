@@ -21,41 +21,41 @@ int main(void)
     tp->init();
 
     /* 1. Read: every index is a BYTE offset, every length is in BYTES. */
-    tp->checkEqInt(s.len(), 9, "len");
-    tp->checkEqInt(s.find("ct"), 7, "find");
-    tp->checkEqInt(s.find("zz"), -1, "find misses");
-    tp->checkEqInt(s.findChar(','), 5, "findChar");
-    tp->checkEqInt(s.findChar('z'), -1, "findChar misses");
-    tp->checkEqInt(s.startsWith("Hello"), 1, "startsWith hit");
-    tp->checkEqInt(s.startsWith("hello"), 0, "startsWith is case sensitive");
-    tp->checkEqInt(s.endsWith("ct"), 1, "endsWith hit");
-    tp->checkEqInt(s.endsWith("tc"), 0, "endsWith miss");
-    tp->checkEqInt("abc".compare("abd"), -1, "compare orders like strcmp");
+    tp->check_eq_int(s.len(), 9, "len");
+    tp->check_eq_int(s.find("ct"), 7, "find");
+    tp->check_eq_int(s.find("zz"), -1, "find misses");
+    tp->check_eq_int(s.find_char(','), 5, "find_char");
+    tp->check_eq_int(s.find_char('z'), -1, "find_char misses");
+    tp->check_eq_int(s.starts_with("Hello"), 1, "starts_with hit");
+    tp->check_eq_int(s.starts_with("hello"), 0, "starts_with is case sensitive");
+    tp->check_eq_int(s.ends_with("ct"), 1, "ends_with hit");
+    tp->check_eq_int(s.ends_with("tc"), 0, "ends_with miss");
+    tp->check_eq_int("abc".compare("abd"), -1, "compare orders like strcmp");
 
     /* 2. Write into a buffer the caller owns: `out` and `cap` are arguments. */
-    tp->checkEqInt(s.copy(buf, 16), 0, "copy");
-    tp->checkEqStr(buf, "Hello, ct", "copy result");
-    tp->checkEqInt(s.copy(buf, 9), -1, "copy needs room for the NUL");
+    tp->check_eq_int(s.copy(buf, 16), 0, "copy");
+    tp->check_eq_str(buf, "Hello, ct", "copy result");
+    tp->check_eq_int(s.copy(buf, 9), -1, "copy needs room for the NUL");
 
-    tp->checkEqInt(s.slice(0, 5, buf, 16), 0, "slice");
-    tp->checkEqStr(buf, "Hello", "slice is half-open [start, end)");
-    tp->checkEqInt(s.slice(0, 99, buf, 16), -1, "slice past the end");
+    tp->check_eq_int(s.slice(0, 5, buf, 16), 0, "slice");
+    tp->check_eq_str(buf, "Hello", "slice is half-open [start, end)");
+    tp->check_eq_int(s.slice(0, 99, buf, 16), -1, "slice past the end");
 
-    tp->checkEqInt("Hello, ".concat("ct", buf, 16), 0, "concat");
-    tp->checkEqStr(buf, "Hello, ct", "concat result");
-    tp->checkEqInt("Hello, ".concat("ct", buf, 9), -1, "concat needs room for the NUL");
+    tp->check_eq_int("Hello, ".concat("ct", buf, 16), 0, "concat");
+    tp->check_eq_str(buf, "Hello, ct", "concat result");
+    tp->check_eq_int("Hello, ".concat("ct", buf, 9), -1, "concat needs room for the NUL");
 
     /* 3. Case folding: the receiver is only read, the result goes to a buffer.
        A literal receiver is safe here because nothing writes through it. */
-    tp->checkEqInt("Hello".toLower(word, 8), 0, "toLower");
-    tp->checkEqStr(word, "hello", "toLower result");
-    tp->checkEqInt("Hello".toUpper(word, 8), 0, "toUpper");
-    tp->checkEqStr(word, "HELLO", "toUpper result");
-    tp->checkEqInt("Hello".toUpper(word, 5), -1, "toUpper needs room for the NUL");
+    tp->check_eq_int("Hello".to_lower(word, 8), 0, "to_lower");
+    tp->check_eq_str(word, "hello", "to_lower result");
+    tp->check_eq_int("Hello".to_upper(word, 8), 0, "to_upper");
+    tp->check_eq_str(word, "HELLO", "to_upper result");
+    tp->check_eq_int("Hello".to_upper(word, 5), -1, "to_upper needs room for the NUL");
 
     /* 4. Bytes, not characters: "é" is one character and two bytes. */
-    tp->checkEqInt("é".len(), 2, "len counts bytes");
-    tp->checkEqInt("é".findChar('z'), -1, "indexes are byte offsets too");
+    tp->check_eq_int("é".len(), 2, "len counts bytes");
+    tp->check_eq_int("é".find_char('z'), -1, "indexes are byte offsets too");
 
     return tp->report();
 }

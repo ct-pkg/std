@@ -18,17 +18,17 @@ int main(void)
 
     tp->init();
 
-    tp->checkEqInt(ap->init(32), 0, "init");
+    tp->check_eq_int(ap->init(32), 0, "init");
     p = (char *)ap->alloc(8);
-    tp->checkTrue(p != 0, "alloc");
+    tp->check_true(p != 0, "alloc");
     p[0] = 'A';
-    tp->checkEqInt(p[0], 'A', "the slice is writable");
+    tp->check_eq_int(p[0], 'A', "the slice is writable");
 
     ap->reset();
     p = (char *)ap->alloc(8);
-    tp->checkTrue(p != 0, "alloc after reset");
-    ap->freeAll();
-    tp->checkTrue(ap->alloc(8) == 0, "alloc after freeAll fails");
+    tp->check_true(p != 0, "alloc after reset");
+    ap->free_all();
+    tp->check_true(ap->alloc(8) == 0, "alloc after free_all fails");
 
     return tp->report();
 }

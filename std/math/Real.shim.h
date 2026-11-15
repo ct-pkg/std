@@ -1,14 +1,14 @@
 /*
- * Real.shim.h - the C surface behind std::math::Real's `toStr` / `toString`.
+ * Real.shim.h - the C surface behind std::math::Real's `to_str` / `to_string`.
  *
  * The file must share the base name of `Real.m.ct` and sit beside it. The
  * text is round-trip exact: `%g` is used when it already reads back as the same
  * value (so `2.6` stays `2.6`), and `%.17g` -- C99 `DBL_DECIMAL_DIG` -- when six
  * significant digits are not enough (`1.23456789` prints as
  * `1.2345678899999999`). `strtod` therefore always reproduces the input, as long
- * as the whole spelling fits: `toString`'s 32-byte slots always do, but a
- * `toStr` buffer that is too small truncates silently and loses the guarantee.
- * `toString` has its own four-slot ring, separate from the integer ring in
+ * as the whole spelling fits: `to_string`'s 32-byte slots always do, but a
+ * `to_str` buffer that is too small truncates silently and loses the guarantee.
+ * `to_string` has its own four-slot ring, separate from the integer ring in
  * `std::num`. Both rings are **not thread-safe** and a fifth live result reuses
  * the first slot.
  *

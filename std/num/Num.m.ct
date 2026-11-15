@@ -13,11 +13,11 @@
  * `static inline`, so the calls stay direct -- no wrapper, no interface value,
  * no vtable.
  *
- * `toString()` is the convenience form: four static 32-byte slots handed out
+ * `to_string()` is the convenience form: four static 32-byte slots handed out
  * round-robin, **not thread-safe**; two calls inside one expression take two
  * different slots, and a fifth live result reuses the first. Use
- * `toStr(buf, cap)` when the buffer's lifetime or thread matters.
- * `toStr` truncates silently; `toBase` never does -- it returns NULL when the
+ * `to_str(buf, cap)` when the buffer's lifetime or thread matters.
+ * `to_str` truncates silently; `to_base` never does -- it returns NULL when the
  * sign and every digit do not fit.
  *
  * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
@@ -34,9 +34,9 @@ pub trait Int {
     int   clamp(int lo, int hi);
     int   max(int other);
     int   min(int other);
-    char *toStr(char *out, int cap);
-    char *toString();
-    char *toBase(int base, char *out, int cap);
+    char *to_str(char *out, int cap);
+    char *to_string();
+    char *to_base(int base, char *out, int cap);
 }
 
 map trait Int for type int {
@@ -44,9 +44,9 @@ map trait Int for type int {
     clamp(v, lo, hi) -> std_num_clamp(v, lo, hi);
     max(v, other) -> std_num_max(v, other);
     min(v, other) -> std_num_min(v, other);
-    toStr(v, out, cap) -> std_num_to_str(v, out, cap);
-    toString(v) -> std_num_to_string(v);
-    toBase(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
+    to_str(v, out, cap) -> std_num_to_str(v, out, cap);
+    to_string(v) -> std_num_to_string(v);
+    to_base(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
 }
 
 /* The portable integer host. `labs` keeps `long` in and `long` out. */
@@ -55,9 +55,9 @@ pub trait Long {
     long  clamp(long lo, long hi);
     long  max(long other);
     long  min(long other);
-    char *toStr(char *out, int cap);
-    char *toString();
-    char *toBase(int base, char *out, int cap);
+    char *to_str(char *out, int cap);
+    char *to_string();
+    char *to_base(int base, char *out, int cap);
 }
 
 map trait Long for type long {
@@ -65,9 +65,9 @@ map trait Long for type long {
     clamp(v, lo, hi) -> std_num_clamp(v, lo, hi);
     max(v, other) -> std_num_max(v, other);
     min(v, other) -> std_num_min(v, other);
-    toStr(v, out, cap) -> std_num_to_str(v, out, cap);
-    toString(v) -> std_num_to_string(v);
-    toBase(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
+    to_str(v, out, cap) -> std_num_to_str(v, out, cap);
+    to_string(v) -> std_num_to_string(v);
+    to_base(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
 }
 
 pub trait LLong {
@@ -75,9 +75,9 @@ pub trait LLong {
     long long clamp(long long lo, long long hi);
     long long max(long long other);
     long long min(long long other);
-    char     *toStr(char *out, int cap);
-    char     *toString();
-    char     *toBase(int base, char *out, int cap);
+    char     *to_str(char *out, int cap);
+    char     *to_string();
+    char     *to_base(int base, char *out, int cap);
 }
 
 map trait LLong for type long long {
@@ -85,28 +85,28 @@ map trait LLong for type long long {
     clamp(v, lo, hi) -> std_num_clamp(v, lo, hi);
     max(v, other) -> std_num_max(v, other);
     min(v, other) -> std_num_min(v, other);
-    toStr(v, out, cap) -> std_num_to_str(v, out, cap);
-    toString(v) -> std_num_to_string(v);
-    toBase(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
+    to_str(v, out, cap) -> std_num_to_str(v, out, cap);
+    to_string(v) -> std_num_to_string(v);
+    to_base(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
 }
 
 /* The ctype surface, hosted on `char` so it stays off `int`. */
 pub trait Char {
-    int isDigit();
-    int isAlpha();
-    int isSpace();
-    int isUpper();
-    int isLower();
-    int toUpper();
-    int toLower();
+    int is_digit();
+    int is_alpha();
+    int is_space();
+    int is_upper();
+    int is_lower();
+    int to_upper();
+    int to_lower();
 }
 
 map trait Char for type char {
-    isDigit(v) -> std_num_is_digit(v);
-    isAlpha(v) -> std_num_is_alpha(v);
-    isSpace(v) -> std_num_is_space(v);
-    isUpper(v) -> std_num_is_upper(v);
-    isLower(v) -> std_num_is_lower(v);
-    toUpper(v) -> std_num_char_upper(v);
-    toLower(v) -> std_num_char_lower(v);
+    is_digit(v) -> std_num_is_digit(v);
+    is_alpha(v) -> std_num_is_alpha(v);
+    is_space(v) -> std_num_is_space(v);
+    is_upper(v) -> std_num_is_upper(v);
+    is_lower(v) -> std_num_is_lower(v);
+    to_upper(v) -> std_num_char_upper(v);
+    to_lower(v) -> std_num_char_lower(v);
 }

@@ -16,7 +16,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 的 `<stdio.h>` / `<string.h>`；`ct.pkg` 的约束是 `requires ct >= 0.20.3`。
+依赖 C 的 `<stdio.h>` / `<string.h>`；`ct.pkg` 的约束是 `requires ct >= 0.30.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -48,9 +48,9 @@ int main(void)
     Test *tp = &t;
 
     tp->init();
-    tp->checkTrue(1, "a passing check");
-    tp->checkEqInt(2 + 2, 4, "int equality");
-    tp->checkEqStr("abc", "abc", "string equality");
+    tp->check_true(1, "a passing check");
+    tp->check_eq_int(2 + 2, 4, "int equality");
+    tp->check_eq_str("abc", "abc", "string equality");
 
     return tp->report();
 }
@@ -86,9 +86,9 @@ int main(void)
 | 方法 | 签名 | 返回 / 失败 |
 | --- | --- | --- |
 | `init()` | `void init()` | 把 `checks` / `failures` 归零；**契约上的第一步** |
-| `checkTrue(cond, msg)` | `int checkTrue(int cond, const char *msg)` | 计一次；`cond` 非零返回 1，否则记失败、打 `FAIL`、返回 0 |
-| `checkEqInt(got, want, msg)` | `int checkEqInt(int got, int want, const char *msg)` | 计一次；相等返回 1，否则记失败、打 `FAIL`、返回 0 |
-| `checkEqStr(got, want, msg)` | `int checkEqStr(const char *got, const char *want, const char *msg)` | `strcmp` 比较；`NULL` 当 `""`；返回 1 / 0 |
+| `check_true(cond, msg)` | `int check_true(int cond, const char *msg)` | 计一次；`cond` 非零返回 1，否则记失败、打 `FAIL`、返回 0 |
+| `check_eq_int(got, want, msg)` | `int check_eq_int(int got, int want, const char *msg)` | 计一次；相等返回 1，否则记失败、打 `FAIL`、返回 0 |
+| `check_eq_str(got, want, msg)` | `int check_eq_str(const char *got, const char *want, const char *msg)` | `strcmp` 比较；`NULL` 当 `""`；返回 1 / 0 |
 | `report()` | `int report()` | 向 stdout 打印 `<n> checks, <m> failures`；`m == 0` 返回 0，否则 1 |
 
 失败的输出形态（每条一行，写 stderr）：
@@ -115,12 +115,12 @@ int main(void)
     int ok;
 
     tp->init();
-    ok = tp->checkTrue(1, "returns 1");
-    tp->checkEqInt(ok, 1, "checkTrue return value");
-    ok = tp->checkEqInt(5, 5, "returns 1");
-    tp->checkEqInt(ok, 1, "checkEqInt return value");
-    ok = tp->checkEqStr("a", "a", "returns 1");
-    tp->checkEqInt(ok, 1, "checkEqStr return value");
+    ok = tp->check_true(1, "returns 1");
+    tp->check_eq_int(ok, 1, "check_true return value");
+    ok = tp->check_eq_int(5, 5, "returns 1");
+    tp->check_eq_int(ok, 1, "check_eq_int return value");
+    ok = tp->check_eq_str("a", "a", "returns 1");
+    tp->check_eq_int(ok, 1, "check_eq_str return value");
     return tp->report();
 }
 ```
@@ -135,7 +135,7 @@ int main(void)
 是为了让「返回值是 1」这件事本身也被测试覆盖。
 
 `check*` 只记数并打印，不 `abort`、不 `return`。需要「这一步不成立就别往下跑」时，自己判断
-返回值，例如 `if (!tp->checkTrue(p != 0, "allocation succeeded")) return 1;`。
+返回值，例如 `if (!tp->check_true(p != 0, "allocation succeeded")) return 1;`。
 
 ### 5.2 边界：`NULL` 消息与 `NULL` 字符串
 
@@ -148,9 +148,9 @@ int main(void)
     Test *tp = &t;
 
     tp->init();
-    tp->checkTrue(1, (char *)0);
-    tp->checkEqStr((char *)0, "", "NULL got is empty");
-    tp->checkEqStr("", (char *)0, "NULL want is empty");
+    tp->check_true(1, (char *)0);
+    tp->check_eq_str((char *)0, "", "NULL got is empty");
+    tp->check_eq_str("", (char *)0, "NULL want is empty");
     return tp->report();
 }
 ```
@@ -162,7 +162,7 @@ int main(void)
 ```
 
 `msg` 为 `NULL` 时失败输出是 `FAIL: (no message)`；字符串实参为 `NULL` 时按 `""` 处理。
-所以 `NULL` 与 `""` 在 `checkEqStr` 眼里相等——要区分「没有值」和「空串」，先单独断言
+所以 `NULL` 与 `""` 在 `check_eq_str` 眼里相等——要区分「没有值」和「空串」，先单独断言
 指针非空。
 
 ### 5.3 失败时的输出形态
@@ -178,10 +178,10 @@ int main(void)
     Test *tp = &t;
 
     tp->init();
-    tp->checkTrue(0, "intentional failure");
-    tp->checkEqInt(1, 2, "intentional int mismatch");
-    tp->checkEqStr("a", "b", "intentional string mismatch");
-    tp->checkTrue(1, "a passing check");
+    tp->check_true(0, "intentional failure");
+    tp->check_eq_int(1, 2, "intentional int mismatch");
+    tp->check_eq_str("a", "b", "intentional string mismatch");
+    tp->check_true(1, "a passing check");
     return tp->report();
 }
 ```
@@ -200,7 +200,7 @@ FAIL: intentional int mismatch (got 1, want 2)
 FAIL: intentional string mismatch (got 'a', want 'b')
 ```
 
-退出码是 1。三种断言的输出格式都能在这里看到：`checkTrue` 只有消息，两个相等断言附带
+退出码是 1。三种断言的输出格式都能在这里看到：`check_true` 只有消息，两个相等断言附带
 `got` / `want`。
 
 ### 5.4 `report()` 的返回值必须交给 `main`
@@ -214,7 +214,7 @@ int main(void)
     Test *tp = &t;
 
     tp->init();
-    tp->checkTrue(0, "this fails");
+    tp->check_true(0, "this fails");
     tp->report();
     return 0;
 }
@@ -248,7 +248,7 @@ int main(void)
     int i;
 
     tp->init();
-    for (i = 0; i < 3; i++) tp->checkEqInt(i * 2, i + i, "double");
+    for (i = 0; i < 3; i++) tp->check_eq_int(i * 2, i + i, "double");
     return tp->report();
 }
 ```
@@ -263,10 +263,10 @@ int main(void)
 
 | 任务 | 写法 |
 | --- | --- |
-| 布尔断言 | `tp->checkTrue(p != 0, "alloc");` |
-| 整数相等 | `tp->checkEqInt(got, want, "len");` |
-| 字符串相等 | `tp->checkEqStr(s, "ok", "status");` |
-| 失败即停 | `if (!tp->checkTrue(...)) return 1;` |
+| 布尔断言 | `tp->check_true(p != 0, "alloc");` |
+| 整数相等 | `tp->check_eq_int(got, want, "len");` |
+| 字符串相等 | `tp->check_eq_str(s, "ok", "status");` |
+| 失败即停 | `if (!tp->check_true(...)) return 1;` |
 | 作为进程状态 | `return tp->report();` |
 | 只想看有没有失败 | 读 `report()` 的返回值 |
 
@@ -311,13 +311,13 @@ main.ct:8:1: error: no method 'nope' for type 'struct std_test_Test *'
 - **没有测试框架**：没有用例注册、过滤、setup / teardown、超时、并发。
 - **断言不中断**：失败只记数并返回 0；需要停止就自己判断返回值。
 - **只比较 `int` 与 C 字符串**：没有浮点容差、没有结构体 / 指针相等、没有数组比较。
-- **`checkEqStr` 按字节比较**：对 UTF-8 只是逐字节；`NULL` 与 `""` 被判为相等。
+- **`check_eq_str` 按字节比较**：对 UTF-8 只是逐字节；`NULL` 与 `""` 被判为相等。
 - **`FAIL` 写 stderr，汇总写 stdout**：只看 stdout 会漏掉失败详情。
 - **不分配内存**：`msg` 与字符串实参只在调用期间被读，不被保存。
 - **布局是公开的**：64 位下 `sizeof(Test) == 16`（8 字节字段 + 8 字节 vptr），vptr
   （`__testops_vptr`）出现在导出的 `Test.h` 里。
 - **方法不能被内联**：每次断言都是一次间接跳转；测试代码里可以忽略。
-- **字面量接收者从 0.20.0 起可用**（本包下限 0.20.3）：v0.19.1 只接受变量、元素、调用和字段链。
+- **字面量接收者从 0.20.0 起可用**（本包下限 0.30.0）：v0.19.1 只接受变量、元素、调用和字段链。
 
 ## 9. 版本与变更记录
 
@@ -325,5 +325,5 @@ main.ct:8:1: error: no method 'nope' for type 'struct std_test_Test *'
 | --- | --- | --- |
 | `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写：教程并入本 README，删除 `tutorial.md`；修正「汇编写 stdout」为「汇总写 stdout」；API 未变。 |
 
-编译器下限 `ct >= 0.20.3`。本文所有程序均在 v0.20.3 上编译运行通过；字面量接收者写法从
+编译器下限 `ct >= 0.30.0`。本文所有程序都有对应夹具，由 `bash tests/run.sh` 在 ct v0.53.0 上跑过；字面量接收者写法从
 0.20.0 起可用。

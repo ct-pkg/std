@@ -4,7 +4,7 @@
  * `Arena` is a CT-owned type, not a C standard-library one, so this unit is the
  * whole module: the struct, the trait, the impl and the code, with no mapping
  * unit and no shim. Calls are OO -- `ap->init(block)`, `ap->alloc(n)`,
- * `ap->reset()`, `ap->freeAll()`.
+ * `ap->reset()`, `ap->free_all()`.
  *
  * Order matters: the trait has to be declared before the struct that uses it,
  * otherwise the compiler reports `struct 'Arena' uses undefined trait
@@ -18,7 +18,7 @@
  *
  * An arena hands out 8-byte aligned slices from blocks it owns. There is no
  * per-value free: `reset` returns every block after the first to the heap, and
- * `freeAll` releases the arena completely. `alloc` returns NULL when a new block
+ * `free_all` releases the arena completely. `alloc` returns NULL when a new block
  * cannot be obtained -- it never aborts.
  *
  * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
@@ -32,7 +32,7 @@ pub trait ArenaOps {
     int init(int block);
     void *alloc(int n);
     void reset();
-    void freeAll();
+    void free_all();
 }
 
 pub struct Arena {
@@ -113,7 +113,7 @@ impl ArenaOps for Arena {
     }
 
     /* Release every block, including the first; the arena is reusable via init. */
-    void freeAll()
+    void free_all()
     {
         self->reset();
         free(self->mem);

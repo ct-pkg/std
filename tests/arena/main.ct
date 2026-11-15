@@ -17,27 +17,27 @@ int main(void)
 
     tp->init();
 
-    tp->checkEqInt(ap->init(32), 0, "init");
+    tp->check_eq_int(ap->init(32), 0, "init");
     p = (char *)ap->alloc(1);
-    tp->checkTrue(p != 0, "alloc a byte");
-    tp->checkEqInt((int)((long)p % 8), 0, "alloc is 8-byte aligned");
+    tp->check_true(p != 0, "alloc a byte");
+    tp->check_eq_int((int)((long)p % 8), 0, "alloc is 8-byte aligned");
     q = (char *)ap->alloc(8);
-    tp->checkTrue(q != 0, "alloc eight bytes");
-    tp->checkTrue(q > p, "the second slice is above the first");
+    tp->check_true(q != 0, "alloc eight bytes");
+    tp->check_true(q > p, "the second slice is above the first");
 
     /* A request larger than the block takes a second block. */
     q = (char *)ap->alloc(40);
-    tp->checkTrue(q != 0, "alloc across a block boundary");
+    tp->check_true(q != 0, "alloc across a block boundary");
     for (i = 0; i < 40; i++) q[i] = (char)i;
 
     ap->reset();
     p = (char *)ap->alloc(8);
-    tp->checkTrue(p != 0, "alloc after reset");
-    tp->checkEqInt((int)((long)p % 8), 0, "reset keeps the alignment");
-    tp->checkEqInt(ap->init(0), 0, "re-init a live arena");
-    ap->freeAll();
-    tp->checkTrue(ap->alloc(8) == 0, "alloc after free_all fails");
-    tp->checkTrue(ap->alloc(0) == 0, "alloc of zero bytes is refused");
+    tp->check_true(p != 0, "alloc after reset");
+    tp->check_eq_int((int)((long)p % 8), 0, "reset keeps the alignment");
+    tp->check_eq_int(ap->init(0), 0, "re-init a live arena");
+    ap->free_all();
+    tp->check_true(ap->alloc(8) == 0, "alloc after free_all fails");
+    tp->check_true(ap->alloc(0) == 0, "alloc of zero bytes is refused");
 
     return tp->report();
 }

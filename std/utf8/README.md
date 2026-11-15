@@ -1,6 +1,6 @@
 # `std::utf8` — UTF-8 编解码（`Utf8Ops`）
 
-在 `char *` 上按 UTF-8 解码、数码点、编码：`s.decode(&cp)` / `s.codepointCount()` /
+在 `char *` 上按 UTF-8 解码、数码点、编码：`s.decode(&cp)` / `s.count_codepoints()` /
 `buf.encode(cp, cap)`。严格校验，不分配内存。
 
 ## 1. 定位与边界
@@ -13,7 +13,7 @@
 
 ## 2. 依赖与安装
 
-只依赖 C 的 `<string.h>` 级操作，无外部库；`ct.pkg` 的约束是 `requires ct >= 0.20.3`。
+只依赖 C 的 `<string.h>` 级操作，无外部库；`ct.pkg` 的约束是 `requires ct >= 0.30.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -45,7 +45,7 @@ int main(void)
 
     n = s.decode(&cp);
     std::io::printf("bytes=%d cp=%d len=%d count=%d\n",
-                    n, cp, s.len(), s.codepointCount());
+                    n, cp, s.len(), s.count_codepoints());
 
     n = buf.encode(cp, 8);
     buf[n] = 0;
@@ -67,8 +67,8 @@ bytes=2 cp=233 len=2 count=1
 encoded=2 text=é
 ```
 
-同一个 `"é"`：`len()`（字节）是 2，`codepointCount()`（码点）是 1。
-字面量接收者（`"é".decode(&cp)`）从 **0.20.0** 起可用（本包下限 0.20.3）；v0.19.1 先赋给 `char *`。
+同一个 `"é"`：`len()`（字节）是 2，`count_codepoints()`（码点）是 1。
+字面量接收者（`"é".decode(&cp)`）从 **0.20.0** 起可用（本包下限 0.30.0）；v0.19.1 先赋给 `char *`。
 
 ## 4. API 全表
 
@@ -77,7 +77,7 @@ encoded=2 text=é
 | 方法 | 签名 | 返回 / 失败 |
 | --- | --- | --- |
 | `decode(cp)` | `int decode(int *cp)` | 消耗的字节数（1..4）；不是合法 UTF-8 返回 `-1`；`cp` 可为 `NULL`（只求步长） |
-| `codepointCount()` | `int codepointCount()` | 码点数；`NULL` 返回 0；不是合法 UTF-8 返回 `-1` |
+| `count_codepoints()` | `int count_codepoints()` | 码点数；`NULL` 返回 0；不是合法 UTF-8 返回 `-1` |
 | `encode(cp, cap)` | `int encode(int cp, int cap)` | 写出的字节数（1..4）；码点非法或 `cap` 不够返回 `-1` |
 
 `decode` 的输入是接收者本身；`cp` 是输出参数，成功时写入第一个码点。
@@ -88,14 +88,14 @@ encoded=2 text=é
 
 ### 5.1 字节 vs 码点
 
-| 文本 | `len()`（`std::str`） | `codepointCount()`（本模块） |
+| 文本 | `len()`（`std::str`） | `count_codepoints()`（本模块） |
 | --- | --- | --- |
 | `"A"` | 1 | 1 |
 | `"é"` | 2 | 1 |
 | `"€"` | 3 | 1 |
 | `"😀"`（U+1F600） | 4 | 1 |
 
-两个名字不能互换：`String.len` 数字节，`Utf8Ops.codepointCount` 数码点。
+两个名字不能互换：`String.len` 数字节，`Utf8Ops.count_codepoints` 数码点。
 
 ### 5.2 解码一个码点
 
@@ -164,7 +164,7 @@ int main(void)
     std::io::printf("walk cp=%d bytes=%d\n", n, i);
 
     std::io::printf("overlong=%d lone=%d count_bad=%d\n",
-                    bad1.decode(&cp), bad2.decode(&cp), bad2.codepointCount());
+                    bad1.decode(&cp), bad2.decode(&cp), bad2.count_codepoints());
 
     step = buf.encode(8364, 8);
     buf[step] = 0;
@@ -191,7 +191,7 @@ surrogate=-1 too_big=-1
 3. **代理区**：`0xD800..0xDFFF` 不是合法码点，`encode` 返回 `-1`。
 4. **超出范围**：大于 `0x10FFFF`，`encode` 返回 `-1`。
 
-`codepointCount` 遇到非法序列立即返回 `-1`，不会给出“前面有几个合法码点”。
+`count_codepoints` 遇到非法序列立即返回 `-1`，不会给出“前面有几个合法码点”。
 
 ### 5.4 编码
 
@@ -250,8 +250,8 @@ cp=8364 bytes=3
 
 | 任务 | 写法 |
 | --- | --- |
-| 数码点 | `int n = s.codepointCount();` |
-| 判断是否为合法 UTF-8 | `if (s.codepointCount() >= 0) { ... }` |
+| 数码点 | `int n = s.count_codepoints();` |
+| 判断是否为合法 UTF-8 | `if (s.count_codepoints() >= 0) { ... }` |
 | 读第一个码点 | `int cp; int step = s.decode(&cp);` |
 | 只求步长 | `int step = s.decode(0);` |
 | 编码一个码点 | `int n = buf.encode(cp, sizeof buf);`，再 `buf[n] = 0;` |
@@ -284,15 +284,15 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 int main(void)
 {
     char *s = "abc";
-    return s.codepointCount();
+    return s.count_codepoints();
 }
 ```
 
 ```text
-main.ct:4:1: error: no method 'codepointCount' for type 'char *'
+main.ct:4:1: error: no method 'count_codepoints' for type 'char *'
 ```
 
-`codepointCount` 属于 `std::utf8::Utf8Ops`，import 之后才存在。
+`count_codepoints` 属于 `std::utf8::Utf8Ops`，import 之后才存在。
 
 ### 7.3 字面量接收者（0.19.1）
 
@@ -301,7 +301,7 @@ import std::utf8::Utf8Ops;
 
 int main(void)
 {
-    return "é".codepointCount();
+    return "é".count_codepoints();
 }
 ```
 
@@ -309,7 +309,7 @@ int main(void)
 main.ct:5:1: error: method receiver must be a variable, an element, a call or a field chain
 ```
 
-先写 `char *s = "é"; s.codepointCount();`。字面量接收者需要 0.20.0。
+先写 `char *s = "é"; s.count_codepoints();`。字面量接收者需要 0.20.0。
 
 ### 7.4 把 `encode` 的接收者写反
 
@@ -337,12 +337,12 @@ main.ct:6:1: error: no method 'encode' for type 'int'
 - **不分配**：`encode` 只写调用方缓冲区；没有返回新字符串的 API。
 - **`encode` 不补 NUL**：必须自己写 `buf[n] = 0;`。
 - **不做规范化 / 字素簇 / 分类**：`"é"` 的两种 Unicode 表示都合法，但本模块不合并。
-- **`codepointCount` 遇错即停**：非法输入返回 `-1`，不是“合法前缀的码点数”。
-- **`char *` 方法名全局共享**：本模块占用 `decode` / `codepointCount` / `encode`；
+- **`count_codepoints` 遇错即停**：非法输入返回 `-1`，不是“合法前缀的码点数”。
+- **`char *` 方法名全局共享**：本模块占用 `decode` / `count_codepoints` / `encode`；
   `len` / `find` 等属于 [`std::str`](../str/README.md)，`open` 属于
-  [`std::io`](../io/README.md)，`exists` / `readFile` / `writeFile` / `list` 属于
+  [`std::io`](../io/README.md)，`exists` / `read_file` / `write_file` / `list` 属于
   [`std::fs`](../fs/README.md)。
-- **字面量接收者从 0.20.0 起可用**（本包下限 0.20.3）；0.19.1 只接受变量、元素、调用和字段链。
+- **字面量接收者从 0.20.0 起可用**（本包下限 0.30.0）；0.19.1 只接受变量、元素、调用和字段链。
 - **多给实参不报错**：与其它映射模块相同的编译器行为（SH-56）。
 
 ## 9. 版本与变更记录
@@ -351,4 +351,4 @@ main.ct:6:1: error: no method 'encode' for type 'int'
 | --- | --- | --- |
 | `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写：教程并入本 README，删除 `tutorial.md`；API 未变。 |
 
-编译器下限 `ct >= 0.20.3`。
+编译器下限 `ct >= 0.30.0`。

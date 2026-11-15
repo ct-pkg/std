@@ -4,6 +4,9 @@
 
    std::fs has no function form: the receiver is the path, so every call is
    `path.method(...)`. */
+#include <stdio.h>
+#include <errno.h>
+
 import std::fs::Fs;
 import std::str::String;
 import std::test::Test;
@@ -14,43 +17,103 @@ int main(int argc, char **argv)
     Test *tp = &t;
     char buf[64];
     char listing[128];
+    char nul[256];
+    char sub[256];
+    char ren[256];
+    char raw[3];
     char *dir;
     char *file;
+    FILE *fp;
     int n;
 
     tp->init();
-    tp->checkEqInt(argc, 3, "the runner passes a directory and a file");
+    tp->check_eq_int(argc, 3, "the runner passes a directory and a file");
     if (argc < 3) return tp->report();
 
     dir = argv[1];
     file = argv[2];
 
-    tp->checkTrue(dir.exists(), "the directory exists");
-    tp->checkTrue(!file.exists(), "the file does not exist yet");
-    tp->checkEqInt("/no/such/path".exists(), 0, "a missing path is 0");
+    tp->check_true(dir.exists(), "the directory exists");
+    tp->check_true(!file.exists(), "the file does not exist yet");
+    tp->check_eq_int("/no/such/path".exists(), 0, "a missing path is 0");
 
-    tp->checkEqInt(file.writeFile("hello\nworld"), 0, "write the file");
-    tp->checkTrue(file.exists(), "the file exists now");
-    n = file.readFile(buf, 64);
-    tp->checkEqInt(n, 11, "read returns the byte count");
-    tp->checkEqStr(buf, "hello\nworld", "read value");
-    tp->checkEqInt(file.readFile(buf, 11), -1,
+    tp->check_eq_int(file.write_file("hello\nworld"), 0, "write the file");
+    tp->check_true(file.exists(), "the file exists now");
+    n = file.read_file(buf, 64);
+    tp->check_eq_int(n, 11, "read returns the byte count");
+    tp->check_eq_str(buf, "hello\nworld", "read value");
+    tp->check_eq_int(file.read_file(buf, 11), -1,
                    "read refuses a buffer without room for the NUL");
-    tp->checkEqInt("/no/such/file".readFile(buf, 64), -1, "read a missing file");
+    tp->check_eq_int("/no/such/file".read_file(buf, 64), -1, "read a missing file");
+
+    /* A directory can be opened but holds no file content: reporting 0 bytes
+       would be a silent wrong value, so the read has to fail like any other
+       unreadable path. */
+    tp->check_eq_int(dir.read_file(buf, 64), -1, "read refuses a directory");
+
+    /* The cases this fix must leave alone: an empty file reads as 0 bytes and
+       an empty value, and a file holding '\0' still reports its full byte
+       count with the NUL kept in the buffer (truncation belongs to the string
+       layer and is not changed here). */
+    tp->check_eq_int(file.write_file(""), 0, "write an empty file");
+    n = file.read_file(buf, 64);
+    tp->check_eq_int(n, 0, "read an empty file");
+    tp->check_true(buf[0] == 0, "an empty read leaves an empty value");
+
+    file.concat(".nul", nul, 256);
+    raw[0] = 'a';
+    raw[1] = 0;
+    raw[2] = 'b';
+    fp = fopen(nul, "wb");
+    if (fp) {
+        fwrite(raw, 1, 3, fp);
+        fclose(fp);
+    }
+    n = nul.read_file(buf, 64);
+    tp->check_eq_int(n, 3, "read a file with an embedded NUL");
+    tp->check_true(buf[1] == 0 && buf[2] == 'b', "bytes after the NUL are read");
 
     n = dir.list(listing, 128);
-    tp->checkEqInt(n, 2, "list two entries");
-    tp->checkTrue(listing.find("a.txt") >= 0, "the listing has a.txt");
-    tp->checkTrue(listing.find("b.txt") >= 0, "the listing has b.txt");
-    tp->checkEqInt(dir.list(listing, 4), -1,
+    tp->check_eq_int(n, 2, "list two entries");
+    tp->check_true(listing.find("a.txt") >= 0, "the listing has a.txt");
+    tp->check_true(listing.find("b.txt") >= 0, "the listing has b.txt");
+    tp->check_eq_int(dir.list(listing, 4), -1,
                    "list refuses a buffer that cannot hold the first name");
-    tp->checkEqInt("/no/such/dir".list(listing, 128), -1, "list a missing directory");
+    tp->check_eq_int("/no/such/dir".list(listing, 128), -1, "list a missing directory");
 
     /* An overwrite through the same path receiver. */
-    tp->checkEqInt(file.writeFile("oo\n"), 0, "rewrite the file");
-    n = file.readFile(buf, 64);
-    tp->checkEqInt(n, 3, "read the rewritten file");
-    tp->checkEqStr(buf, "oo\n", "rewritten value");
+    tp->check_eq_int(file.write_file("oo\n"), 0, "rewrite the file");
+    n = file.read_file(buf, 64);
+    tp->check_eq_int(n, 3, "read the rewritten file");
+    tp->check_eq_str(buf, "oo\n", "rewritten value");
+
+    /* 0.3.0 closes the file-operation loop with mkdir / remove / rename, and
+       FsEnv.get_last_error() reports the errno of the last call (0 on success).
+       The errno holder is a per-translation-unit static in the shim, so the
+       checks below are ordered: each one reads the value right after its call. */
+    dir.concat("/no-such-parent/sub.ct", sub, 256);
+    tp->check_eq_int(sub.mkdir(0755), -1,
+                   "mkdir fails when the parent is missing");
+    tp->check_eq_int(std::fs::FsEnv.get_last_error(), ENOENT, "mkdir records ENOENT");
+
+    dir.concat("/sub.ct", sub, 256);
+    tp->check_eq_int(sub.mkdir(0755), 0, "mkdir creates a directory");
+    tp->check_true(sub.exists(), "the new directory exists");
+    tp->check_eq_int(std::fs::FsEnv.get_last_error(), 0, "a success clears the errno");
+    tp->check_eq_int(sub.mkdir(0755), -1, "mkdir refuses an existing path");
+    tp->check_eq_int(std::fs::FsEnv.get_last_error(), EEXIST, "mkdir records EEXIST");
+    tp->check_eq_int(sub.remove(), 0, "remove deletes an empty directory");
+    tp->check_true(!sub.exists(), "the removed directory is gone");
+
+    tp->check_eq_int(file.write_file("mv"), 0, "write a file to rename");
+    file.concat(".renamed", ren, 256);
+    tp->check_eq_int(file.rename(ren), 0, "rename moves the file");
+    tp->check_true(!file.exists(), "the old name is gone");
+    tp->check_true(ren.exists(), "the new name exists");
+    tp->check_eq_int(ren.remove(), 0, "remove deletes a file");
+    tp->check_true(!ren.exists(), "the removed file is gone");
+    tp->check_eq_int(ren.remove(), -1, "remove of a missing path fails");
+    tp->check_eq_int(std::fs::FsEnv.get_last_error(), ENOENT, "remove records ENOENT");
 
     return tp->report();
 }

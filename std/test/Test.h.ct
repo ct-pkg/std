@@ -3,7 +3,7 @@
  *
  * `Test` is a CT-owned type, not a C standard-library one, so this unit is the
  * whole module: the struct, the trait, the impl and the code, with no mapping
- * unit and no shim. Calls are OO (`tp->checkEqInt(...)`, `tp->report()`), and
+ * unit and no shim. Calls are OO (`tp->check_eq_int(...)`, `tp->report()`), and
  * because the struct carries `use TestOps`, every `Test` value carries a vtable
  * pointer -- 8 bytes more than the bare fields, and one indirect jump per check.
  *
@@ -28,9 +28,9 @@ namespace std::test;
 
 pub trait TestOps {
     void init();
-    int checkTrue(int cond, const char *msg);
-    int checkEqInt(int got, int want, const char *msg);
-    int checkEqStr(const char *got, const char *want, const char *msg);
+    int check_true(int cond, const char *msg);
+    int check_eq_int(int got, int want, const char *msg);
+    int check_eq_str(const char *got, const char *want, const char *msg);
     int report();
 }
 
@@ -46,7 +46,7 @@ impl TestOps for Test {
         self->failures = 0;
     }
 
-    int checkTrue(int cond, const char *msg)
+    int check_true(int cond, const char *msg)
     {
         self->checks++;
         if (!cond) {
@@ -57,7 +57,7 @@ impl TestOps for Test {
         return 1;
     }
 
-    int checkEqInt(int got, int want, const char *msg)
+    int check_eq_int(int got, int want, const char *msg)
     {
         self->checks++;
         if (got != want) {
@@ -69,7 +69,7 @@ impl TestOps for Test {
         return 1;
     }
 
-    int checkEqStr(const char *got, const char *want, const char *msg)
+    int check_eq_str(const char *got, const char *want, const char *msg)
     {
         self->checks++;
         if (!got) got = "";

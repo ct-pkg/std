@@ -10,9 +10,9 @@ int main(void)
     /* The OO spelling: `Test *` is a real receiver, so the assertions read as
        operations on the counter. Three of the four checks fail on purpose. */
     tp->init();
-    tp->checkTrue(0, "intentional failure");
-    tp->checkEqInt(1, 2, "intentional int mismatch");
-    tp->checkEqStr("a", "b", "intentional string mismatch");
-    tp->checkTrue(1, "a passing check");
+    tp->check_true(0, "intentional failure");
+    tp->check_eq_int(1, 2, "intentional int mismatch");
+    tp->check_eq_str("a", "b", "intentional string mismatch");
+    tp->check_true(1, "a passing check");
     return tp->report();
 }

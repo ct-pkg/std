@@ -1,6 +1,6 @@
 /* std::str - the empty string, a string of one repeated byte, every find
  * miss, the full slice bounds matrix, NULL / zero-capacity buffers, the
- * out-buffer case folding, the memcpy copyTo shape and the two C parsers. */
+ * out-buffer case folding, the memcpy copy_to shape and the two C parsers. */
 import std::str::String;
 import std::test::Test;
 
@@ -22,113 +22,113 @@ int main(void)
     tp->init();
 
     /* ---- empty string -------------------------------------------------- */
-    tp->checkEqInt(empty.len(), 0, "String.len: empty");
-    tp->checkEqInt(empty.find(""), 0, "String.find: empty needle in empty");
-    tp->checkEqInt(empty.find("x"), -1, "String.find: no hit in empty");
-    tp->checkEqInt(empty.findChar('x'), -1, "String.findChar: no hit in empty");
-    tp->checkEqInt(empty.findChar(0), 0, "String.findChar: the terminator is at 0");
-    tp->checkEqInt(empty.startsWith(""), 1, "String.startsWith: empty prefix");
-    tp->checkEqInt(empty.endsWith(""), 1, "String.endsWith: empty suffix");
-    tp->checkEqInt(empty.copy(buf, 1), 0, "String.copy: empty fits cap 1");
-    tp->checkEqStr(buf, "", "String.copy: empty value");
-    tp->checkEqInt(empty.copy(buf, 0), -1, "String.copy: cap 0 fails");
-    tp->checkEqInt(empty.slice(0, 0, buf, 1), 0, "String.slice: empty range fits cap 1");
-    tp->checkEqStr(buf, "", "String.slice: empty range value");
-    tp->checkEqInt(empty.concat("", buf, 1), 0, "String.concat: two empties fit cap 1");
-    tp->checkEqStr(buf, "", "String.concat: two empties value");
-    tp->checkEqInt(empty.compare(""), 0, "String.compare: empty vs empty");
+    tp->check_eq_int(empty.len(), 0, "String.len: empty");
+    tp->check_eq_int(empty.find(""), 0, "String.find: empty needle in empty");
+    tp->check_eq_int(empty.find("x"), -1, "String.find: no hit in empty");
+    tp->check_eq_int(empty.find_char('x'), -1, "String.find_char: no hit in empty");
+    tp->check_eq_int(empty.find_char(0), 0, "String.find_char: the terminator is at 0");
+    tp->check_eq_int(empty.starts_with(""), 1, "String.starts_with: empty prefix");
+    tp->check_eq_int(empty.ends_with(""), 1, "String.ends_with: empty suffix");
+    tp->check_eq_int(empty.copy(buf, 1), 0, "String.copy: empty fits cap 1");
+    tp->check_eq_str(buf, "", "String.copy: empty value");
+    tp->check_eq_int(empty.copy(buf, 0), -1, "String.copy: cap 0 fails");
+    tp->check_eq_int(empty.slice(0, 0, buf, 1), 0, "String.slice: empty range fits cap 1");
+    tp->check_eq_str(buf, "", "String.slice: empty range value");
+    tp->check_eq_int(empty.concat("", buf, 1), 0, "String.concat: two empties fit cap 1");
+    tp->check_eq_str(buf, "", "String.concat: two empties value");
+    tp->check_eq_int(empty.compare(""), 0, "String.compare: empty vs empty");
     emptybuf[0] = 0;
-    tp->checkEqInt(emptybuf.toLower(buf, 1), 0, "String.toLower: empty succeeds");
-    tp->checkEqStr(buf, "", "String.toLower: empty stays empty");
-    tp->checkEqInt(emptybuf.toUpper(buf, 1), 0, "String.toUpper: empty succeeds");
-    tp->checkEqStr(buf, "", "String.toUpper: empty stays empty");
-    tp->checkEqInt(emptybuf.toUpper(buf, 0), -1, "String.toUpper: cap 0 fails");
+    tp->check_eq_int(emptybuf.to_lower(buf, 1), 0, "String.to_lower: empty succeeds");
+    tp->check_eq_str(buf, "", "String.to_lower: empty stays empty");
+    tp->check_eq_int(emptybuf.to_upper(buf, 1), 0, "String.to_upper: empty succeeds");
+    tp->check_eq_str(buf, "", "String.to_upper: empty stays empty");
+    tp->check_eq_int(emptybuf.to_upper(buf, 0), -1, "String.to_upper: cap 0 fails");
 
     /* ---- one repeated byte --------------------------------------------- */
-    tp->checkEqInt(same.len(), 4, "String.len: 'aaaa'");
-    tp->checkEqInt(same.find("aa"), 0, "String.find: overlapping hit at 0");
-    tp->checkEqInt(same.find("aaa"), 0, "String.find: three of four");
-    tp->checkEqInt(same.find("aaaaa"), -1, "String.find: needle longer than input");
-    tp->checkEqInt(same.findChar('a'), 0, "String.findChar: first of four");
-    tp->checkEqInt(same.startsWith("aaa"), 1, "String.startsWith: 'aaa'");
-    tp->checkEqInt(same.startsWith("aab"), 0, "String.startsWith: mismatch at the end");
-    tp->checkEqInt(same.endsWith("aaa"), 1, "String.endsWith: 'aaa'");
-    tp->checkEqInt(same.endsWith("ba"), 0, "String.endsWith: mismatch at the start");
-    tp->checkEqInt(same.slice(1, 3, buf, 32), 0, "String.slice: middle of repeated bytes");
-    tp->checkEqStr(buf, "aa", "String.slice: repeated value");
-    tp->checkEqInt(same.compare("aaaa"), 0, "String.compare: repeated equal");
+    tp->check_eq_int(same.len(), 4, "String.len: 'aaaa'");
+    tp->check_eq_int(same.find("aa"), 0, "String.find: overlapping hit at 0");
+    tp->check_eq_int(same.find("aaa"), 0, "String.find: three of four");
+    tp->check_eq_int(same.find("aaaaa"), -1, "String.find: needle longer than input");
+    tp->check_eq_int(same.find_char('a'), 0, "String.find_char: first of four");
+    tp->check_eq_int(same.starts_with("aaa"), 1, "String.starts_with: 'aaa'");
+    tp->check_eq_int(same.starts_with("aab"), 0, "String.starts_with: mismatch at the end");
+    tp->check_eq_int(same.ends_with("aaa"), 1, "String.ends_with: 'aaa'");
+    tp->check_eq_int(same.ends_with("ba"), 0, "String.ends_with: mismatch at the start");
+    tp->check_eq_int(same.slice(1, 3, buf, 32), 0, "String.slice: middle of repeated bytes");
+    tp->check_eq_str(buf, "aa", "String.slice: repeated value");
+    tp->check_eq_int(same.compare("aaaa"), 0, "String.compare: repeated equal");
 
     /* ---- find, including the empty needle ------------------------------ */
-    tp->checkEqInt(hello.find(""), 0, "String.find: empty needle in a non-empty string");
-    tp->checkEqInt(hello.find("hello!"), -1, "String.find: needle one byte longer");
-    tp->checkEqInt(hello.find("l"), 2, "String.find: single-byte hit");
-    tp->checkEqInt(hello.findChar(0), 5, "String.findChar: terminator of 'hello'");
+    tp->check_eq_int(hello.find(""), 0, "String.find: empty needle in a non-empty string");
+    tp->check_eq_int(hello.find("hello!"), -1, "String.find: needle one byte longer");
+    tp->check_eq_int(hello.find("l"), 2, "String.find: single-byte hit");
+    tp->check_eq_int(hello.find_char(0), 5, "String.find_char: terminator of 'hello'");
 
     /* ---- slice bounds -------------------------------------------------- */
-    tp->checkEqInt(hello.slice(-1, 2, buf, 32), -1, "String.slice: start < 0");
-    tp->checkEqInt(hello.slice(3, 2, buf, 32), -1, "String.slice: end < start");
-    tp->checkEqInt(hello.slice(0, 6, buf, 32), -1, "String.slice: end > len");
-    tp->checkEqInt(hello.slice(6, 6, buf, 32), -1, "String.slice: start > len");
-    tp->checkEqInt(hello.slice(5, 5, buf, 1), 0, "String.slice: empty range at the end");
-    tp->checkEqStr(buf, "", "String.slice: empty range at the end value");
-    tp->checkEqInt(hello.slice(1, 4, buf, 4), 0, "String.slice: cap exactly");
-    tp->checkEqStr(buf, "ell", "String.slice: cap exactly value");
-    tp->checkEqInt(hello.slice(1, 4, buf, 3), -1, "String.slice: cap one short");
-    tp->checkEqInt(hello.slice(0, 2, pnull, 32), -1, "String.slice: NULL buffer");
-    tp->checkEqInt(hello.slice(0, 2, buf, 0), -1, "String.slice: cap 0");
+    tp->check_eq_int(hello.slice(-1, 2, buf, 32), -1, "String.slice: start < 0");
+    tp->check_eq_int(hello.slice(3, 2, buf, 32), -1, "String.slice: end < start");
+    tp->check_eq_int(hello.slice(0, 6, buf, 32), -1, "String.slice: end > len");
+    tp->check_eq_int(hello.slice(6, 6, buf, 32), -1, "String.slice: start > len");
+    tp->check_eq_int(hello.slice(5, 5, buf, 1), 0, "String.slice: empty range at the end");
+    tp->check_eq_str(buf, "", "String.slice: empty range at the end value");
+    tp->check_eq_int(hello.slice(1, 4, buf, 4), 0, "String.slice: cap exactly");
+    tp->check_eq_str(buf, "ell", "String.slice: cap exactly value");
+    tp->check_eq_int(hello.slice(1, 4, buf, 3), -1, "String.slice: cap one short");
+    tp->check_eq_int(hello.slice(0, 2, pnull, 32), -1, "String.slice: NULL buffer");
+    tp->check_eq_int(hello.slice(0, 2, buf, 0), -1, "String.slice: cap 0");
 
     /* ---- copy / concat ------------------------------------------------- */
-    tp->checkEqInt(hello.copy(pnull, 32), -1, "String.copy: NULL buffer");
-    tp->checkEqInt(hello.copy(buf, 0), -1, "String.copy: cap 0");
-    tp->checkEqInt(hello.copy(buf, 6), 0, "String.copy: cap exactly len + 1");
-    tp->checkEqStr(buf, "hello", "String.copy: cap exactly value");
-    tp->checkEqInt("ab".concat("cd", pnull, 32), -1, "String.concat: NULL buffer");
-    tp->checkEqInt("ab".concat("cd", buf, 0), -1, "String.concat: cap 0");
-    tp->checkEqInt(nul.concat("cd", buf, 32), -1, "String.concat: NULL left side");
-    tp->checkEqInt("ab".concat(nul, buf, 32), -1, "String.concat: NULL right side");
+    tp->check_eq_int(hello.copy(pnull, 32), -1, "String.copy: NULL buffer");
+    tp->check_eq_int(hello.copy(buf, 0), -1, "String.copy: cap 0");
+    tp->check_eq_int(hello.copy(buf, 6), 0, "String.copy: cap exactly len + 1");
+    tp->check_eq_str(buf, "hello", "String.copy: cap exactly value");
+    tp->check_eq_int("ab".concat("cd", pnull, 32), -1, "String.concat: NULL buffer");
+    tp->check_eq_int("ab".concat("cd", buf, 0), -1, "String.concat: cap 0");
+    tp->check_eq_int(nul.concat("cd", buf, 32), -1, "String.concat: NULL left side");
+    tp->check_eq_int("ab".concat(nul, buf, 32), -1, "String.concat: NULL right side");
 
     /* ---- case folding: the receiver is read, the result goes to `word` -- */
-    tp->checkEqInt("abc123!".toLower(word, 16), 0, "String.toLower: already lower");
-    tp->checkEqStr(word, "abc123!", "String.toLower: leaves digits and punctuation");
-    tp->checkEqInt("abc123!".toUpper(word, 16), 0, "String.toUpper: from lower");
-    tp->checkEqStr(word, "ABC123!", "String.toUpper: value");
-    tp->checkEqInt("aBc".toUpper(word, 16), 0, "String.toUpper: mixed");
-    tp->checkEqStr(word, "ABC", "String.toUpper: mixed value");
-    tp->checkEqInt("aBc".toLower(word, 16), 0, "String.toLower: mixed");
-    tp->checkEqStr(word, "abc", "String.toLower: mixed value");
-    tp->checkEqInt("aBc".toUpper(word, 3), -1, "String.toUpper: needs room for the NUL");
-    tp->checkEqInt(nul.toUpper(word, 16), -1, "String.toUpper: NULL receiver");
+    tp->check_eq_int("abc123!".to_lower(word, 16), 0, "String.to_lower: already lower");
+    tp->check_eq_str(word, "abc123!", "String.to_lower: leaves digits and punctuation");
+    tp->check_eq_int("abc123!".to_upper(word, 16), 0, "String.to_upper: from lower");
+    tp->check_eq_str(word, "ABC123!", "String.to_upper: value");
+    tp->check_eq_int("aBc".to_upper(word, 16), 0, "String.to_upper: mixed");
+    tp->check_eq_str(word, "ABC", "String.to_upper: mixed value");
+    tp->check_eq_int("aBc".to_lower(word, 16), 0, "String.to_lower: mixed");
+    tp->check_eq_str(word, "abc", "String.to_lower: mixed value");
+    tp->check_eq_int("aBc".to_upper(word, 3), -1, "String.to_upper: needs room for the NUL");
+    tp->check_eq_int(nul.to_upper(word, 16), -1, "String.to_upper: NULL receiver");
 
     /* ---- compare, including a NULL receiver ---------------------------- */
-    tp->checkEqInt("ab".compare("abc"), -1, "String.compare: shorter prefix");
-    tp->checkEqInt("abc".compare("ab"), 1, "String.compare: longer string");
-    tp->checkEqInt(nul.compare(""), 0, "String.compare: NULL is empty");
-    tp->checkEqInt(nul.compare("a"), -1, "String.compare: NULL is less than 'a'");
-    tp->checkEqInt("a".compare(nul), 1, "String.compare: 'a' is greater than NULL");
+    tp->check_eq_int("ab".compare("abc"), -1, "String.compare: shorter prefix");
+    tp->check_eq_int("abc".compare("ab"), 1, "String.compare: longer string");
+    tp->check_eq_int(nul.compare(""), 0, "String.compare: NULL is empty");
+    tp->check_eq_int(nul.compare("a"), -1, "String.compare: NULL is less than 'a'");
+    tp->check_eq_int("a".compare(nul), 1, "String.compare: 'a' is greater than NULL");
 
-    /* ---- copyTo: exactly n bytes, no NUL -------------------------------- */
+    /* ---- copy_to: exactly n bytes, no NUL -------------------------------- */
     src[0] = 'a'; src[1] = 'b'; src[2] = 'c'; src[3] = 0;
     dst[0] = 'X'; dst[1] = 'Y'; dst[2] = 'Z'; dst[3] = 0;
-    src.copyTo(dst, 3);
+    src.copy_to(dst, 3);
     dst[3] = 0;
-    tp->checkEqStr(dst, "abc", "String.copyTo: three bytes");
-    src.copyTo(dst, 0);
-    tp->checkEqStr(dst, "abc", "String.copyTo: n == 0 is a no-op");
-    src.copyTo(nul, 3);
-    tp->checkEqStr(dst, "abc", "String.copyTo: NULL destination is a no-op");
+    tp->check_eq_str(dst, "abc", "String.copy_to: three bytes");
+    src.copy_to(dst, 0);
+    tp->check_eq_str(dst, "abc", "String.copy_to: n == 0 is a no-op");
+    src.copy_to(nul, 3);
+    tp->check_eq_str(dst, "abc", "String.copy_to: NULL destination is a no-op");
 
     /* ---- the C parsers ------------------------------------------------- */
-    tp->checkEqInt("-42".toInt(), -42, "String.toInt: negative");
-    tp->checkEqInt("  -7".toInt(), -7, "String.toInt: leading spaces");
-    tp->checkEqInt("12abc".toInt(), 12, "String.toInt: stops at the first non-digit");
-    tp->checkEqInt(empty.toInt(), 0, "String.toInt: empty");
-    tp->checkEqInt("abc".toInt(), 0, "String.toInt: no digits");
-    tp->checkEqInt(nul.toInt(), 0, "String.toInt: NULL receiver");
-    tp->checkTrue("-2.25".toDouble() == -2.25, "String.toDouble: negative");
-    tp->checkTrue("1e3".toDouble() == 1000.0, "String.toDouble: exponent");
-    tp->checkTrue("abc".toDouble() == 0.0, "String.toDouble: no number");
-    tp->checkTrue(empty.toDouble() == 0.0, "String.toDouble: empty");
-    tp->checkTrue(nul.toDouble() == 0.0, "String.toDouble: NULL receiver");
+    tp->check_eq_int("-42".to_int(), -42, "String.to_int: negative");
+    tp->check_eq_int("  -7".to_int(), -7, "String.to_int: leading spaces");
+    tp->check_eq_int("12abc".to_int(), 12, "String.to_int: stops at the first non-digit");
+    tp->check_eq_int(empty.to_int(), 0, "String.to_int: empty");
+    tp->check_eq_int("abc".to_int(), 0, "String.to_int: no digits");
+    tp->check_eq_int(nul.to_int(), 0, "String.to_int: NULL receiver");
+    tp->check_true("-2.25".to_double() == -2.25, "String.to_double: negative");
+    tp->check_true("1e3".to_double() == 1000.0, "String.to_double: exponent");
+    tp->check_true("abc".to_double() == 0.0, "String.to_double: no number");
+    tp->check_true(empty.to_double() == 0.0, "String.to_double: empty");
+    tp->check_true(nul.to_double() == 0.0, "String.to_double: NULL receiver");
 
     return tp->report();
 }

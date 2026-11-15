@@ -27,39 +27,39 @@ int main(void)
     tp->init();
 
     /* 1. init, then hand out aligned slices. */
-    tp->checkEqInt(ap->init(32), 0, "init");
+    tp->check_eq_int(ap->init(32), 0, "init");
     p = (char *)ap->alloc(1);
-    tp->checkTrue(p != 0, "alloc a byte");
-    tp->checkEqInt((int)((long)p % 8), 0, "alloc is 8-byte aligned");
+    tp->check_true(p != 0, "alloc a byte");
+    tp->check_eq_int((int)((long)p % 8), 0, "alloc is 8-byte aligned");
     first = p;
     q = (char *)ap->alloc(8);
-    tp->checkTrue(q != 0, "alloc eight bytes");
-    tp->checkEqInt((int)(q - p), 8, "a one-byte request still takes eight bytes");
+    tp->check_true(q != 0, "alloc eight bytes");
+    tp->check_eq_int((int)(q - p), 8, "a one-byte request still takes eight bytes");
 
     /* 2. Zero and negative requests are refused with NULL, not an abort. */
-    tp->checkTrue(ap->alloc(0) == 0, "alloc of zero bytes is refused");
-    tp->checkTrue(ap->alloc(-1) == 0, "alloc of a negative size is refused");
+    tp->check_true(ap->alloc(0) == 0, "alloc of zero bytes is refused");
+    tp->check_true(ap->alloc(-1) == 0, "alloc of a negative size is refused");
 
     /* 3. A request that does not fit the block gets a new block. */
     q = (char *)ap->alloc(40);
-    tp->checkTrue(q != 0, "alloc across a block boundary");
+    tp->check_true(q != 0, "alloc across a block boundary");
     for (i = 0; i < 40; i++) q[i] = (char)i;
-    tp->checkEqInt(q[39], (char)39, "the overflow block is writable");
+    tp->check_eq_int(q[39], (char)39, "the overflow block is writable");
 
     /* 4. reset: every block after the first goes back, the first is reused. */
     ap->reset();
     p = (char *)ap->alloc(8);
-    tp->checkTrue(p != 0, "alloc after reset");
-    tp->checkTrue(p == first, "reset recycles the first block");
-    tp->checkEqInt((int)((long)p % 8), 0, "reset keeps the alignment");
+    tp->check_true(p != 0, "alloc after reset");
+    tp->check_true(p == first, "reset recycles the first block");
+    tp->check_eq_int((int)((long)p % 8), 0, "reset keeps the alignment");
 
-    /* 5. freeAll: even the first block goes, the arena refuses work until init. */
-    ap->freeAll();
-    tp->checkTrue(ap->alloc(8) == 0, "alloc after freeAll fails");
-    tp->checkEqInt(ap->init(32), 0, "init makes the arena usable again");
+    /* 5. free_all: even the first block goes, the arena refuses work until init. */
+    ap->free_all();
+    tp->check_true(ap->alloc(8) == 0, "alloc after free_all fails");
+    tp->check_eq_int(ap->init(32), 0, "init makes the arena usable again");
     p = (char *)ap->alloc(8);
-    tp->checkTrue(p != 0, "alloc after re-init");
-    ap->freeAll();
+    tp->check_true(p != 0, "alloc after re-init");
+    ap->free_all();
 
     /* 6. A heap arena: copy an initialised value in before dispatching. */
     seed.init(16);
@@ -67,8 +67,8 @@ int main(void)
     if (!heap) return 2;
     *heap = seed;
     p = (char *)heap->alloc(8);
-    tp->checkTrue(p != 0, "alloc through a heap pointer");
-    heap->freeAll();
+    tp->check_true(p != 0, "alloc through a heap pointer");
+    heap->free_all();
     free(heap);
 
     return tp->report();

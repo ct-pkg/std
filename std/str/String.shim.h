@@ -1,7 +1,7 @@
 /*
  * String.shim.h - the C surface behind std::str::String.
  *
- * `String.m.ct` maps the OO spellings (`s.len()`, `s.toLower(out, cap)`) onto the
+ * `String.m.ct` maps the OO spellings (`s.len()`, `s.to_lower(out, cap)`) onto the
  * `std_str_*` functions below. A mapping unit cannot declare functions or carry
  * `#ct-raw` code (a `.m.ct` prologue allows only `#include` / `#define`), so the
  * definitions live here: the compiler auto-detects `<base>.shim.h` next to a
@@ -195,7 +195,7 @@ static inline int std_str_compare(const char *a, const char *b)
     return (a[i] == 0) ? -1 : 1;
 }
 
-/* The `memcpy` shape behind `src.copyTo(dst, n)`: exactly `n` bytes of the
+/* The `memcpy` shape behind `src.copy_to(dst, n)`: exactly `n` bytes of the
    receiver into `dst`. No NUL is appended -- `n` is the whole contract, so a
    missing pointer or a non-positive count copies nothing. */
 static inline void std_str_copy_to(const char *src, char *dst, int n)
@@ -204,7 +204,7 @@ static inline void std_str_copy_to(const char *src, char *dst, int n)
     memcpy(dst, src, (size_t)n);
 }
 
-/* The C parser behind `s.toInt()`: 0 for a missing receiver, otherwise exactly
+/* The C parser behind `s.to_int()`: 0 for a missing receiver, otherwise exactly
    `atoi` (no error report; overflow is the C library's undefined behaviour). */
 static inline int std_str_to_int(const char *s)
 {
@@ -212,7 +212,7 @@ static inline int std_str_to_int(const char *s)
     return atoi(s);
 }
 
-/* The C parser behind `s.toDouble()`: `atof`, 0 for a missing receiver. */
+/* The C parser behind `s.to_double()`: `atof`, 0 for a missing receiver. */
 static inline double std_str_to_double(const char *s)
 {
     if (!s) return 0.0;

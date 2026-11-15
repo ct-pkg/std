@@ -1,7 +1,7 @@
 /*
  * Utf8Ops.shim.h - the C surface behind std::utf8::Utf8Ops.
  *
- * `Utf8Ops.m.ct` maps the OO spellings (`s.decode(&cp)`, `s.codepointCount()`,
+ * `Utf8Ops.m.ct` maps the OO spellings (`s.decode(&cp)`, `s.count_codepoints()`,
  * `buf.encode(cp, cap)`) onto the `std_utf8_*` functions below. A mapping unit
  * cannot declare functions or carry `#ct-raw` code (a `.m.ct` prologue allows
  * only `#include` / `#define`), so the definitions live here: the compiler

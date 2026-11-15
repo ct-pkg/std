@@ -17,13 +17,13 @@ int main(int argc, char **argv)
     char buf[64];
 
     tp->init();
-    tp->checkEqInt(argc, 3, "the runner passes a directory and a file");
+    tp->check_eq_int(argc, 3, "the runner passes a directory and a file");
     if (argc < 3) return tp->report();
 
-    tp->checkTrue(argv[1].exists(), "the directory exists");
-    tp->checkEqInt(argv[2].writeFile("hi\n"), 0, "write the file");
-    tp->checkEqInt(argv[2].readFile(buf, 64), 3, "read returns the byte count");
-    tp->checkEqStr(buf, "hi\n", "read value");
+    tp->check_true(argv[1].exists(), "the directory exists");
+    tp->check_eq_int(argv[2].write_file("hi\n"), 0, "write the file");
+    tp->check_eq_int(argv[2].read_file(buf, 64), 3, "read returns the byte count");
+    tp->check_eq_str(buf, "hi\n", "read value");
 
     return tp->report();
 }

@@ -6,7 +6,7 @@
  * directory as an include root. Everything is `static inline`, so an unused
  * helper is dropped instead of triggering `-Wunused-function`.
  *
- * `toStr` writes into the caller's buffer; `toString` is **not thread-safe**:
+ * `to_str` writes into the caller's buffer; `to_string` is **not thread-safe**:
  * it hands out one of four static 32-byte slots, so a fifth live result reuses
  * the first slot.
  *

@@ -2,13 +2,13 @@
  * Real.m.ct - the value half of std::math (`float` / `double` methods).
  *
  * `float` keeps the `f`-suffixed libm entry points so the argument and the
- * result stay `float`; `double` uses the unsuffixed ones. `toStr` / `toString`
+ * result stay `float`; `double` uses the unsuffixed ones. `to_str` / `to_string`
  * call the helpers in `Real.shim.h`, which sits beside this file and shares its
  * base name; that ring is separate from the integer one in `std::num` and is
  * likewise **not thread-safe**. The text is round-trip exact: `%g` when it
  * already reads back as the same `double`, `%.17g` otherwise.
  *
- * Only `double` has `toStr` / `toString`; `Float` stays purely numeric.
+ * Only `double` has `to_str` / `to_string`; `Float` stays purely numeric.
  *
  * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
  */
@@ -38,10 +38,10 @@ pub trait Real {
     double  floor();
     double  ceil();
     double  round();
-    int     isNan();
-    int     isInf();
-    char   *toStr(char *out, int cap);
-    char   *toString();
+    int     is_nan();
+    int     is_inf();
+    char   *to_str(char *out, int cap);
+    char   *to_string();
 }
 
 map trait Real for type double {
@@ -50,8 +50,8 @@ map trait Real for type double {
     floor(v) -> floor(v);
     ceil(v) -> ceil(v);
     round(v) -> round(v);
-    isNan(v) -> isnan(v);
-    isInf(v) -> isinf(v);
-    toStr(v, out, cap) -> std_math_double_to_str(v, out, cap);
-    toString(v) -> std_math_double_to_string(v);
+    is_nan(v) -> isnan(v);
+    is_inf(v) -> isinf(v);
+    to_str(v, out, cap) -> std_math_double_to_str(v, out, cap);
+    to_string(v) -> std_math_double_to_string(v);
 }

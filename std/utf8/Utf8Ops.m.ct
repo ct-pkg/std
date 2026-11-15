@@ -15,12 +15,12 @@
  * That is deliberate: `cap` belongs to the buffer, and `encode` is the one
  * operation whose subject is where the bytes go rather than their text.
  *
- * `codepointCount` is the old `length`. `String.len()` (also imported here in
- * `test/std/all`) counts BYTES; `codepointCount` counts CODE POINTS and returns
+ * `count_codepoints` is the old `length`. `String.len()` (also imported here in
+ * `test/std/all`) counts BYTES; `count_codepoints` counts CODE POINTS and returns
  * -1 for invalid UTF-8. Two different numbers, two different names.
  *
  * The host is `char *`; the type key drops a top-level `const`, so a literal
- * receiver works. `decode` and `codepointCount` never write through it.
+ * receiver works. `decode` and `count_codepoints` never write through it.
  *
  * Strict means a decoder rejects everything that is not a well-formed sequence:
  * a bad continuation byte, an overlong encoding, a surrogate and anything past
@@ -34,12 +34,12 @@ namespace std::utf8;
 
 pub trait Utf8Ops {
     int decode(int *cp);
-    int codepointCount();
+    int count_codepoints();
     int encode(int cp, int cap);
 }
 
 map trait Utf8Ops for type char * {
     decode(s, cp) -> std_utf8_decode(s, cp);
-    codepointCount(s) -> std_utf8_codepoint_count(s);
+    count_codepoints(s) -> std_utf8_codepoint_count(s);
     encode(out, cp, cap) -> std_utf8_encode(cp, out, cap);
 }

@@ -29,27 +29,27 @@ int main(int argc, char **argv)
     path = (argc > 1) ? argv[1] : "std-io-test.txt";
 
     missing = "/nonexistent-dir/ct-std-io".open("r");
-    tp->checkTrue(missing == 0, "open of a missing path returns NULL");
-    tp->checkEqInt(missing.close(), 0, "close(NULL) is a no-op success");
-    tp->checkEqInt(missing.read(buf, 1), -1, "read on a NULL handle returns -1");
+    tp->check_true(missing == 0, "open of a missing path returns NULL");
+    tp->check_eq_int(missing.close(), 0, "close(NULL) is a no-op success");
+    tp->check_eq_int(missing.read(buf, 1), -1, "read on a NULL handle returns -1");
 
     f = path.open("w");
-    tp->checkTrue(f != 0, "open for write");
-    tp->checkEqInt(f.write("hello", 5), 5, "write returns the byte count");
-    tp->checkEqInt(f.close(), 0, "close succeeds");
-    tp->checkEqInt(f.close(), 0, "second close is idempotent");
-    tp->checkEqInt(f.write("x", 1), -1, "write after close returns -1");
+    tp->check_true(f != 0, "open for write");
+    tp->check_eq_int(f.write("hello", 5), 5, "write returns the byte count");
+    tp->check_eq_int(f.close(), 0, "close succeeds");
+    tp->check_eq_int(f.close(), 0, "second close is idempotent");
+    tp->check_eq_int(f.write("x", 1), -1, "write after close returns -1");
 
     f = path.open("r");
-    tp->checkTrue(f != 0, "open for read");
+    tp->check_true(f != 0, "open for read");
     n = f.read(buf, 5);
-    tp->checkEqInt(n, 5, "read returns the byte count");
+    tp->check_eq_int(n, 5, "read returns the byte count");
     buf[n] = 0;
-    tp->checkEqStr(buf, "hello", "roundtrip content");
-    tp->checkEqInt(f.read(buf, 1), 0, "read at EOF returns 0");
-    tp->checkEqInt(f.close(), 0, "close of the read handle");
+    tp->check_eq_str(buf, "hello", "roundtrip content");
+    tp->check_eq_int(f.read(buf, 1), 0, "read at EOF returns 0");
+    tp->check_eq_int(f.close(), 0, "close of the read handle");
 
-    tp->checkEqInt(std::io::printf(""), 0, "printf with an empty format writes nothing");
+    tp->check_eq_int(std::io::printf(""), 0, "printf with an empty format writes nothing");
     std::io::Stdout.putchar('\n');
 
     return tp->report();

@@ -14,7 +14,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 标准库的 `<stdio.h>` / `<stdarg.h>`；`ct.pkg` 的约束是 `requires ct >= 0.20.3`。
+依赖 C 标准库的 `<stdio.h>` / `<stdarg.h>`；`ct.pkg` 的约束是 `requires ct >= 0.30.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -86,7 +86,7 @@ read 5 bytes: hello
 CT 侧的句柄类型是 `IoFile *`：`File.m.ct` 用 `pub type IoFile = struct ct_io_file;`
 给 C 侧的不透明句柄起了一个 CT 私名。C tag 仍是 `struct ct_io_file`，helper 符号
 仍是 `std_io_*`，一个字没改。这个别名需要 **0.20.3**；字面量接收者
-（`"/tmp/x".open("r")`）从 **0.20.0** 起可用（本包下限 0.20.3），v0.19.1 请先赋给 `char *` 变量。
+（`"/tmp/x".open("r")`）从 **0.20.0** 起可用（本包下限 0.30.0），v0.19.1 请先赋给 `char *` 变量。
 
 ## 4. API 全表
 
@@ -339,8 +339,8 @@ main.ct:5:1: error: method receiver must be a variable, an element, a call or a 
 - **`write` / `read` 不检查缓冲区容量**：`n` 给大了就是越界。
 - **`printf` 不做格式检查**：格式串与实参不匹配是未定义行为；`%lu` 配 `int` 不会被拦。
 - **`char *` 方法名全局共享**：本模块占用 `open`；`len` / `find` 等属于
-  [`std::str`](../str/README.md)，`exists` / `readFile` / `writeFile` / `list` 属于
-  [`std::fs`](../fs/README.md)，`decode` / `codepointCount` / `encode` 属于
+  [`std::str`](../str/README.md)，`exists` / `read_file` / `write_file` / `list` 属于
+  [`std::fs`](../fs/README.md)，`decode` / `count_codepoints` / `encode` 属于
   [`std::utf8`](../utf8/README.md)。
 - **`IoFile *` 是唯一句柄类型**：不要用 `void *` 当句柄宿主——`void *` 无法限定调用
   范围，任何 `void *` 变量都会凭空获得 `read` / `write` / `close`，别的包一旦也挂
@@ -354,4 +354,4 @@ main.ct:5:1: error: method receiver must be a variable, an element, a call or a 
 | --- | --- | --- |
 | `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写，教程并入本 README，删除 `docs/tutorial.md`。句柄在 CT 侧为 `IoFile *`（`pub type IoFile = struct ct_io_file;`；C tag 仍 `struct ct_io_file`）。 |
 
-编译器下限 `ct >= 0.20.3`。
+编译器下限 `ct >= 0.30.0`。

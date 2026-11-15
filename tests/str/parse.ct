@@ -1,4 +1,4 @@
-/* std::str::String - the two C parsers behind toInt / toDouble. */
+/* std::str::String - the two C parsers behind to_int / to_double. */
 import std::str::String;
 import std::test::Test;
 
@@ -12,9 +12,9 @@ int main(void)
 
     tp->init();
 
-    tp->checkEqInt(num.toInt(), 42, "toInt");
-    tp->checkEqInt((int)flt.toDouble(), 3, "toDouble");
-    tp->checkEqInt(bad.toInt(), 0, "toInt on a non-number");
+    tp->check_eq_int(num.to_int(), 42, "to_int");
+    tp->check_eq_int((int)flt.to_double(), 3, "to_double");
+    tp->check_eq_int(bad.to_int(), 0, "to_int on a non-number");
 
     return tp->report();
 }

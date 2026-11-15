@@ -19,71 +19,71 @@ int main(void)
     tp->init();
 
     /* ---- empty / NULL -------------------------------------------------- */
-    tp->checkEqInt(empty.decode(&cp), -1, "Utf8Ops.decode: empty string");
-    tp->checkEqInt(nul.decode(&cp), -1, "Utf8Ops.decode: NULL receiver");
-    tp->checkEqInt("A".decode(nullcp), 1, "Utf8Ops.decode: a NULL out pointer is allowed");
+    tp->check_eq_int(empty.decode(&cp), -1, "Utf8Ops.decode: empty string");
+    tp->check_eq_int(nul.decode(&cp), -1, "Utf8Ops.decode: NULL receiver");
+    tp->check_eq_int("A".decode(nullcp), 1, "Utf8Ops.decode: a NULL out pointer is allowed");
 
     /* ---- the encoding boundaries -------------------------------------- */
-    tp->checkEqInt(buf.encode(0x7F, 16), 1, "Utf8Ops.encode: U+007F is one byte");
-    tp->checkEqInt(buf.decode(&cp), 1, "Utf8Ops.decode: U+007F width");
-    tp->checkEqInt(cp, 0x7F, "Utf8Ops.decode: U+007F value");
-    tp->checkEqInt(buf.encode(0x80, 16), 2, "Utf8Ops.encode: U+0080 is two bytes");
-    tp->checkEqInt(buf.decode(&cp), 2, "Utf8Ops.decode: U+0080 width");
-    tp->checkEqInt(cp, 0x80, "Utf8Ops.decode: U+0080 value");
-    tp->checkEqInt(buf.encode(0x7FF, 16), 2, "Utf8Ops.encode: U+07FF is two bytes");
-    tp->checkEqInt(buf.decode(&cp), 2, "Utf8Ops.decode: U+07FF width");
-    tp->checkEqInt(cp, 0x7FF, "Utf8Ops.decode: U+07FF value");
-    tp->checkEqInt(buf.encode(0x800, 16), 3, "Utf8Ops.encode: U+0800 is three bytes");
-    tp->checkEqInt(buf.decode(&cp), 3, "Utf8Ops.decode: U+0800 width");
-    tp->checkEqInt(cp, 0x800, "Utf8Ops.decode: U+0800 value");
-    tp->checkEqInt(buf.encode(0xFFFF, 16), 3, "Utf8Ops.encode: U+FFFF is three bytes");
-    tp->checkEqInt(buf.decode(&cp), 3, "Utf8Ops.decode: U+FFFF width");
-    tp->checkEqInt(cp, 0xFFFF, "Utf8Ops.decode: U+FFFF value");
-    tp->checkEqInt(buf.encode(0x10000, 16), 4, "Utf8Ops.encode: U+10000 is four bytes");
-    tp->checkEqInt(buf.decode(&cp), 4, "Utf8Ops.decode: U+10000 width");
-    tp->checkEqInt(cp, 0x10000, "Utf8Ops.decode: U+10000 value");
-    tp->checkEqInt(buf.encode(0x10FFFF, 16), 4, "Utf8Ops.encode: U+10FFFF is four bytes");
-    tp->checkEqInt(buf.decode(&cp), 4, "Utf8Ops.decode: U+10FFFF width");
-    tp->checkEqInt(cp, 0x10FFFF, "Utf8Ops.decode: U+10FFFF value");
+    tp->check_eq_int(buf.encode(0x7F, 16), 1, "Utf8Ops.encode: U+007F is one byte");
+    tp->check_eq_int(buf.decode(&cp), 1, "Utf8Ops.decode: U+007F width");
+    tp->check_eq_int(cp, 0x7F, "Utf8Ops.decode: U+007F value");
+    tp->check_eq_int(buf.encode(0x80, 16), 2, "Utf8Ops.encode: U+0080 is two bytes");
+    tp->check_eq_int(buf.decode(&cp), 2, "Utf8Ops.decode: U+0080 width");
+    tp->check_eq_int(cp, 0x80, "Utf8Ops.decode: U+0080 value");
+    tp->check_eq_int(buf.encode(0x7FF, 16), 2, "Utf8Ops.encode: U+07FF is two bytes");
+    tp->check_eq_int(buf.decode(&cp), 2, "Utf8Ops.decode: U+07FF width");
+    tp->check_eq_int(cp, 0x7FF, "Utf8Ops.decode: U+07FF value");
+    tp->check_eq_int(buf.encode(0x800, 16), 3, "Utf8Ops.encode: U+0800 is three bytes");
+    tp->check_eq_int(buf.decode(&cp), 3, "Utf8Ops.decode: U+0800 width");
+    tp->check_eq_int(cp, 0x800, "Utf8Ops.decode: U+0800 value");
+    tp->check_eq_int(buf.encode(0xFFFF, 16), 3, "Utf8Ops.encode: U+FFFF is three bytes");
+    tp->check_eq_int(buf.decode(&cp), 3, "Utf8Ops.decode: U+FFFF width");
+    tp->check_eq_int(cp, 0xFFFF, "Utf8Ops.decode: U+FFFF value");
+    tp->check_eq_int(buf.encode(0x10000, 16), 4, "Utf8Ops.encode: U+10000 is four bytes");
+    tp->check_eq_int(buf.decode(&cp), 4, "Utf8Ops.decode: U+10000 width");
+    tp->check_eq_int(cp, 0x10000, "Utf8Ops.decode: U+10000 value");
+    tp->check_eq_int(buf.encode(0x10FFFF, 16), 4, "Utf8Ops.encode: U+10FFFF is four bytes");
+    tp->check_eq_int(buf.decode(&cp), 4, "Utf8Ops.decode: U+10FFFF width");
+    tp->check_eq_int(cp, 0x10FFFF, "Utf8Ops.decode: U+10FFFF value");
 
     /* ---- encode: capacity and the rejected code points ---------------- */
-    tp->checkEqInt(buf.encode(0x80, 1), -1, "Utf8Ops.encode: two bytes need cap 2");
-    tp->checkEqInt(buf.encode(0x800, 2), -1, "Utf8Ops.encode: three bytes need cap 3");
-    tp->checkEqInt(buf.encode(0x10000, 3), -1, "Utf8Ops.encode: four bytes need cap 4");
-    tp->checkEqInt(buf.encode(-1, 16), -1, "Utf8Ops.encode: a negative code point");
-    tp->checkEqInt(buf.encode(0xD800, 16), -1, "Utf8Ops.encode: the first surrogate");
-    tp->checkEqInt(buf.encode(0xDFFF, 16), -1, "Utf8Ops.encode: the last surrogate");
-    tp->checkEqInt(buf.encode(0x110000, 16), -1, "Utf8Ops.encode: past U+10FFFF");
-    tp->checkEqInt(nullbuf.encode(0x41, 16), -1, "Utf8Ops.encode: NULL buffer");
-    tp->checkEqInt(buf.encode(0x41, 0), -1, "Utf8Ops.encode: cap 0");
-    tp->checkEqInt(buf.encode(0, 1), 1, "Utf8Ops.encode: U+0000 is one byte");
-    tp->checkEqInt(buf[0], 0, "Utf8Ops.encode: U+0000 writes the NUL byte");
+    tp->check_eq_int(buf.encode(0x80, 1), -1, "Utf8Ops.encode: two bytes need cap 2");
+    tp->check_eq_int(buf.encode(0x800, 2), -1, "Utf8Ops.encode: three bytes need cap 3");
+    tp->check_eq_int(buf.encode(0x10000, 3), -1, "Utf8Ops.encode: four bytes need cap 4");
+    tp->check_eq_int(buf.encode(-1, 16), -1, "Utf8Ops.encode: a negative code point");
+    tp->check_eq_int(buf.encode(0xD800, 16), -1, "Utf8Ops.encode: the first surrogate");
+    tp->check_eq_int(buf.encode(0xDFFF, 16), -1, "Utf8Ops.encode: the last surrogate");
+    tp->check_eq_int(buf.encode(0x110000, 16), -1, "Utf8Ops.encode: past U+10FFFF");
+    tp->check_eq_int(nullbuf.encode(0x41, 16), -1, "Utf8Ops.encode: NULL buffer");
+    tp->check_eq_int(buf.encode(0x41, 0), -1, "Utf8Ops.encode: cap 0");
+    tp->check_eq_int(buf.encode(0, 1), 1, "Utf8Ops.encode: U+0000 is one byte");
+    tp->check_eq_int(buf[0], 0, "Utf8Ops.encode: U+0000 writes the NUL byte");
 
     /* ---- decode: malformed sequences ---------------------------------- */
-    tp->checkEqInt("\xC0\x80".decode(&cp), -1, "Utf8Ops.decode: C0 80 is overlong");
-    tp->checkEqInt("\xC1\xBF".decode(&cp), -1, "Utf8Ops.decode: C1 BF is overlong");
-    tp->checkEqInt("\xE0\x80\x80".decode(&cp), -1, "Utf8Ops.decode: E0 80 80 is overlong");
-    tp->checkEqInt("\xF0\x80\x80\x80".decode(&cp), -1, "Utf8Ops.decode: F0 80 80 80 is overlong");
-    tp->checkEqInt("\xED\xA0\x80".decode(&cp), -1, "Utf8Ops.decode: ED A0 80 is a surrogate");
-    tp->checkEqInt("\xED\xBF\xBF".decode(&cp), -1, "Utf8Ops.decode: ED BF BF is a surrogate");
-    tp->checkEqInt("\xF4\x90\x80\x80".decode(&cp), -1, "Utf8Ops.decode: F4 90 80 80 is past U+10FFFF");
-    tp->checkEqInt("\xC3\x28".decode(&cp), -1, "Utf8Ops.decode: a bad continuation byte");
-    tp->checkEqInt("\xE2\x82".decode(&cp), -1, "Utf8Ops.decode: a truncated three-byte sequence");
-    tp->checkEqInt("\xF0\x9F\x98".decode(&cp), -1, "Utf8Ops.decode: a truncated four-byte sequence");
-    tp->checkEqInt("\xFE".decode(&cp), -1, "Utf8Ops.decode: FE is not a lead byte");
-    tp->checkEqInt("\xFF".decode(&cp), -1, "Utf8Ops.decode: FF is not a lead byte");
-    tp->checkEqInt("\x80".decode(&cp), -1, "Utf8Ops.decode: a lone continuation byte");
-    tp->checkEqInt("\xF4\x8F\xBF\xBF".decode(&cp), 4, "Utf8Ops.decode: the largest valid sequence");
-    tp->checkEqInt(cp, 0x10FFFF, "Utf8Ops.decode: the largest valid value");
+    tp->check_eq_int("\xC0\x80".decode(&cp), -1, "Utf8Ops.decode: C0 80 is overlong");
+    tp->check_eq_int("\xC1\xBF".decode(&cp), -1, "Utf8Ops.decode: C1 BF is overlong");
+    tp->check_eq_int("\xE0\x80\x80".decode(&cp), -1, "Utf8Ops.decode: E0 80 80 is overlong");
+    tp->check_eq_int("\xF0\x80\x80\x80".decode(&cp), -1, "Utf8Ops.decode: F0 80 80 80 is overlong");
+    tp->check_eq_int("\xED\xA0\x80".decode(&cp), -1, "Utf8Ops.decode: ED A0 80 is a surrogate");
+    tp->check_eq_int("\xED\xBF\xBF".decode(&cp), -1, "Utf8Ops.decode: ED BF BF is a surrogate");
+    tp->check_eq_int("\xF4\x90\x80\x80".decode(&cp), -1, "Utf8Ops.decode: F4 90 80 80 is past U+10FFFF");
+    tp->check_eq_int("\xC3\x28".decode(&cp), -1, "Utf8Ops.decode: a bad continuation byte");
+    tp->check_eq_int("\xE2\x82".decode(&cp), -1, "Utf8Ops.decode: a truncated three-byte sequence");
+    tp->check_eq_int("\xF0\x9F\x98".decode(&cp), -1, "Utf8Ops.decode: a truncated four-byte sequence");
+    tp->check_eq_int("\xFE".decode(&cp), -1, "Utf8Ops.decode: FE is not a lead byte");
+    tp->check_eq_int("\xFF".decode(&cp), -1, "Utf8Ops.decode: FF is not a lead byte");
+    tp->check_eq_int("\x80".decode(&cp), -1, "Utf8Ops.decode: a lone continuation byte");
+    tp->check_eq_int("\xF4\x8F\xBF\xBF".decode(&cp), 4, "Utf8Ops.decode: the largest valid sequence");
+    tp->check_eq_int(cp, 0x10FFFF, "Utf8Ops.decode: the largest valid value");
 
-    /* ---- codepointCount ----------------------------------------------- */
-    tp->checkEqInt(empty.codepointCount(), 0, "Utf8Ops.codepointCount: empty");
-    tp->checkEqInt(nul.codepointCount(), 0, "Utf8Ops.codepointCount: NULL");
-    tp->checkEqInt("aé€😀".codepointCount(), 4, "Utf8Ops.codepointCount: mixed widths");
-    tp->checkEqInt("\xF0\x9F\x98\x80".codepointCount(), 1, "Utf8Ops.codepointCount: one four-byte point");
-    tp->checkEqInt("\x80".codepointCount(), -1, "Utf8Ops.codepointCount: invalid at the start");
-    tp->checkEqInt("a\x80".codepointCount(), -1, "Utf8Ops.codepointCount: invalid after ASCII");
-    tp->checkEqInt("\xE0\x80\x80".codepointCount(), -1, "Utf8Ops.codepointCount: an overlong sequence");
+    /* ---- count_codepoints ----------------------------------------------- */
+    tp->check_eq_int(empty.count_codepoints(), 0, "Utf8Ops.count_codepoints: empty");
+    tp->check_eq_int(nul.count_codepoints(), 0, "Utf8Ops.count_codepoints: NULL");
+    tp->check_eq_int("aé€😀".count_codepoints(), 4, "Utf8Ops.count_codepoints: mixed widths");
+    tp->check_eq_int("\xF0\x9F\x98\x80".count_codepoints(), 1, "Utf8Ops.count_codepoints: one four-byte point");
+    tp->check_eq_int("\x80".count_codepoints(), -1, "Utf8Ops.count_codepoints: invalid at the start");
+    tp->check_eq_int("a\x80".count_codepoints(), -1, "Utf8Ops.count_codepoints: invalid after ASCII");
+    tp->check_eq_int("\xE0\x80\x80".count_codepoints(), -1, "Utf8Ops.count_codepoints: an overlong sequence");
 
     return tp->report();
 }

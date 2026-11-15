@@ -17,22 +17,22 @@ int main(void)
     tp->init();
 
     /* 1. The three checks, all passing. */
-    tp->checkTrue(1, "checkTrue");
-    tp->checkEqInt(7, 7, "checkEqInt");
-    tp->checkEqStr("hello", "hello", "checkEqStr");
+    tp->check_true(1, "check_true");
+    tp->check_eq_int(7, 7, "check_eq_int");
+    tp->check_eq_str("hello", "hello", "check_eq_str");
 
     /* 2. Each check returns 1 on success and 0 on failure. */
-    ok = tp->checkTrue(1, "returns 1");
-    tp->checkEqInt(ok, 1, "checkTrue return value");
-    ok = tp->checkEqInt(5, 5, "returns 1");
-    tp->checkEqInt(ok, 1, "checkEqInt return value");
-    ok = tp->checkEqStr("a", "a", "returns 1");
-    tp->checkEqInt(ok, 1, "checkEqStr return value");
+    ok = tp->check_true(1, "returns 1");
+    tp->check_eq_int(ok, 1, "check_true return value");
+    ok = tp->check_eq_int(5, 5, "returns 1");
+    tp->check_eq_int(ok, 1, "check_eq_int return value");
+    ok = tp->check_eq_str("a", "a", "returns 1");
+    tp->check_eq_int(ok, 1, "check_eq_str return value");
 
     /* 3. A NULL message is allowed; NULL strings compare as "". */
-    tp->checkTrue(1, (char *)0);
-    tp->checkEqStr((char *)0, "", "NULL got is empty");
-    tp->checkEqStr("", (char *)0, "NULL want is empty");
+    tp->check_true(1, (char *)0);
+    tp->check_eq_str((char *)0, "", "NULL got is empty");
+    tp->check_eq_str("", (char *)0, "NULL want is empty");
 
     /* 4. The report is the exit status: 0 here, 1 when anything failed. */
     return tp->report();

@@ -10,15 +10,35 @@
 # variable, an element, a call or a field chain", so 0.20.0 is the floor for
 # that feature. `std::io` names its handle with a type alias
 # (`pub type IoFile = struct ct_io_file;`), and type aliases only parse from
-# 0.20.3 on, so 0.20.3 is the floor for the package as a whole.
+# 0.20.3 on.
+#
+# 0.3.0 raises the floor to 0.30.0: `Vec<T>` / `Map<K,V>` / `MapEntry<K,V>`
+# became the compiler's built-in layer in v0.30.0 (ct-lang Phase 29, released
+# with v0.30.0; `lib/std/Vec.h.ct` plus the reserved-name check at
+# `Parser.h.ct`'s "is a built-in type and cannot be redeclared"), and this
+# package no longer ships `std::vec` / `std::map`. On 0.20.3..0.29.x there is
+# no built-in container layer, so a consumer would lose the containers
+# entirely -- hence the raised floor rather than the old 0.20.3.
 #
 # The version line restarted at 0.1.0; 0.1.0 also adds `std::io` (printf, puts,
 # putchar, getchar, fflush, and file open/read/write/close) next to `std::num`
 # and `std::math`. `-lm` rides in `ldflags` because std::math calls sqrt / fabs
 # / isnan / isinf; on platforms where libm is part of libc it is a no-op, on
 # the others it is required.
+#
+# `publisher` and `ns-root` are the two keys the replacement package mechanism
+# requires (SP-002 / SP-003 in ct-lang's ct-pkg-shared-store requirements).
+# Measured on ct v0.53.0: both are accepted with no diagnostic and silently
+# ignored -- unknown keys in `ct.pkg` are skipped by `read_manifest` -- so
+# `ct build` and `tests/run.sh` behave byte-for-byte as before. They are
+# declared here so the manifest already carries the package identity: the
+# include root is the package root itself, hence `ns-root = .` (the `std/`
+# segment of `import std::<mod>::<Unit>` comes from the directory tree under
+# it, not from this key).
 name = std
-version = 0.2.0
+publisher = ct
+ns-root = .
+version = 0.3.0
 licence = GPL-3.0-or-later WITH GCC-exception-3.1
-requires = ct >= 0.20.3
+requires = ct >= 0.30.0
 ldflags = -lm

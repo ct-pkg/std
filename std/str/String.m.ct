@@ -15,15 +15,15 @@
  * `.h.ct`.
  *
  * Every method here reads the receiver. Anything that produces bytes --
- * `copy`, `slice`, `concat`, `toLower`, `toUpper` -- writes into a
+ * `copy`, `slice`, `concat`, `to_lower`, `to_upper` -- writes into a
  * caller-supplied buffer plus capacity and returns a status code; nothing
  * allocates and nothing mutates the receiver. The `to` prefix therefore does
- * not mean "returns a fresh value" either: `s.toUpper(out, cap)` still needs
+ * not mean "returns a fresh value" either: `s.to_upper(out, cap)` still needs
  * the caller's buffer.
  *
- * `copyTo` is the one raw shape: exactly `n` bytes of the receiver into `dst`,
- * no NUL and no capacity check. Its mirror image `copyFrom`, which wrote the
- * receiver, is gone: `dst.copyFrom(src, n)` is now `src.copyTo(dst, n)`.
+ * `copy_to` is the one raw shape: exactly `n` bytes of the receiver into `dst`,
+ * no NUL and no capacity check. Its mirror image -- the old method that wrote
+ * the receiver instead -- is gone since 0.2.0: the call is `src.copy_to(dst, n)`.
  *
  * The host is `char *`. The compiler's type key drops a top-level `const`, so
  * a `const char *` receiver (a literal, or a `const char *` field) matches the
@@ -37,7 +37,7 @@
  * translation unit gets its own copy; the CT-level `std::str::len(...)` spelling
  * no longer exists.
  *
- * `toInt` / `toDouble` are the C parsers (`atoi` / `atof`) behind the same
+ * `to_int` / `to_double` are the C parsers (`atoi` / `atof`) behind the same
  * NULL check as the rest of the module: a missing receiver parses as 0.
  *
  * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
@@ -49,33 +49,33 @@ namespace std::str;
 pub trait String {
     int len();
     int find(const char *needle);
-    int findChar(int c);
-    int startsWith(const char *prefix);
-    int endsWith(const char *suffix);
+    int find_char(int c);
+    int starts_with(const char *prefix);
+    int ends_with(const char *suffix);
     int copy(char *out, int cap);
     int slice(int start, int end, char *out, int cap);
     int concat(const char *other, char *out, int cap);
-    int toLower(char *out, int cap);
-    int toUpper(char *out, int cap);
+    int to_lower(char *out, int cap);
+    int to_upper(char *out, int cap);
     int compare(const char *other);
-    void copyTo(char *dst, int n);
-    int toInt();
-    double toDouble();
+    void copy_to(char *dst, int n);
+    int to_int();
+    double to_double();
 }
 
 map trait String for type char * {
     len(s) -> std_str_len(s);
     find(s, needle) -> std_str_find(s, needle);
-    findChar(s, c) -> std_str_find_char(s, c);
-    startsWith(s, prefix) -> std_str_starts_with(s, prefix);
-    endsWith(s, suffix) -> std_str_ends_with(s, suffix);
+    find_char(s, c) -> std_str_find_char(s, c);
+    starts_with(s, prefix) -> std_str_starts_with(s, prefix);
+    ends_with(s, suffix) -> std_str_ends_with(s, suffix);
     copy(s, out, cap) -> std_str_copy(s, out, cap);
     slice(s, start, end, out, cap) -> std_str_slice(s, start, end, out, cap);
     concat(s, other, out, cap) -> std_str_concat(s, other, out, cap);
-    toLower(s, out, cap) -> std_str_lower(s, out, cap);
-    toUpper(s, out, cap) -> std_str_upper(s, out, cap);
+    to_lower(s, out, cap) -> std_str_lower(s, out, cap);
+    to_upper(s, out, cap) -> std_str_upper(s, out, cap);
     compare(s, other) -> std_str_compare(s, other);
-    copyTo(s, dst, n) -> std_str_copy_to(s, dst, n);
-    toInt(s) -> std_str_to_int(s);
-    toDouble(s) -> std_str_to_double(s);
+    copy_to(s, dst, n) -> std_str_copy_to(s, dst, n);
+    to_int(s) -> std_str_to_int(s);
+    to_double(s) -> std_str_to_double(s);
 }

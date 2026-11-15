@@ -14,9 +14,9 @@ int main(void)
     Test *tp = &t;
 
     tp->init();
-    tp->checkTrue(1, "a passing check");
-    tp->checkEqInt(2 + 2, 4, "int equality");
-    tp->checkEqStr("abc", "abc", "string equality");
+    tp->check_true(1, "a passing check");
+    tp->check_eq_int(2 + 2, 4, "int equality");
+    tp->check_eq_str("abc", "abc", "string equality");
 
     return tp->report();
 }
