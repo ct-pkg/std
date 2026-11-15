@@ -44,11 +44,13 @@ C 标准库 + POSIX.1 中 CT 侧有稳定用法的能力：字符串/内存视�
 | 编译器内置层（`Vec` / `Map` / `Str`） | 0.3.0 已删 `std::vec` / `std::map`；重名撞内置类型 |
 | 泛型容器、分配器抽象、线程/并发、异步/事件循环 | 语言与运行时能力；**且这类安排不往 ct-lang 推** |
 | 第三方包（JSON / HTTP / 正则 / 日志 / CLI） | 独立 ct-pkg |
-| 纯内存/热路径（`memcpy` / `memcmp` / `strncmp` 等） | 连方法层都不加，直接 libc 原名 |
 | 进程控制与信号（`fork` / `exec*` / `system` / `popen`） | CT 无进程/并发模型 |
 | locale、宽字符、多编码 | 编码走 `std::utf8`；locale 是平台全局状态 |
 | Windows / 非 POSIX | 现有实现依赖 `dirent.h` / `unistd.h` |
 | 编译器诊断、构建工具、包管理器 | 属于 ct / ct-pkg |
+
+注：纯内存操作（`memcpy` / `memmove` / `memset` / `memcmp` / `memchr` / `strncmp`）不再排除——
+已由 `char *` 方法层封装（§2.1），方法层编译期展开，无运行时开销。
 
 ### 1.5 ③ 的准入（只此一条）
 
@@ -75,12 +77,18 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 
 | API | 形态 | 状态 | 说明 |
 | --- | --- | --- | --- |
-| `len` `find` `find_char` `starts_with` `ends_with` `copy` `slice` `concat` `to_lower` `to_upper` `compare` `copy_to` | ② 方法层（M1） | 已有 | 字符串起头的核心链路 |
+| `len` `find` `find_char` `starts_with` `ends_with` `copy` `slice` `concat` `to_lower` `to_upper` `compare` | ② 方法层（M1） | 已有 | 字符串起头的核心链路 |
 | `to_int` `to_double` | ② 方法层（M0） | 已有 | `-> atoi/atof` |
 | `rfind_char` / `compare_ignore_case` | ② 方法层（M1） | 新增 | 补齐反向查找与忽略大小写比较 |
 | `parse_long` / `parse_llong` / `parse_ulong` / `parse_real` | ② 方法层（M1） | 新增 | 需要 `strtol` 的 `endptr` + `errno` 才能报错；底座仍是映射 |
+| `copy_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` | ② 方法层（M1） | 新增 | 内存操作（宿主 `char *`，`void *` 挂不了方法）：`copy_from` 统一映射 `memmove`（允许重叠，不另设 `memcpy` 名字）；`fill` → `memset`；`compare_with` → `memcmp`（返回三态，不布尔化）；`find_byte` → `memchr`（返回指针或 `NULL`）；`compare_prefix` → `strncmp`（`\0` 停） |
 
-另：`String` → `CStrOps`（issue 0001，`0.4.0`），方法名不变。
+`memcpy` / `memmove` 合并为一个 `copy_from`：`memmove` 允许源/目标重叠，是 `memcpy` 的安全超集；
+统一用它可消除“该选哪个”的成本，方法层编译期展开、无运行时开销。既有 `copy_to`
+（`src.copy_to(dst, n)`）是同一能力、方向相反；按“方向只保留一个”，0.4.0 起统一为
+`dst.copy_from(src, n)`，`copy_to` 退场（破坏性改名，随 issue 0001 同批通告）。
+
+另：`String` → `CStrOps`（issue 0001，`0.4.0`），除 `copy_to` → `copy_from` 外方法名不变。
 
 ### 2.2 `std::num`（4 个宿主）
 
@@ -172,9 +180,10 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 
 ### 2.9 明确不封装（能力仍可按 ① 直调 libc）
 
-以下能力不新增 std 封装，但能力面不缺：调用方按 ① 直调 libc。
+以下能力不新增 std 封装，但能力面不缺：调用方按 ① 直调 libc。内存操作不在本清单：已由 `char *`
+方法层封装（§2.1）。
 
-`memcpy` `memmove` `memset` `memcmp` `memchr` `strncmp`（直调）；`qsort` `bsearch` `scandir`（回调）；
+`qsort` `bsearch` `scandir`（回调）；
 `scanf` 族、`sprintf`、`fprintf`（变参/无界）；`fork` `exec*` `system` `popen` `signal` `alarm`；
 locale 与宽字符；`ldexp` `frexp` `modf`（出参）；`sendmsg` `recvmsg`（`iovec`）。
 
@@ -299,7 +308,7 @@ to_str=65
 
 ### 3.4 连声明都不做：直接 libc 原名
 
-纯内存/热路径，零成本、零歧义。
+① 底座直连：即使已有方法层，也仍可直接调 libc 原名；零成本、零歧义。
 
 ```ct
 #include <string.h>
@@ -437,12 +446,14 @@ import std::net::Socket;
 
 | 宿主 | 现状 | 本版新增 | 合计（最坏） |
 | --- | --- | --- | --- |
-| `char *` | 25（`README.md:145-153`） | `rfind_char` `compare_ignore_case` `parse_long` `parse_llong` `parse_ulong` `parse_real` `open_dir` `read_link` `resize` `set_mode` `resolve_path` `is_readable` `is_writable` `change_dir` `file_size` `file_mode` `file_mtime` `parse_ip` `connect`（19） | 44 |
+| `char *` | 25（`README.md:145-153`） | `rfind_char` `compare_ignore_case` `parse_long` `parse_llong` `parse_ulong` `parse_real` `open_dir` `read_link` `resize` `set_mode` `resolve_path` `is_readable` `is_writable` `change_dir` `file_size` `file_mode` `file_mtime` `parse_ip` `connect` `fill` `compare_with` `find_byte` `compare_prefix` `copy_from`（24 个新增名；`copy_from` 替代 `copy_to`，净增 4） | 48 |
 | `long` | 7 | 0（时间不挂 `long`，Q8 已定） | 7 |
 | `float`/`double` | 5 / 9 | math 新族（约 20） | 25 / 29 |
 | `char` | 7 | 7 个 `is_*` | 14 |
 
 冲突处理：`open` 已被 `Path` 占用 → 目录用 `open_dir`；`read`/`write`/`close` 不再占 `char *`；
+`copy_from` 取代既有 `copy_to`（`src.copy_to(dst, n)` → `dst.copy_from(src, n)`），内存版只保留一个
+方向；`copy` 仍是带容量 / `\0` 的字符串拷贝；
 `long` 不再新增时间方法（Q8 已定），因此没有 `format` 与既有 `to_str`/`to_string` 的冲突。
 
 ### 5.3 失败表达
@@ -503,7 +514,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 | 序 | 内容 | 层 | 依赖 | 阶段验收 |
 | --- | --- | --- | --- | --- |
 | **P0** | `String` → `CStrOps`（issue 0001，`0.4.0`） | 改名 | 无 | 旧名零命中；`tests/run.sh` 全绿；文档同步 |
-| **P1** | `char` 7 个 `is_*`；`math` 新族（`Float`/`Real` 方法层） | ①② | P0 | 每条 M0 转发；无宿主重名；fixture 覆盖 |
+| **P1** | `char` 7 个 `is_*`；`char *` 内存方法（`copy_from`/`fill`/`compare_with`/`find_byte`/`compare_prefix`）；`math` 新族（`Float`/`Real` 方法层） | ①② | P0 | 每条 M0/M1 转发；无宿主重名；重叠拷贝夹具；三态/指针返回验证 |
 | **P2** | 新增 `std::env` / `std::process` / `std::errno`（各一个模块） | ①② | P1 | 无新类型；借用指针语义写进 README |
 | **P3** | `stdio` 句柄映射补全（`seek`/`tell`/`rewind`/`eof`/`error`/`read_char`/`write_char`/`read_line`/`flush`）；`Fd` 形态判定（按 §1.1） | ②/③（`Fd` 待判） | P0 | EOF/错误位/幂等 close 有 fixture；`Fd` 判定结论落档 |
 | **P4** | `std::fs` 补充（`read_link`/`resize`/`set_mode`/`resolve_path`/`is_*`/`change_dir`/`file_*`） | ② | P2 | 不引入 `FileStat` 值类型；重复 `stat` 代价写进 README |
@@ -519,7 +530,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 | 风险 | 说明 | 缓解 |
 | --- | --- | --- |
-| 便利层铺宽 → 名字通胀 | `char *` 25 → 44；`long` 保持 7（Q8 已定不挂时间） | 每个名字必须给出「比函数式省多少」；同宿主查表 |
+| 便利层铺宽 → 名字通胀 | `char *` 25 → 48；`long` 保持 7（Q8 已定不挂时间） | 每个名字必须给出「比函数式省多少」；同宿主查表 |
 | 宿主污染 | 领域方法挂基础类型会让所有同类型值获得该方法（如 `size.year()`） | Q8 已定：时间不挂 `long`，走 `Time` namespace；其他宿主按 §5.2 查表 |
 | 时区/线程安全 | `localtime_r` 无时区参数；`strerror` 静态缓冲 | 文档写明「本地时区」与 `strerror` 非线程安全 |
 | `own` 初始化式很窄 | 只认 `malloc`/`calloc`/`struct X *` 工厂；强转与别名不认（实测） | 工厂返回类型写 `struct X *`；每个新类型加 `own` 样例 |
@@ -535,7 +546,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 - **Q1**：`std/io/File.m.ct` 是否拆成 `Path` / `File`？（建议不拆）
 - **Q2**：`IoFile` 包装体不释放是否修正？（破坏性）
-- **Q3**：`char *` 44 个名字是否可接受，还是要给便利层设上限、超出走新类型？
+- **Q3**：`char *` 48 个名字是否可接受，还是要给便利层设上限、超出走新类型？
 - **Q4（已定）**：`env`/`process`/`errno` **不合并**为 `std::sys`，三者各自成模块，目录与 libc／POSIX 原有头文件一一对应。依据：降低 C 程序员的心智成本——做的是 OO 封装，不引入新的分类法。
 - **Q5（不再适用）**：P0–P7 改为施工顺序，不按相发布；合并相邻相发布的讨论随之取消，版本节奏见 §7 / §8.1。
 - **Q6（已定）**：`net` 一次做全，UDP、`resolve_host`、`setsockopt` 全部纳入，不再留在暂不排期。依据：不做半截模块——只封一半会让使用者不知道到底该用封装还是退回 libc。`Address` 不建类型（已定）：主机用 `char *`、端口用 `int`，方法寄生在这两个宿主上；`recv_from(buf, len, ipbuf, &port)` 以出参回报来源。依据：静态映射优先、能力寄生在基本类型上，不引入值类型。
@@ -548,7 +559,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 ### 8.3 本文可被证伪的假设
 
-1. 「便利层铺宽是净收益」——若评审认为 44 个 `char *` 名字的维护成本过高，需按 Q3 收缩。
+1. 「便利层铺宽是净收益」——若评审认为 48 个 `char *` 名字的维护成本过高，需按 Q3 收缩。
 2. 「时间方法可以挂 `long`」——Q8 已定否掉；时间走 `Time` namespace，不再作为假设。
 3. 「`Fd` / `Timer` 可以先不做」——全库口径已把两者纳入交付面，本条不再作为假设；形态由 §1.1 判定。
 4. 「`Address` 不建类型，多地址回退由调用方在 `resolve_host` 结果上自行处理」——若统一地址表示成为硬需求，需重开该裁定。
