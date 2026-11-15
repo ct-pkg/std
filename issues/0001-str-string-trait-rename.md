@@ -6,7 +6,8 @@
 | 状态 | 待处理（本次只登记，不实现） |
 | 类型 | 破坏性改名（BREAKING，仅 trait 名，方法名不变） |
 | 版本落点 | `0.4.0` + 新 tag `v0.4.0` |
-| 涉及单元 | `std/str/String.m.ct`、`std/str/String.shim.h` |
+| 涉及单元 | 现 `std/str/String.m.ct` / `String.shim.h` → 目标 `CStrOps.m.ct` / `CStrOps.shim.h` |
+| 已定名 | `CStrOps`（负责人 2026-11-15 决定，理由见 §3） |
 | 提出日期 | 2026-11-15 |
 
 ## 1. 问题
@@ -38,9 +39,17 @@ vtable、不分配、不持有长度。真正拥有内存、带长度的字符�
 
 ## 3. 建议
 
-**主方案：`String` → `StrOps`。**
+**主方案：`String` → `CStrOps`。**
 
-理由是本包已有惯例，`String` 是唯一例外：
+`CStrOps` 明确表达「借用的、NUL 结尾的 C 字符串方法层」，与内置 `Str`（拥有、带长度、
+非 NUL 结尾）互补，而不是竞争：
+
+- 模块的方法确实按 NUL 结尾工作：`std_str_len` 逐字节数到 `'\0'`（`std/str/String.shim.h:34-42`），
+  `find` / `starts_with` / `ends_with` 都以它为长度源；唯一例外是 `copy_to`
+  （`std/str/String.m.ct:61`，显式 `n` 字节、不补 NUL、不检查容量）。
+- `C` 前缀把「这是从 C 侧借来的视图」写进名字，`Ops` 后缀说明这是方法层、不是值类型。
+
+同时它维持本包既有的 `xxxOps` 形态（`String` 是唯一例外）：
 
 | 单元 | trait | 宿主 | 形态 |
 | --- | --- | --- | --- |
@@ -51,15 +60,17 @@ vtable、不分配、不持有长度。真正拥有内存、带长度的字符�
 | `std/utf8/Utf8Ops.m.ct:35` | `Utf8Ops` | `char *`（`:41`） | `xxxOps` |
 | **`std/str/String.m.ct:49`** | **`String`** | **`char *`（`:66`）** | **例外** |
 
-`StrOps` 同时保留了与内置 `Str` 的语源关系（都是 str），但用 `Ops` 后缀明确「这是方法层，
-不是值类型」，不再与所有权语义冲突。
+**次选：`StrOps`。** 形态同样合规，但 `StrOps` 与内置 `Str` 只差后缀、共享 `Str` 前缀，视觉上
+仍可能被读成「`Str` 的方法层」——也就是「拥有值的那个类型的方法」，这正是本 issue 要消除的
+误解；不如带 `C` 前缀那样把「借用」讲清楚。
 
-备选，各一句：
+**兜底：`TextOps`。** 形态合规、不暗示拥有；但本模块是**字节**层，码点/字素在 `std::utf8`，
+`text` 比 `str` 更容易让人以为这里管编码。
 
-- `CStr`：强调「零终止 C 字符串」的出身，但本模块的 `char *` 并不保证 NUL 结尾
-  （内置 `Str` 更是明确非 NUL 结尾、允许内嵌 `\0`），会引入新的错误暗示，且仍像一个类型名。
-- `TextOps`：形态与 `StrOps` 一致，也不暗示拥有；但本模块是**字节**层，码点/字素在
-  `std::utf8`，`text` 比 `str` 更容易让人以为这里管编码。
+**已否决：`CharOps`。** 在 CT 里 `char` 是**单字符标量**，`std::num` 的 `Char` trait
+（`std/num/Num.m.ct:94`）已经承载 `is_digit` / `is_alpha` / `is_space` / `is_upper` / `is_lower` /
+`to_upper` / `to_lower` 这批字符判断方法（`:104-112` 映射到 `char` 宿主）。叫 `CharOps` 会把读者
+引向「字符判断层」，与真实含义（借用的字符串方法层）相差更远，误解比原名 `String` 更深，故排除。
 
 ## 4. 影响面
 
@@ -68,8 +79,8 @@ vtable、不分配、不持有长度。真正拥有内存、带长度的字符�
 
 1. **`import` 路径（如沿用本包 file = unit 的惯例）**：`README.md:321` 明确
    `import std::str::String` 对应 `std/str/String.m.ct`，所以 trait 改名要连带把单元文件
-   改为 `StrOps.m.ct`（shim 同对改为 `StrOps.shim.h`），`import` 随之变成
-   `std::str::StrOps`。`tests/run.sh:72-88` 的 layout 闸门只校验 `*.h.ct` 的 namespace/struct，
+   改为 `CStrOps.m.ct`（shim 同对改为 `CStrOps.shim.h`），`import` 随之变成
+   `std::str::CStrOps`。`tests/run.sh:72-88` 的 layout 闸门只校验 `*.h.ct` 的 namespace/struct，
    不会拦住这件事，属于惯例约束而非门禁约束。
 2. **本仓调用点**：10 个 fixture 直接 `import std::str::String`——
    `tests/str/{main,first,guide,coverage,parse}.ct`、`tests/fs/{main,guide}.ct`、
@@ -109,6 +120,10 @@ vtable、不分配、不持有长度。真正拥有内存、带长度的字符�
 结论：真正的「名字指向类型、实际是方法层」问题集中在 `String`、`Path`，`File` 次之；
 `Int` / `Long` / `LLong` / `Char` / `Float` / `Real` 只是形态不统一，不涉及所有权误导；
 `Stdout` / `Math` 是命名空间映射，属于另一类，不计入。
+
+**范围声明**：`Path` / `File` 只在本文档作为同类问题登记，**不**并入本 issue 一起改名；
+是否改成 `PathOps` / `FileOps`，要等负责人另行确认后单独开 issue、单独落版本。本 issue 的
+唯一改动对象是 `String` → `CStrOps`。
 
 ## 7. 非目标
 
