@@ -60,6 +60,12 @@ C 标准库 + POSIX.1 中 CT 侧有稳定用法的能力：字符串/内存视�
 CT 范式：**字符串起头 → 工厂函数进 → 方法挂既有类型 → 链路走到底**。凡偏离，必须在 §3.6 登记
 取舍，不能默默引入「更标准但更别扭」的写法。
 
+### 1.7 模块交付的准入：整块交付，不做半截
+
+每个模块要么整块交付，要么这一轮不交付。同一模块的公共能力如果只封一半，使用者无法判断何时该用
+封装、何时该退回 libc，封装反而增加决策成本。`net` 首期一次做全（UDP、`resolve_host`、
+`setsockopt`）即按此条执行，见 §2.7 与 §8.2 Q6。
+
 ## 2. 分模块纳入清单
 
 列格式：`形态①/②/③`，括号里是代码级 `M0`（单行转发）/ `M1`（几行适配）。
@@ -147,8 +153,8 @@ CT 范式：**字符串起头 → 工厂函数进 → 方法挂既有类型 → 
 | `errno`：`std::errno::Errno.get_last()` | ① 底座（M1） | `errno` 是宏，一条 `return errno;` |
 | `errno`：`code.message()` / `std::errno::Errno.message(code)` | ② 方法层（M0/M1） | `123.message()` 链式可用；底层 `strerror`，返回借用指针 |
 | `net`：`"1.2.3.4".parse_ip(out)` | ② 方法层（M1） | `inet_pton` 出参适配 |
-| `net`：`std::net`：`Socket` + `"host:80".connect()` + `bind_to(port)` / `listen_backlog(n)` / `accept()` / `send_bytes` / `recv_bytes` / `shutdown_both` / `close` | **③ OO2：`Socket`**，方法本体 M0/M1 | **理由：真持有 fd**，`accept` 还会产生新 fd；零代码映射会把关闭责任丢给调用方。`connect` 是字符串起头的工厂（DNS 在 shim 内解析并释放） |
-| `net`：`Address` 值类型 / `resolve_host` | 暂不纳入（原 OO1） | v1 不建模 `addrinfo` 链表；需要多地址回退时再议 |
+| `net`：`std::net`：`Socket` + `"host:80".connect()` + `bind_to(port)` / `listen_backlog(n)` / `accept()` / `send_bytes` / `recv_bytes` / `shutdown_both` / `close`；UDP 收发；`resolve_host`；`setsockopt` | **③ OO2：`Socket`**，方法本体 M0/M1 | **首期一次做全**（负责人已定裁定，见 §8.2 Q6）：UDP、`resolve_host`、`setsockopt` 与 TCP 同轮交付。**理由：真持有 fd**，`accept` 还会产生新 fd；零代码映射会把关闭责任丢给调用方。`connect` 是字符串起头的工厂（DNS 在 shim 内解析并释放） |
+| `net`：`Address` 值类型 | **暂不排期，待负责人裁定** | 维持原状：不建模 `addrinfo` 链表；不随 Q6 一并纳入 |
 
 ### 2.8 与上一版的降级对照
 
@@ -158,7 +164,7 @@ CT 范式：**字符串起头 → 工厂函数进 → 方法挂既有类型 → 
 | `TimeParts` 值类型 + `make_epoch` / `to_local` / `to_utc` | `long` 上的 `year()`…`second()` + `format()`；`Time.from_parts` 工厂 | **OO1 → ②/①**（`tm` 藏在 shim 内，不建模） |
 | `Timer` + `Drop` | 暂不纳入 | **OO2 删除** |
 | `Fd` + `FdOps`（13 个方法） | 暂不纳入 | **OO2 删除**（`IoFile` 已覆盖） |
-| `Address` 值类型 + `resolve_host` | `"host:80".connect()` + `parse_ip` | **OO1 → ②**（解析在 shim 内完成并释放） |
+| `Address` 值类型 | `"host:80".connect()` + `resolve_host` + `parse_ip` | **OO1 → ②/①**（不建模 `Address`；`resolve_host` 与 net 首期同轮交付） |
 | `math` 新增走 namespace `Math` | 新增走 `Float`/`Real` 方法层 | **① → ②**（链式更顺手） |
 | 新 Drop 类型 4 个 | **2 个**（`Dir`、`Socket`） | 只留真资源 |
 | 新值类型 3 个 | **0 个** | 全部降级 |
@@ -486,7 +492,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 
 ## 7. 落地节奏（映射优先，代码最小化）
 
-原则：先铺 ①②，再补 ③；③ 只做 `Dir`、`Socket`；其余推迟。
+原则：先铺 ①②，再补 ③；③ 只做 `Dir`、`Socket`；每个模块整块交付（§1.7），不做半截；其余推迟。
 
 | 相 | 内容 | 层 | 依赖 | 完成判据 |
 | --- | --- | --- | --- | --- |
@@ -497,9 +503,9 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 | **P4** | `std::fs` 补充（`read_link`/`resize`/`set_mode`/`resolve_path`/`is_*`/`change_dir`/`file_*`） | ② | P2 | 不引入 `FileStat`；重复 `stat` 代价写进 README |
 | **P5** | `std::time`：`now_sec`/`now_ns`/`diff_seconds`/`sleep_ms` + `long` 上 `year()`…`format()` | ①② | P2 | 不做 `TimeParts`；`tm` 只在 shim 内；时区行为写明 |
 | **P6** | `Dir` + `Drop`（首个也是唯一文件系统句柄） | ③ | P3（模板） | `own` 样例；`close` 幂等；大目录流式列举 |
-| **P7** | `std::net`：`Socket` + `"host:80".connect()` 最小 TCP 阻塞闭环 | ③ | P6（模板） | loopback 回环；`Drop` 关闭；超时行为写明 |
+| **P7** | `std::net`：`Socket`（TCP + UDP）+ `"host:80".connect()` + `resolve_host` + `setsockopt` | ①②③ | P6（模板） | TCP/UDP loopback 回环；`Drop` 关闭；超时与 `setsockopt` 行为写明 |
 
-暂不排期：`Fd`、`Timer`、`FileStat`、`TimeParts`、`Address`、UDP、`setsockopt`、`resolve_host`。
+暂不排期：`Fd`、`Timer`、`FileStat`、`TimeParts`、`Address`（待负责人裁定）。
 真实需求出现后单独立项，不预留占位类型。
 
 ## 8. 风险与未决
@@ -527,7 +533,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 - **Q3**：`char *` 44 个名字是否可接受，还是要给便利层设上限、超出走新类型？
 - **Q4（已定）**：`env`/`process`/`errno` **不合并**为 `std::sys`，三者各自成模块，目录与 libc／POSIX 原有头文件一一对应。依据：降低 C 程序员的心智成本——做的是 OO 封装，不引入新的分类法。
 - **Q5**：是否合并 P1/P2、P3/P4 发布以减少 minor？
-- **Q6**：`net` 首期是否纳入？
+- **Q6（已定）**：`net` 首期一次做全，UDP、`resolve_host`、`setsockopt` 全部纳入，不再留在暂不排期。依据：不做半截模块——只封一半会让使用者不知道到底该用封装还是退回 libc。`Address` 仍待负责人裁定、暂不排期。
 - **Q7**：`file_*` 标量查询的重复 `stat` 可接受，还是值得一个值类型？
 - **Q8**：时间便利层挂 `long` 是否可接受（宿主污染风险）？还是要 `Time` 命名空间 + 参数？
 - **Q9**：`Math` namespace 是否逐步退役、全部并到 `Float`/`Real`？
@@ -540,7 +546,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 1. 「便利层铺宽是净收益」——若评审认为 44 个 `char *` 名字的维护成本过高，需按 Q3 收缩。
 2. 「`long` 上挂时间方法可接受」——若不可接受，时间退回 namespace（Q8）。
 3. 「`Dir` + `Socket` 之外的资源都不需要」——若出现 `pipe`/定时器需求，`Fd`/`Timer` 会回来。
-4. 「DNS 藏在 `connect()` 里够用」——若要求超时/多地址回退，需要 `Address` + 解析接口。
+4. 「`Address` 值类型可以继续不建模」——若多地址回退/统一地址表示成为硬需求，需要回来裁定 `Address`。
 
 ## 9. 交付与推进
 
