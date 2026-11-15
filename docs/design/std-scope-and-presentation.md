@@ -34,9 +34,11 @@
 
 ### 1.3 在范围内
 
-C 标准库 + POSIX.1 的全部接口：只要有对应函数就纳入（① 映射优先），CT 模型差异只写成使用
-注意事项，不构成排除。字符串/内存、stdio、目录、`stat`、时间、环境变量、进程身份/控制/信号、
-错误码、socket、locale/宽字符、线程/异步等 POSIX 能力都在交付面。自有设施：`Arena`、`Test`、`Utf8Ops`。
+C 标准库 + POSIX.1 的接口：只要有对应函数就纳入（① 映射优先）；唯一例外是 CT 无变参声明机制
+（`scanf` 族、`sprintf`、`fprintf` 等不做；0.3.0 遗留的 `printf` 保留但不再扩展），按 §2.9 的
+成对替代处理。CT 模型差异只写成使用注意事项，不构成排除。
+字符串/内存、stdio、目录、`stat`、时间、环境变量、进程身份/控制/信号、错误码、socket、
+locale/宽字符、线程/异步等 POSIX 能力都在交付面。自有设施：`Arena`、`Test`、`Utf8Ops`。
 
 ### 1.4 不归 std（仅三类）
 
@@ -46,9 +48,10 @@ C 标准库 + POSIX.1 的全部接口：只要有对应函数就纳入（① 映
 | 第三方包（JSON / HTTP / 日志 / CLI 框架） | 独立 ct-pkg；POSIX `regex` / `getopt` 不在此列，按 libc 纳入 |
 | 编译器诊断、构建工具、包管理器 | 属于 ct / ct-pkg |
 
-判据只剩一条：**libc／POSIX 有没有对应函数，有就映射**。CT 模型差异（`fork` 后的运行时状态、
-`signal` 回调、`setlocale` 全局状态、平台差异、变参/回调/`iovec` 等）只写成使用注意事项，不构成
-排除。纯内存操作已由 `char *` 方法层封装（§2.1）。
+判据是：**libc／POSIX 有没有对应函数，有就映射**。CT 模型差异（`fork` 后的运行时状态、
+`signal` 回调、`setlocale` 全局状态、平台差异、回调/`iovec` 等）只写成使用注意事项，不构成排除。
+变参不是模型差异，而是 CT 无变参声明机制，按 §2.9 的成对替代处理（0.3.0 遗留的 `printf` 仅保留、
+不再扩展）。纯内存操作已由 `char *` 方法层封装（§2.1）。
 
 ### 1.5 ③ 的准入（只此一条）
 
@@ -120,7 +123,7 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 | `read_char()` `write_char(c)` `unread_char(c)` | ② 方法层（M0） | 新增 |
 | `read_line(out, cap)` `write_line(s)` `flush()` | ② 方法层（M0/M1） | 新增 |
 | `puts` `putchar` `getchar` `fflush`（`Stdout`） | ① 底座（M0） | 已有 |
-| `printf` | ① 底座（M1，唯一变参） | 已有 |
+| `printf` | ① 底座（M1） | 已有（0.3.0 遗留的唯一变参接口，不再扩展；新代码用 `to_string`/`concat` + `write`） |
 | `Fd` 句柄 | 待判（§1.1） | **已纳入交付面**；先判 `int` 寄生是否可行，判不掉才建新类型；与 `IoFile` 的边界要写明 |
 
 ### 2.5 `std::fs`
@@ -176,11 +179,11 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 | 新 Drop 类型 4 个 | `Dir`/`Socket` 已定；`Fd`/`Timer` 按 §1.1 判定 | 只给真持有资源且无法寄生基本类型的类型 |
 | 新值类型 3 个 | **0 个** | 全部不建值类型（`FileStat`/`TimeParts` 以标量/namespace 补能力，`Address` 不建模） |
 
-### 2.9 原排除项：全部纳入（① 底座直连 + 注意事项）
+### 2.9 原排除项：除变参外全部纳入（① 底座直连 + 注意事项）
 
-判据改为「libc／POSIX 有没有对应函数」：以下原排除项全部纳入，形态一律 ① 直连，不新增类型。
-内存操作已由 `char *` 方法层封装（§2.1）；其余 POSIX 接口（`pthread_*`、`aio_*`、`mmap`、
-`poll`/`select` 等）同样按此判据纳入，归属按头文件就近，不新增类型。
+判据改为「libc／POSIX 有没有对应函数」：以下原排除项除语言限制的变参函数外全部纳入，形态一律
+① 直连，不新增类型。内存操作已由 `char *` 方法层封装（§2.1）；其余 POSIX 接口（`pthread_*`、
+`aio_*`、`mmap`、`poll`/`select` 等）除变参函数外同样按此判据纳入，归属按头文件就近，不新增类型。
 
 | 能力 | 形态 | 归属 | 注意事项 |
 | --- | --- | --- | --- |
@@ -188,13 +191,19 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 | `signal` / `alarm` | ① 底座 | `std::process` | 回调式 `signal` 受函数指针限制，README 写清可支持的用法与不可用场景；不因此排除 |
 | `setlocale` / `localeconv` | ① 底座 | `std::locale` | `setlocale` 会影响 `printf`、`strtod` 的小数点与解析行为；全局状态需在文档写明 |
 | `<wchar.h>` 族（`mbstowcs` / `wcstombs` / `wcslen` 等） | ① 底座 | `std::wchar` | 宽字符宽度/编码随平台与 locale 变化；边界写清 |
-| `scanf` 族 / `sprintf` / `fprintf` | ① 底座 | `std::io` | 变参/无界风险，文档写明安全用法；不排除 |
 | `qsort` / `bsearch` | ① 底座 | `std::search` | 回调式比较；CT 侧函数指针支持范围写清 |
 | `scandir` | ① 底座 | `std::fs` | 回调过滤/排序；返回数组的释放责任写清 |
 | `ldexp` / `frexp` / `modf` | ① 底座 | `std::math` | 出参形态；不建值类型 |
 | `sendmsg` / `recvmsg` | ① 底座 | `std::net` | `iovec` 由调用方构造；边界与所有权写清 |
 
 全部 ① 直连项不新增类型；方法层只在 §1.2 的便利性判据成立时另加，不再以「CT 模型不支持」排除。
+
+**不封装：语言限制例外（与模型差异不同）**：CT 无变参声明机制，`scanf` 族、`sprintf`、`fprintf` 不做
+封装，也无法靠 shim 绕开。0.3.0 遗留的 `printf` 保留但不再扩展。成对替代：
+
+- 格式化拼接 → `to_string()` / `concat()`
+- 解析 → `parse_int` / `parse_long` / `parse_double` 等 `parse_*`
+- `fprintf` → 先格式化，再 `write`
 
 ### 2.10 需要为某类型引入 struct 作「对等类型」的情况（单列，待负责人评估）
 
@@ -390,7 +399,7 @@ drop ran
 | 编号 | 偏离 | 为什么保留 | 取舍/后续 |
 | --- | --- | --- | --- |
 | D1 | `std::math::Math.sqrt(x)` 是函数式，不是 `x.sqrt()` | 历史接口；数学写法普遍 | 新 math 能力一律走 `Float`/`Real` 方法层；namespace 不再扩张，长期可考虑让 `Math` 退役 |
-| D2 | `printf` 变参走 namespace，不是字符串起头 | CT 暂无变参接收者转发（形态偏离，不构成排除） | 唯一例外；不推广 |
+| D2 | 变参格式化/解析不封装（`scanf`/`sprintf`/`fprintf`） | CT 无变参声明机制，shim 也绕不开；`printf` 仅保留 0.3.0 遗留、不再扩展 | 不做；成对替代见 §2.9（`to_string`/`concat`、`parse_*`、格式化+`write`） |
 | D3 | `get_dir(out, cap)` 用出参，不是 `get_dir()` 返回值 | 无接收者，且返回静态缓冲区不安全 | 若将来允许静态槽（如 `to_string`），可改成链式 |
 | D4 | `parse_long(out)` / `format_time(out, cap)` 出参 + 状态码 | 失败必须可报；链式返回值无法同时表达 | 与 `copy`/`read_line` 同类，包内已有先例 |
 | D5 | `std::env::Env.set` / `std::process::Process.get_pid` 走 namespace | 无接收者 | 不强行造接收者 |
@@ -529,7 +538,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 | **P0** | `String` → `CStrOps`（issue 0001，`0.4.0`） | 改名 | 无 | 旧名零命中；`tests/run.sh` 全绿；文档同步 |
 | **P1** | `char` 7 个 `is_*`；`char *` 内存方法（`copy_from`/`fill`/`compare_with`/`find_byte`/`compare_prefix`）；`math` 新族（`Float`/`Real` 方法层）；`qsort`/`bsearch`、`ldexp`/`frexp`/`modf` ① 直连 | ①② | P0 | 每条 M0/M1 转发；无宿主重名；重叠拷贝夹具；三态/指针返回验证；回调/出参用法写明 |
 | **P2** | 新增 `std::env` / `std::process`（含控制/信号）/ `std::errno` / `std::locale` / `std::wchar`（各一个模块） | ①② | P1 | 无新类型；借用指针语义、`fork` 后状态、`setlocale` 全局影响写进 README |
-| **P3** | `stdio` 句柄映射补全（`seek`/`tell`/`rewind`/`eof`/`error`/`read_char`/`write_char`/`read_line`/`flush`）；`scanf`/`sprintf`/`fprintf` ① 直连；`Fd` 形态判定（按 §1.1） | ①②/③（`Fd` 待判） | P0 | EOF/错误位/幂等 close 有 fixture；`Fd` 判定结论落档；变参安全用法写明 |
+| **P3** | `stdio` 句柄映射补全（`seek`/`tell`/`rewind`/`eof`/`error`/`read_char`/`write_char`/`read_line`/`flush`）；`Fd` 形态判定（按 §1.1）；变参格式化/解析按 §2.9 成对替代，不封装（`printf` 仅保留遗留） | ②/③（`Fd` 待判） | P0 | EOF/错误位/幂等 close 有 fixture；`Fd` 判定结论落档；`to_string`/`concat`、`parse_*`、格式化+`write` 样例覆盖 |
 | **P4** | `std::fs` 补充（`read_link`/`resize`/`set_mode`/`resolve_path`/`is_*`/`change_dir`/`file_*`）；`scandir` ① 直连 | ①② | P2 | 不引入 `FileStat` 值类型；重复 `stat` 代价写进 README；回调与数组释放写明 |
 | **P5** | `std::time`：`now_sec`/`now_ns`/`diff_seconds`/`sleep_ms` + `Time` namespace 静态方法（`year`…`format`、`from_parts`）；`Timer` 形态判定（按 §1.1） | ①/③（`Timer` 待判） | P2 | 不挂 `long`；不做 `TimeParts` 值类型；`tm` 只在 shim 内；时区行为写明；`Timer` 判定结论落档 |
 | **P6** | `Dir` + `Drop`（模板）；`Fd`/`Timer` 若判为资源类型，按同一模板收口 | ③ | P3（模板） | `own` 样例；`close` 幂等；大目录流式列举；`Fd`/`Timer`（若适用） |
@@ -553,7 +562,8 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 | `IoFile` 与新区则不一致 | `close` 只 `fclose`，包装体永不释放（`std/io/README.md:211-215`） | Q2；新类型一律 `Drop` 释放 |
 | 多次 `stat` | `file_size`/`file_mode`/`file_mtime` 各一次 | 文档写明；`FileStat` 不建值类型，保持标量查询 |
 | 借用指针生命周期 | `getenv` / `strerror` 可能被覆盖 | 方法层提供带 `out` 的复制版；文档写死 |
-| 表达力注意 | 变参、回调、`iovec`、`struct stat` 布局 | ① 直连并在 README 写使用边界；不排除 |
+| 表达力注意 | 回调、`iovec`、`struct stat` 布局 | ① 直连并在 README 写使用边界；不排除 |
+| 变参限制 | CT 无变参声明机制；`scanf`/`sprintf`/`fprintf` 等不做 | 不做封装；按 §2.9 成对替代（`to_string`/`concat`、`parse_*`、格式化+`write`）；`printf` 仅保留 0.3.0 遗留 |
 | 阻塞模型 | `Socket` 阻塞、DNS 无超时控制 | P7 写明阻塞语义与超时行为 |
 | 版本节奏 | 全库完成后统一发布 `0.4.0`，不按相发 minor | 以全库覆盖为完成判据（§7） |
 
