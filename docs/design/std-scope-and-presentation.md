@@ -26,7 +26,7 @@
 不需要再拿生命周期论证。满足任一条即可补：
 
 - 链式读法明显更短：`"abc".starts_with("x")` 对 `str_starts_with(s, "x")`；
-- 基础类型的值能直接接方法：`n.to_string()`、`t.year()`；
+- 基础类型的值能直接接方法：`n.to_string()`；
 - 工厂从字符串进：`"f".open("r")`、`"dir".open_dir()`、`"host:80".connect()`；
 - 结果还能继续走：`n.to_string().len()`。
 
@@ -52,19 +52,20 @@ C 标准库 + POSIX.1 中 CT 侧有稳定用法的能力：字符串/内存视�
 
 ### 1.5 ③ 的准入（只此一条）
 
-**真的持有资源**：一次调用创建、多次调用共享、必须显式关闭。命中才允许新类型 + `Drop`；
-其余一律留在 ① 或 ②。本版只有 `Dir`、`Socket` 两个。
+**真的持有资源**：一次调用创建、多次调用共享、必须显式关闭。命中后仍先判能否寄生基本类型；
+判不掉才允许新类型 + `Drop`，其余留在 ① 或 ②。已定 `Dir`、`Socket`；`Fd`、`Timer` 按此条判定。
 
 ### 1.6 风格准绳与偏离登记
 
 CT 范式：**字符串起头 → 工厂函数进 → 方法挂既有类型 → 链路走到底**。凡偏离，必须在 §3.6 登记
 取舍，不能默默引入「更标准但更别扭」的写法。
 
-### 1.7 模块交付的准入：整块交付，不做半截
+### 1.7 交付口径：全库覆盖，整块交付
 
-每个模块要么整块交付，要么这一轮不交付。同一模块的公共能力如果只封一半，使用者无法判断何时该用
-封装、何时该退回 libc，封装反而增加决策成本。`net` 首期一次做全（UDP、`resolve_host`、
-`setsockopt`）即按此条执行，见 §2.7 与 §8.2 Q6。
+std 是对标准库的一次整体转化，不是分批交付：在本方案划定的标准库范围内（§1.3/§1.4）该有的能力
+一个都不缺，最终以全库覆盖为完成判据（§7）。单个模块仍不得做半截——同一模块的公共能力如果只封一半，
+使用者无法判断何时该用封装、何时该退回 libc，封装反而增加决策成本（`net` 一次做全即按此条执行，
+见 §2.7 与 §8.2 Q6）。
 
 ## 2. 分模块纳入清单
 
@@ -114,7 +115,7 @@ CT 范式：**字符串起头 → 工厂函数进 → 方法挂既有类型 → 
 | `read_line(out, cap)` `write_line(s)` `flush()` | ② 方法层（M0/M1） | 新增 |
 | `puts` `putchar` `getchar` `fflush`（`Stdout`） | ① 底座（M0） | 已有 |
 | `printf` | ① 底座（M1，唯一变参） | 已有 |
-| `Fd` 句柄 | — | **暂不纳入**（`IoFile` 已覆盖；`pipe`/`dup` 需求未出现） |
+| `Fd` 句柄 | 待判（§1.1） | **已纳入交付面**；先判 `int` 寄生是否可行，判不掉才建新类型；与 `IoFile` 的边界要写明 |
 
 ### 2.5 `std::fs`
 
@@ -145,31 +146,33 @@ CT 范式：**字符串起头 → 工厂函数进 → 方法挂既有类型 → 
 | --- | --- | --- |
 | `time`：`now_sec()` `get_cpu_ticks()` `diff_seconds(a, b)` | ① 底座（M0） | `time(0)` / `clock()` / `difftime` 直连 |
 | `time`：`now_ns()` / `sleep_ms(ms)` | ① 底座（M1） | `clock_gettime` / `nanosleep` 需要出参与换算 |
-| `time`：`t.year()` `t.month()` `t.day()` `t.hour()` `t.minute()` `t.second()` `t.format(fmt, out, cap)`（`long` 宿主） | **② 方法层（M1）** | 便利性明确：`t.year()` 对 `time_year(t)`；`struct tm` 在 shim 内部用 `localtime_r` 填栈上变量，不暴露类型 |
-| `time`：`std::time::Time.from_parts(y, m, d, h, mi, s)` | ① 工厂（M1） | 工厂进：`Time.from_parts(...).format(...)`；返回 `long`，无新类型 |
-| `time`：`Timer` + `Drop` | 暂不纳入 | 真资源，但需求未出现；不进最小集 |
+| `time`：`std::time::Time.year(t)` / `month(t)` / `day(t)` / `hour(t)` / `minute(t)` / `second(t)` / `format(t, fmt, out, cap)` | **① 底座（M1）** | 时间不挂 `long`（负责人已定 Q8）：宿主语义不相合（`size.year()` 会返回 2023）；只做 `Time` namespace 静态方法，`struct tm` 在 shim 内部用 `localtime_r` 填栈上变量，不暴露类型 |
+| `time`：`std::time::Time.from_parts(y, m, d, h, mi, s)` | ① 工厂（M1） | 返回 `long` 时间值；不引入 `TimeParts` 值类型，后续用 `Time.format(t, ...)` |
+| `time`：`Timer` + `Drop` | 纳入交付面；形态按 §1.1 判定 | 真资源；先判能否寄生基本类型，判不掉才建新类型 |
 | `env`：`name.get_env(out, cap)`；`std::env::Env.set(name, value)` / `unset(name)` | ② 方法层 + ① 底座（M0） | `getenv` 返回借用指针，方法层负责拷进调用方缓冲（`get` 带 `out` 更安全）；set/unset 无接收者价值，走 namespace |
 | `process`：`std::process::Process.get_pid()` `get_parent_pid()` `get_uid()` `get_euid()` `get_gid()` | ① 底座（M0） | 无接收者、无链式收益，五条单行 |
 | `errno`：`std::errno::Errno.get_last()` | ① 底座（M1） | `errno` 是宏，一条 `return errno;` |
 | `errno`：`code.message()` / `std::errno::Errno.message(code)` | ② 方法层（M0/M1） | `123.message()` 链式可用；底层 `strerror`，返回借用指针 |
 | `net`：`"1.2.3.4".parse_ip(out)` | ② 方法层（M1） | `inet_pton` 出参适配 |
-| `net`：`std::net`：`Socket` + `"host:80".connect()` + `bind_to(port)` / `listen_backlog(n)` / `accept()` / `send_bytes` / `recv_bytes` / `shutdown_both` / `close`；UDP 收发；`resolve_host`；`setsockopt` | **③ OO2：`Socket`**，方法本体 M0/M1 | **首期一次做全**（负责人已定裁定，见 §8.2 Q6）：UDP、`resolve_host`、`setsockopt` 与 TCP 同轮交付。**理由：真持有 fd**，`accept` 还会产生新 fd；零代码映射会把关闭责任丢给调用方。`connect` 是字符串起头的工厂（DNS 在 shim 内解析并释放） |
+| `net`：`std::net`：`Socket` + `"host:80".connect()` + `bind_to(port)` / `listen_backlog(n)` / `accept()` / `send_bytes` / `recv_bytes` / `shutdown_both` / `close`；UDP 收发；`resolve_host`；`setsockopt` | **③ OO2：`Socket`**，方法本体 M0/M1 | **一次做全**（负责人已定裁定，见 §8.2 Q6）：UDP、`resolve_host`、`setsockopt` 与 TCP 同轮交付。**理由：真持有 fd**，`accept` 还会产生新 fd；零代码映射会把关闭责任丢给调用方。`connect` 是字符串起头的工厂（DNS 在 shim 内解析并释放） |
 | `net`：`Address` | **不建模（负责人已定）** | 主机用 `char *`、端口用 `int`，方法寄生在这两个宿主上；`recv_from` 无法用返回值同时给出数据与来源，改用出参回报来源地址，形如 `sock.recv_from(buf, len, ipbuf, &port)`。依据：静态映射优先、能力寄生在基本类型上，不引入值类型。 |
 
 ### 2.8 与上一版的降级对照
 
 | 原方案 | 现方案 | 变化 |
 | --- | --- | --- |
-| `FileStat` 值类型 + 字段方法 | `file_size()` / `file_mode()` / `file_mtime()` 方法层 | **OO1 → ②**（避免新类型；代价是多次 `stat`） |
-| `TimeParts` 值类型 + `make_epoch` / `to_local` / `to_utc` | `long` 上的 `year()`…`second()` + `format()`；`Time.from_parts` 工厂 | **OO1 → ②/①**（`tm` 藏在 shim 内，不建模） |
-| `Timer` + `Drop` | 暂不纳入 | **OO2 删除** |
-| `Fd` + `FdOps`（13 个方法） | 暂不纳入 | **OO2 删除**（`IoFile` 已覆盖） |
+| `FileStat` 值类型 + 字段方法 | `file_size()` / `file_mode()` / `file_mtime()` 方法层 | **OO1 → ②**（只补能力，不建值类型；代价是多次 `stat`） |
+| `TimeParts` 值类型 + `make_epoch` / `to_local` / `to_utc` | `Time` namespace 静态方法（`Time.year(t)`…`Time.format(t, …)`）+ `Time.from_parts` 工厂；不挂 `long` | **OO1 → ① 且不建模**（Q8 已定；`tm` 藏在 shim 内） |
+| `Timer` + `Drop` | 纳入交付面；形态按 §1.1 判定 | 先判能否寄生基本类型，判不掉才建新类型 |
+| `Fd` + `FdOps`（13 个方法） | 纳入交付面；形态按 §1.1 判定 | 先判 `int` 寄生是否可行，判不掉才建新类型；与 `IoFile` 的边界要写明 |
 | `Address` 值类型 | 主机 `char *`、端口 `int`（方法寄生）+ `resolve_host` + `parse_ip` | **OO1 → 不建模**（地址不引入类型；`recv_from` 以出参回报来源） |
 | `math` 新增走 namespace `Math` | 新增走 `Float`/`Real` 方法层 | **① → ②**（链式更顺手） |
-| 新 Drop 类型 4 个 | **2 个**（`Dir`、`Socket`） | 只留真资源 |
-| 新值类型 3 个 | **0 个** | 全部降级 |
+| 新 Drop 类型 4 个 | `Dir`/`Socket` 已定；`Fd`/`Timer` 按 §1.1 判定 | 只给真持有资源且无法寄生基本类型的类型 |
+| 新值类型 3 个 | **0 个** | 全部不建值类型（`FileStat`/`TimeParts` 以标量/namespace 补能力，`Address` 不建模） |
 
-### 2.9 明确不纳入
+### 2.9 明确不封装（能力仍可按 ① 直调 libc）
+
+以下能力不新增 std 封装，但能力面不缺：调用方按 ① 直调 libc。
 
 `memcpy` `memmove` `memset` `memcmp` `memchr` `strncmp`（直调）；`qsort` `bsearch` `scandir`（回调）；
 `scanf` 族、`sprintf`、`fprintf`（变参/无界）；`fork` `exec*` `system` `popen` `signal` `alarm`；
@@ -191,13 +194,13 @@ struct 作为它的对等类型」**，一旦引入就多出装箱/拆箱、拷�
 | A1 | `char`（现状：标量宿主可直接挂方法） | 现状**不需要** struct；`Char` 是 trait 不是类型 | 若改为 struct：可携带状态（如编码/大小写表），但现有方法都是纯函数，无状态可带 | 装箱：每个字符一次 `malloc` → 热路径不可接受；拷贝：值语义与 `char` 不再等价；互操作：所有 C 侧 `char` 参数都要拆箱；命名/文档：`Char` 从 trait 变类型，语义双写 | 待评估（默认不做） |
 | A2 | `char *` → 内置 `Str`（已存在，非本包） | `char *` 能挂方法（`CStrOps` 就是），但**不拥有**；长度要每次 `strlen`，且无法表达「内嵌 `\0` + 长度」 | 拥有堆缓冲 + 显式长度 + `Drop`；非 NUL 结尾也能安全传递 | 装箱：每次构造一次 `malloc`；拷贝：带 `Drop` 的值不能浅拷贝，复制必须深拷贝或显式 `clone`；所有权：与借用 `char *` 混用时边界要写清；互操作：所有 libc/shim 入口仍要 `.data` 取裸指针，`const char *` 与 `Str` 两套 API 并存；命名/文档：同一能力两种写法（`"s".len()` vs `s.len()`），必须规定「何时用哪个」 | 已存在；本包只消费，不新增（policy 待评估） |
 | A3 | `DIR *` → 本方案 `Dir` | C 侧 `DIR` 是不透明类型，CT 看不到定义；裸指针无法挂方法（需要可命名的 CT 类型），且必须 `closedir` | 可命名、可 `Drop`、`close` 幂等；`next()` 等方法有接收者 | 装箱：每个目录句柄一个 `malloc`（约一个指针 + 状态）；拷贝：句柄不可拷贝，需禁止或只允许 `own` 转移；所有权：与 `open_dir()` 的工厂语义绑定；互操作：`readdir` 的 `struct dirent` 仍在 shim 内，返回的是拷出的名字，调用方拿不到原始 `dirent`；命名/文档：`Dir` 与 `FsOps.list` 两种列举方式并存，需说明取舍 | 待评估（本方案建议做，但不拍板） |
-| A4 | `int`（fd）→ 本方案 `Socket` | `int` 本身是合法宿主（`Int` 已存在），技术上能挂 `send`/`close`，但会把 socket 方法挂到**所有整数**上 | 可命名、可 `Drop`、`accept()` 产出新句柄，所有权清晰 | 装箱：每个 socket 一个包装 struct；拷贝：fd 不可拷贝，需禁止；所有权：`accept` 产生新 `own`，与 `open_socket` 一致；互操作：需要 fd 时得开 `raw_fd()`（是否暴露待定），否则无法和 `select`/`poll` 等未包裹能力配合；命名/文档：`Socket` 与未来 `Fd` 的边界要写明 | 待评估（本方案建议做，但不拍板） |
+| A4 | `int`（fd）→ 本方案 `Socket` | `int` 本身是合法宿主（`Int` 已存在），技术上能挂 `send`/`close`，但会把 socket 方法挂到**所有整数**上 | 可命名、可 `Drop`、`accept()` 产出新句柄，所有权清晰 | 装箱：每个 socket 一个包装 struct；拷贝：fd 不可拷贝，需禁止；所有权：`accept` 产生新 `own`，与 `open_socket` 一致；互操作：需要 fd 时得开 `raw_fd()`（是否暴露待定），否则无法和 `select`/`poll` 等未包裹能力配合；命名/文档：`Socket` 与 `Fd` 的边界要写明 | 待评估（本方案建议做，但不拍板） |
 | A5 | 数组/列表（未来，如「目录项数组」「split 结果」） | CT 的 `char *` 承载不了「多个字符串」；调用方缓冲（`list(out, cap)`）在数量不定时不好用 | 可命名、可遍历、可 `Drop`；长度与容量显式 | 装箱：每个列表一个 struct + 元素缓冲；拷贝：元素是 `char *` 还是 `Str` 决定深浅拷贝；所有权：元素释放责任在列表；互操作：与现有 `list`/`read_file` 的缓冲式 API 并存；命名/文档：`StrList` 之类的名字要避免与内置 `Vec` 重复 | 待评估（本方案 v1 不引入；用缓冲式 API 规避） |
 
 不属本节的两类（放在 §2.8 处理，不要混进来）：
 
 - `FileStat` / `TimeParts`：它们是「一次调用多个字段」的值类型，不是「原类型挂不上方法」；
-  本方案已分别降级为标量查询、`long` 宿主方法。`Address` 已按负责人裁定不建模，主机 / 端口分别
+  本方案已分别降级为标量查询、`Time` namespace 静态方法。`Address` 已按负责人裁定不建模，主机 / 端口分别
   寄生在 `char *` / `int` 上（见 §2.7、§8.2 Q6）。
 - `Arena` / `Test`：本包自有类型，不对应任何 C 类型，不涉及「对等包装」。
 
@@ -292,7 +295,7 @@ starts_with_digit=1
 to_str=65
 ```
 
-这正是负责人举的例子的形态：`n.to_string()`、`t.year()`、`"abc".starts_with("x")` 都属这一层。
+这正是负责人举的例子的形态：`n.to_string()`、`"abc".starts_with("x")` 都属这一层。
 
 ### 3.4 连声明都不做：直接 libc 原名
 
@@ -319,7 +322,7 @@ strcmp=-1
 strlen=3
 ```
 
-### 3.5 ③ 例外：`Dir` / `Socket` 为什么要新类型
+### 3.5 ③ 例外：`Dir` / `Socket` 等资源类型为什么要新类型
 
 零代码映射在资源上会漏掉**所有权**：`opendir` 的 `DIR *`、`socket` 的 fd 交给调用方后，关闭责任
 在调用方。③ 只补这一层；方法本体仍是 M0/M1 转发。
@@ -384,8 +387,8 @@ drop ran
 ```
 std/
   str/    CStrOps.m.ct + CStrOps.shim.h      （0.4.0 改名）
-  io/     Io.h.ct  Stdout.m.ct  File.m.ct    （Path + File；不新增 Fd）
-  fs/     Fs.m.ct  Dir.h.ct                  （Dir 是唯一新增句柄）
+  io/     Io.h.ct  Stdout.m.ct  File.m.ct    （Path + File；`Fd` 按 §1.1 判定）
+  fs/     Fs.m.ct  Dir.h.ct                  （`Dir`；`Fd` 另按 §1.1 判定）
   utf8/   Utf8Ops.m.ct + shim
   num/    Num.m.ct + shim
   math/   Math.m.ct  Real.m.ct + shim
@@ -394,7 +397,7 @@ std/
   env/     Env.m.ct                          （环境变量）
   process/ Process.m.ct                      （进程身份）
   errno/   Errno.m.ct                        （错误码）
-  time/   Time.m.ct                          （long 宿主的时间方法 + 工厂）
+  time/   Time.m.ct                          （`Time` namespace 静态方法 + 工厂；不挂 `long`）
   net/    Net.m.ct  Socket.h.ct              （不建 Address）
 ```
 
@@ -435,13 +438,12 @@ import std::net::Socket;
 | 宿主 | 现状 | 本版新增 | 合计（最坏） |
 | --- | --- | --- | --- |
 | `char *` | 25（`README.md:145-153`） | `rfind_char` `compare_ignore_case` `parse_long` `parse_llong` `parse_ulong` `parse_real` `open_dir` `read_link` `resize` `set_mode` `resolve_path` `is_readable` `is_writable` `change_dir` `file_size` `file_mode` `file_mtime` `parse_ip` `connect`（19） | 44 |
-| `long` | 7 | `year` `month` `day` `hour` `minute` `second` `format`（7） | 14 |
+| `long` | 7 | 0（时间不挂 `long`，Q8 已定） | 7 |
 | `float`/`double` | 5 / 9 | math 新族（约 20） | 25 / 29 |
 | `char` | 7 | 7 个 `is_*` | 14 |
 
 冲突处理：`open` 已被 `Path` 占用 → 目录用 `open_dir`；`read`/`write`/`close` 不再占 `char *`；
-`long` 上的 `format` 与任何既有的 `to_str`/`to_string` 不撞，但**任何 `long` 都会获得时间方法**
-（导入 `std::time` 后），这属 CT 的宿主模型，需在 README 提醒（见 §8）。
+`long` 不再新增时间方法（Q8 已定），因此没有 `format` 与既有 `to_str`/`to_string` 的冲突。
 
 ### 5.3 失败表达
 
@@ -459,9 +461,10 @@ import std::net::Socket;
 
 - **借用（默认）**：方法层不拥有输入、只写调用方缓冲；`env` / `errno.message` 返回**借用**指针，
   生命周期到下一次同类调用（README 必须写）。
-- **持有**：只有 `Dir` / `Socket`；`pub struct X { ... } use Drop;` + 显式 `impl Drop`
+- **持有**：`Dir` / `Socket` 已定；`Fd` / `Timer` 若按 §1.1 判为资源类型，同样按此规则处理。
+  `pub struct X { ... } use Drop;` + 显式 `impl Drop`
   （字段胶水不释放指针字段，`ct-lang/docs/language-spec.md:2549`）；`own X *p = ...`；`close()` 幂等。
-- **值类型**：本版不新增。
+- **值类型**：不新增（`FileStat` / `TimeParts` 不建值类型，`Address` 不建模）。
 - 内部工厂返回类型必须写成 `struct X *`（`own` 看字面量）。
 
 ## 6. 文档呈现
@@ -491,23 +494,24 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 
 维护规则：新增 API 一次改三处（§4 表、模块 README、libc 映射表），缺一处视为未完成。
 
-## 7. 落地节奏（映射优先，代码最小化）
+## 7. 施工顺序（全库覆盖为完成判据）
 
-原则：先铺 ①②，再补 ③；③ 只做 `Dir`、`Socket`；每个模块整块交付（§1.7），不做半截；其余推迟。
+原则：先铺 ①②，再补 ③；③ 只给真正持有资源且无法寄生基本类型的类型（已定 `Dir`、`Socket`；`Fd`、`Timer` 先判）；每个模块整块交付（§1.7），不做半截。
 
-| 相 | 内容 | 层 | 依赖 | 完成判据 |
+P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验收，最终以 §2 能力面（含 §2.9 的直调能力）全库覆盖为完成，不以任一相的交付为完成；全库完成后再统一发布 `0.4.0`。
+
+| 序 | 内容 | 层 | 依赖 | 阶段验收 |
 | --- | --- | --- | --- | --- |
-| **P0** | `String` → `CStrOps`（issue 0001，`0.4.0`） | 改名 | 无 | 旧名零命中；`tests/run.sh` 全绿；文档同步；tag |
+| **P0** | `String` → `CStrOps`（issue 0001，`0.4.0`） | 改名 | 无 | 旧名零命中；`tests/run.sh` 全绿；文档同步 |
 | **P1** | `char` 7 个 `is_*`；`math` 新族（`Float`/`Real` 方法层） | ①② | P0 | 每条 M0 转发；无宿主重名；fixture 覆盖 |
 | **P2** | 新增 `std::env` / `std::process` / `std::errno`（各一个模块） | ①② | P1 | 无新类型；借用指针语义写进 README |
-| **P3** | `stdio` 句柄映射补全（`seek`/`tell`/`rewind`/`eof`/`error`/`read_char`/`write_char`/`read_line`/`flush`） | ② | P0 | 无新类型；EOF/错误位/幂等 close 有 fixture |
-| **P4** | `std::fs` 补充（`read_link`/`resize`/`set_mode`/`resolve_path`/`is_*`/`change_dir`/`file_*`） | ② | P2 | 不引入 `FileStat`；重复 `stat` 代价写进 README |
-| **P5** | `std::time`：`now_sec`/`now_ns`/`diff_seconds`/`sleep_ms` + `long` 上 `year()`…`format()` | ①② | P2 | 不做 `TimeParts`；`tm` 只在 shim 内；时区行为写明 |
-| **P6** | `Dir` + `Drop`（首个也是唯一文件系统句柄） | ③ | P3（模板） | `own` 样例；`close` 幂等；大目录流式列举 |
+| **P3** | `stdio` 句柄映射补全（`seek`/`tell`/`rewind`/`eof`/`error`/`read_char`/`write_char`/`read_line`/`flush`）；`Fd` 形态判定（按 §1.1） | ②/③（`Fd` 待判） | P0 | EOF/错误位/幂等 close 有 fixture；`Fd` 判定结论落档 |
+| **P4** | `std::fs` 补充（`read_link`/`resize`/`set_mode`/`resolve_path`/`is_*`/`change_dir`/`file_*`） | ② | P2 | 不引入 `FileStat` 值类型；重复 `stat` 代价写进 README |
+| **P5** | `std::time`：`now_sec`/`now_ns`/`diff_seconds`/`sleep_ms` + `Time` namespace 静态方法（`year`…`format`、`from_parts`）；`Timer` 形态判定（按 §1.1） | ①/③（`Timer` 待判） | P2 | 不挂 `long`；不做 `TimeParts` 值类型；`tm` 只在 shim 内；时区行为写明；`Timer` 判定结论落档 |
+| **P6** | `Dir` + `Drop`（模板）；`Fd`/`Timer` 若判为资源类型，按同一模板收口 | ③ | P3（模板） | `own` 样例；`close` 幂等；大目录流式列举；`Fd`/`Timer`（若适用） |
 | **P7** | `std::net`：`Socket`（TCP + UDP）+ `"host:80".connect()` + `resolve_host` + `setsockopt` | ①②③ | P6（模板） | TCP/UDP loopback 回环；`Drop` 关闭；超时与 `setsockopt` 行为写明 |
 
-暂不排期：`Fd`、`Timer`、`FileStat`、`TimeParts`。
-真实需求出现后单独立项，不预留占位类型。
+「暂不排期」状态不再存在：`Fd`、`Timer`、`FileStat`、`TimeParts` 均纳入交付面。`FileStat`、`TimeParts` 只补能力、不建值类型；`Fd`、`Timer` 先按 §1.1 判能否寄生基本类型，判不掉才动新类型。
 
 ## 8. 风险与未决
 
@@ -515,17 +519,17 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 
 | 风险 | 说明 | 缓解 |
 | --- | --- | --- |
-| 便利层铺宽 → 名字通胀 | `char *` 25 → 44，`long` 7 → 14 | 每个名字必须给出「比函数式省多少」；同宿主查表 |
-| 宿主污染 | 导入 `std::time` 后任何 `long` 都能 `.year()` | README 写明；如不可接受，退回 namespace（Q9） |
-| 时区/线程安全 | `localtime_r` 无时区参数；`strerror` 静态缓冲 | 文档写明「本地时区」；线程安全留后续 |
-| `own` 初始化式很窄 | 只认 `malloc`/`calloc`/`struct X *` 工厂；强转与别名不认（实测） | 工厂返回类型写 `struct X *`；每相加 `own` 样例 |
+| 便利层铺宽 → 名字通胀 | `char *` 25 → 44；`long` 保持 7（Q8 已定不挂时间） | 每个名字必须给出「比函数式省多少」；同宿主查表 |
+| 宿主污染 | 领域方法挂基础类型会让所有同类型值获得该方法（如 `size.year()`） | Q8 已定：时间不挂 `long`，走 `Time` namespace；其他宿主按 §5.2 查表 |
+| 时区/线程安全 | `localtime_r` 无时区参数；`strerror` 静态缓冲 | 文档写明「本地时区」与 `strerror` 非线程安全 |
+| `own` 初始化式很窄 | 只认 `malloc`/`calloc`/`struct X *` 工厂；强转与别名不认（实测） | 工厂返回类型写 `struct X *`；每个新类型加 `own` 样例 |
 | 栈上值不触发 `Drop` | 实测值不释放，只有 `own` 指针会 | 句柄必须指针 + `own` |
 | `IoFile` 与新区则不一致 | `close` 只 `fclose`，包装体永不释放（`std/io/README.md:211-215`） | Q2；新类型一律 `Drop` 释放 |
-| 多次 `stat` | `file_size`/`file_mode`/`file_mtime` 各一次 | 文档写明；需要一次性结果再评估值类型 |
+| 多次 `stat` | `file_size`/`file_mode`/`file_mtime` 各一次 | 文档写明；`FileStat` 不建值类型，保持标量查询 |
 | 借用指针生命周期 | `getenv` / `strerror` 可能被覆盖 | 方法层提供带 `out` 的复制版；文档写死 |
-| 表达力缺口 | 变参、回调、`iovec`、`struct stat` 布局 | 永久排除或藏进 shim（M1），不建模 |
-| 阻塞模型 | `Socket` 阻塞、DNS 无超时控制 | P7 写明；非阻塞留后续 |
-| 版本节奏 | 每相一个 minor | Q5：允许合并相邻小相 |
+| 表达力限制 | 变参、回调、`iovec`、`struct stat` 布局 | 直调或藏进 shim（M1），不建模；能力不缺失 |
+| 阻塞模型 | `Socket` 阻塞、DNS 无超时控制 | P7 写明阻塞语义与超时行为 |
+| 版本节奏 | 全库完成后统一发布 `0.4.0`，不按相发 minor | 以全库覆盖为完成判据（§7） |
 
 ### 8.2 未决
 
@@ -533,10 +537,10 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 - **Q2**：`IoFile` 包装体不释放是否修正？（破坏性）
 - **Q3**：`char *` 44 个名字是否可接受，还是要给便利层设上限、超出走新类型？
 - **Q4（已定）**：`env`/`process`/`errno` **不合并**为 `std::sys`，三者各自成模块，目录与 libc／POSIX 原有头文件一一对应。依据：降低 C 程序员的心智成本——做的是 OO 封装，不引入新的分类法。
-- **Q5**：是否合并 P1/P2、P3/P4 发布以减少 minor？
-- **Q6（已定）**：`net` 首期一次做全，UDP、`resolve_host`、`setsockopt` 全部纳入，不再留在暂不排期。依据：不做半截模块——只封一半会让使用者不知道到底该用封装还是退回 libc。`Address` 不建类型（已定）：主机用 `char *`、端口用 `int`，方法寄生在这两个宿主上；`recv_from(buf, len, ipbuf, &port)` 以出参回报来源。依据：静态映射优先、能力寄生在基本类型上，不引入值类型。
-- **Q7**：`file_*` 标量查询的重复 `stat` 可接受，还是值得一个值类型？
-- **Q8**：时间便利层挂 `long` 是否可接受（宿主污染风险）？还是要 `Time` 命名空间 + 参数？
+- **Q5（不再适用）**：P0–P7 改为施工顺序，不按相发布；合并相邻相发布的讨论随之取消，版本节奏见 §7 / §8.1。
+- **Q6（已定）**：`net` 一次做全，UDP、`resolve_host`、`setsockopt` 全部纳入，不再留在暂不排期。依据：不做半截模块——只封一半会让使用者不知道到底该用封装还是退回 libc。`Address` 不建类型（已定）：主机用 `char *`、端口用 `int`，方法寄生在这两个宿主上；`recv_from(buf, len, ipbuf, &port)` 以出参回报来源。依据：静态映射优先、能力寄生在基本类型上，不引入值类型。
+- **Q7（已定）**：`file_*` 保持标量查询、接受重复 `stat`；`FileStat` 不建值类型。
+- **Q8（已定）**：时间方法不挂 `long`——宿主语义不相合（`size.year()` 会返回 2023）；时间只做 ① 底座 + `Time` namespace 静态方法，「迁就 `long`」正式否掉。
 - **Q9**：`Math` namespace 是否逐步退役、全部并到 `Float`/`Real`？
 - **Q10**（§2.10 A2）：`Str` 与 `char *` 两种写法并存，使用政策怎么定（何时必须用 `Str`）？
 - **Q11**（§2.10 A3/A4）：`Dir` / `Socket` 接受 struct 对等类型，还是尝试用别名/裸类型宿主？
@@ -545,12 +549,12 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 ### 8.3 本文可被证伪的假设
 
 1. 「便利层铺宽是净收益」——若评审认为 44 个 `char *` 名字的维护成本过高，需按 Q3 收缩。
-2. 「`long` 上挂时间方法可接受」——若不可接受，时间退回 namespace（Q8）。
-3. 「`Dir` + `Socket` 之外的资源都不需要」——若出现 `pipe`/定时器需求，`Fd`/`Timer` 会回来。
+2. 「时间方法可以挂 `long`」——Q8 已定否掉；时间走 `Time` namespace，不再作为假设。
+3. 「`Fd` / `Timer` 可以先不做」——全库口径已把两者纳入交付面，本条不再作为假设；形态由 §1.1 判定。
 4. 「`Address` 不建类型，多地址回退由调用方在 `resolve_host` 结果上自行处理」——若统一地址表示成为硬需求，需重开该裁定。
 
 ## 9. 交付与推进
 
 1. 本文定稿 → 交负责人过目。
 2. 负责人点头后才进入实现；未点头前只改文档，不动代码、不起版本号、不打 tag。
-3. 实现阶段每相独立提交，按 §7 判据验收；跨仓事项一律不向 ct-lang 提。
+3. 实现阶段按 §7 施工顺序独立提交；表中判据只作阶段验收，最终以全库覆盖为完成；跨仓事项一律不向 ct-lang 提。
