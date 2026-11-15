@@ -154,7 +154,7 @@ CT 范式：**字符串起头 → 工厂函数进 → 方法挂既有类型 → 
 | `errno`：`code.message()` / `std::errno::Errno.message(code)` | ② 方法层（M0/M1） | `123.message()` 链式可用；底层 `strerror`，返回借用指针 |
 | `net`：`"1.2.3.4".parse_ip(out)` | ② 方法层（M1） | `inet_pton` 出参适配 |
 | `net`：`std::net`：`Socket` + `"host:80".connect()` + `bind_to(port)` / `listen_backlog(n)` / `accept()` / `send_bytes` / `recv_bytes` / `shutdown_both` / `close`；UDP 收发；`resolve_host`；`setsockopt` | **③ OO2：`Socket`**，方法本体 M0/M1 | **首期一次做全**（负责人已定裁定，见 §8.2 Q6）：UDP、`resolve_host`、`setsockopt` 与 TCP 同轮交付。**理由：真持有 fd**，`accept` 还会产生新 fd；零代码映射会把关闭责任丢给调用方。`connect` 是字符串起头的工厂（DNS 在 shim 内解析并释放） |
-| `net`：`Address` 值类型 | **暂不排期，待负责人裁定** | 维持原状：不建模 `addrinfo` 链表；不随 Q6 一并纳入 |
+| `net`：`Address` | **不建模（负责人已定）** | 主机用 `char *`、端口用 `int`，方法寄生在这两个宿主上；`recv_from` 无法用返回值同时给出数据与来源，改用出参回报来源地址，形如 `sock.recv_from(buf, len, ipbuf, &port)`。依据：静态映射优先、能力寄生在基本类型上，不引入值类型。 |
 
 ### 2.8 与上一版的降级对照
 
@@ -164,7 +164,7 @@ CT 范式：**字符串起头 → 工厂函数进 → 方法挂既有类型 → 
 | `TimeParts` 值类型 + `make_epoch` / `to_local` / `to_utc` | `long` 上的 `year()`…`second()` + `format()`；`Time.from_parts` 工厂 | **OO1 → ②/①**（`tm` 藏在 shim 内，不建模） |
 | `Timer` + `Drop` | 暂不纳入 | **OO2 删除** |
 | `Fd` + `FdOps`（13 个方法） | 暂不纳入 | **OO2 删除**（`IoFile` 已覆盖） |
-| `Address` 值类型 | `"host:80".connect()` + `resolve_host` + `parse_ip` | **OO1 → ②/①**（不建模 `Address`；`resolve_host` 与 net 首期同轮交付） |
+| `Address` 值类型 | 主机 `char *`、端口 `int`（方法寄生）+ `resolve_host` + `parse_ip` | **OO1 → 不建模**（地址不引入类型；`recv_from` 以出参回报来源） |
 | `math` 新增走 namespace `Math` | 新增走 `Float`/`Real` 方法层 | **① → ②**（链式更顺手） |
 | 新 Drop 类型 4 个 | **2 个**（`Dir`、`Socket`） | 只留真资源 |
 | 新值类型 3 个 | **0 个** | 全部降级 |
@@ -196,8 +196,9 @@ struct 作为它的对等类型」**，一旦引入就多出装箱/拆箱、拷�
 
 不属本节的两类（放在 §2.8 处理，不要混进来）：
 
-- `FileStat` / `TimeParts` / `Address`：它们是「一次调用多个字段」的值类型，不是「原类型挂不上方法」；
-  本方案已分别降级为标量查询、`long` 宿主方法、`connect()` 内部解析。
+- `FileStat` / `TimeParts`：它们是「一次调用多个字段」的值类型，不是「原类型挂不上方法」；
+  本方案已分别降级为标量查询、`long` 宿主方法。`Address` 已按负责人裁定不建模，主机 / 端口分别
+  寄生在 `char *` / `int` 上（见 §2.7、§8.2 Q6）。
 - `Arena` / `Test`：本包自有类型，不对应任何 C 类型，不涉及「对等包装」。
 
 评估时统一问五个问题：① 装箱频率能否接受；② 值语义还是引用语义，拷贝怎么定义；③ 谁负责释放；
@@ -505,7 +506,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 | **P6** | `Dir` + `Drop`（首个也是唯一文件系统句柄） | ③ | P3（模板） | `own` 样例；`close` 幂等；大目录流式列举 |
 | **P7** | `std::net`：`Socket`（TCP + UDP）+ `"host:80".connect()` + `resolve_host` + `setsockopt` | ①②③ | P6（模板） | TCP/UDP loopback 回环；`Drop` 关闭；超时与 `setsockopt` 行为写明 |
 
-暂不排期：`Fd`、`Timer`、`FileStat`、`TimeParts`、`Address`（待负责人裁定）。
+暂不排期：`Fd`、`Timer`、`FileStat`、`TimeParts`。
 真实需求出现后单独立项，不预留占位类型。
 
 ## 8. 风险与未决
@@ -533,7 +534,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 - **Q3**：`char *` 44 个名字是否可接受，还是要给便利层设上限、超出走新类型？
 - **Q4（已定）**：`env`/`process`/`errno` **不合并**为 `std::sys`，三者各自成模块，目录与 libc／POSIX 原有头文件一一对应。依据：降低 C 程序员的心智成本——做的是 OO 封装，不引入新的分类法。
 - **Q5**：是否合并 P1/P2、P3/P4 发布以减少 minor？
-- **Q6（已定）**：`net` 首期一次做全，UDP、`resolve_host`、`setsockopt` 全部纳入，不再留在暂不排期。依据：不做半截模块——只封一半会让使用者不知道到底该用封装还是退回 libc。`Address` 仍待负责人裁定、暂不排期。
+- **Q6（已定）**：`net` 首期一次做全，UDP、`resolve_host`、`setsockopt` 全部纳入，不再留在暂不排期。依据：不做半截模块——只封一半会让使用者不知道到底该用封装还是退回 libc。`Address` 不建类型（已定）：主机用 `char *`、端口用 `int`，方法寄生在这两个宿主上；`recv_from(buf, len, ipbuf, &port)` 以出参回报来源。依据：静态映射优先、能力寄生在基本类型上，不引入值类型。
 - **Q7**：`file_*` 标量查询的重复 `stat` 可接受，还是值得一个值类型？
 - **Q8**：时间便利层挂 `long` 是否可接受（宿主污染风险）？还是要 `Time` 命名空间 + 参数？
 - **Q9**：`Math` namespace 是否逐步退役、全部并到 `Float`/`Real`？
@@ -546,7 +547,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 1. 「便利层铺宽是净收益」——若评审认为 44 个 `char *` 名字的维护成本过高，需按 Q3 收缩。
 2. 「`long` 上挂时间方法可接受」——若不可接受，时间退回 namespace（Q8）。
 3. 「`Dir` + `Socket` 之外的资源都不需要」——若出现 `pipe`/定时器需求，`Fd`/`Timer` 会回来。
-4. 「`Address` 值类型可以继续不建模」——若多地址回退/统一地址表示成为硬需求，需要回来裁定 `Address`。
+4. 「`Address` 不建类型，多地址回退由调用方在 `resolve_host` 结果上自行处理」——若统一地址表示成为硬需求，需重开该裁定。
 
 ## 9. 交付与推进
 
