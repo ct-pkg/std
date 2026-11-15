@@ -83,7 +83,7 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 | `reverse_find_char` / `compare_ignore_case` | ② 方法层（M1） | 新增 | 补齐反向查找与忽略大小写比较 |
 | `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real` | ② 方法层（M1） | 新增 | 需要 `strtol` 的 `endptr` + `errno` 才能报错；底座仍是映射 |
 | `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` | ② 方法层（M1） | 新增 | 内存操作（宿主 `char *`，`void *` 挂不了方法）：`copy_from` → `memcpy`（要求源/目标不重叠，快路径）；`move_from` → `memmove`（允许重叠，内部做方向判断，略慢）；`fill` → `memset`；`compare_with` → `memcmp`（返回三态，不布尔化）；`find_byte` → `memchr`（返回指针或 `NULL`）；`compare_prefix` → `strncmp`（`\0` 停） |
-| `split_into(separator, out, cap)` | ② 方法层（C） | 新增 | 拷贝语义：按 `separator` 切分，每段拷进调用方缓冲 `out`，返回段数；缓冲不足返回所需数量；**原串一个字节都不改**。不是 libc 映射（libc 只有 `strtok`/`strtok_r`，且会改写源串），底层可用 `strtok_r` 或自行扫描 |
+| `split_into(separator, out, cap, slot_size)` | ② 方法层（C） | 新增 | 拷贝语义：按 `separator` 切分，每段拷进调用方缓冲 `out`。`cap` 是段数上限，`slot_size` 是每段字节上限；返回实际段数；缓冲不足时返回所需段数且不写入任何段；**原串一个字节都不改**。函数不分配内存，也不提供 `free_split`。不是 libc 映射（libc 只有 `strtok`/`strtok_r`，且会改写源串），底层可用 `strtok_r` 或自行扫描 |
 
 `memcpy` / `memmove` 不合并，拆成 `copy_from` / `move_from` 两个名字：前者要求不重叠、是快路径，
 后者允许重叠（含原地左移/右移）、内部多一次方向判断。合并成一个名字会让所有普通拷贝都付
@@ -92,7 +92,9 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 `dst.copy_from(src, n)` 或 `dst.move_from(src, n)`，`copy_to` 退场（破坏性改名，随 issue 0001 同批通告）。
 
 `split_into` 属 ② 便利层，不是 libc 映射：`strtok`/`strtok_r` 会就地写入 `\0` 改写源串，语义不同，
-不能直接对外暴露；`split_into` 只读源串、每段另行拷出。
+不能直接对外暴露；`split_into` 只读源串、每段另行拷进调用方缓冲。取缓冲式而非返回值分配，与 §1.5
+「只有真持有资源才建类型」同口径：若由 `split_into` 自己分配，切分结果就带上了所有权与释放责任，
+必须再配一个 `free_split`；缓冲式把这两件事留在调用方，函数本身无状态、无分配。
 
 另：`String` → `CStrOps`（issue 0001，`0.4.0`），除 `copy_to` → `copy_from`/`move_from` 外方法名不变。
 
@@ -119,8 +121,7 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 
 数学记号（`pow`/`exp`/`log`/`sin`/`sqrt`/`abs`/`fabs` 等）按负责人裁定保留原记号，不再展开：它们是
 数学界通用写法，展开成 `sine`／`natural_logarithm`／`absolute_value` 反而更难读。只有看不出意思的
-`frexp`/`modf`/`ldexp`（以及 `expm1`/`log1p`，保留 `exponential_minus_one`/`logarithm_one_plus`）才改名，
-规则见 §5.1。
+`frexp`/`modf`/`ldexp` 才改名，规则见 §5.1。
 
 ### 2.4 `std::io`
 
@@ -455,8 +456,8 @@ import std::net::Socket;
   `qsort` → `sort`、`bsearch` → `binary_search`、`strtol` → `parse_long`、`atoi` → `to_int`、
   `strerror` → `error_message`。
 - **例外一：数学记号保留原样。** `pow`、`exp`、`log`、`sin`、`sqrt`、`abs`、`fabs` 等是数学界通用记号，
-  展开成 `sine`／`natural_logarithm`／`absolute_value` 反而更难读，因此不展开；只有看不出意思的
-  `frexp`/`modf`/`ldexp`、`expm1`/`log1p` 才展开。
+  展开成 `sine`／`natural_logarithm`／`absolute_value` 反而更难读，因此不展开（`expm1`、`log1p` 同样保留
+  记号）；只有看不出意思的 `frexp`/`modf`/`ldexp` 才展开。
 - **例外二：已成为通用词的缩写保留**：`http`、`utf8`、`pid` 等；`isalnum` → `is_alnum` 这类拆分照旧。
 - 方案只立展开名这一套；§6.2 的映射表是**查证索引**，用来从展开名反查对应 libc 函数，不构成第二套写法。
 - **便利层也受同宿主唯一名约束**：补方法前必须查表。
@@ -499,7 +500,7 @@ import std::net::Socket;
   `pub struct X { ... } use Drop;` + 显式 `impl Drop`
   （字段胶水不释放指针字段，`ct-lang/docs/language-spec.md:2549`）；`own X *p = ...`；`close()` 幂等。
 - **值类型**：不新增（`FileStat` / `TimeParts` 不建值类型，`Address` 不建模）。
-- **拷贝语义的输入**：`split_into` 只读源串，不写入、不移动原串；每段写入调用方缓冲。
+- **拷贝语义的输入**：`split_into` 只读源串，不写入、不移动原串；每段写入调用方缓冲，函数自身不分配内存。
 - 内部工厂返回类型必须写成 `struct X *`（`own` 看字面量）。
 
 ## 6. 文档呈现
@@ -533,7 +534,6 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 | `parse_long` | `strtol` |
 | `parse_long_long` | `strtoll` |
 | `parse_unsigned_long` | `strtoul` |
-| `exponential_minus_one` / `logarithm_one_plus` | `expm1` / `log1p` |
 | `is_infinite` | `isinf` |
 | `is_printable` / `is_graphical` / `is_control` / `is_punctuation` / `is_hex_digit` | `isprint` / `isgraph` / `iscntrl` / `ispunct` / `isxdigit` |
 | `put_string` / `put_char` / `get_char` / `flush` | `puts` / `putchar` / `getchar` / `fflush` |
@@ -554,7 +554,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 | `fill` / `compare_with` / `find_byte` / `compare_prefix` | `memset` / `memcmp` / `memchr` / `strncmp` |
 
 `split_into` 不列入本索引：libc 只有会改写源串的 `strtok`/`strtok_r`，没有等价函数；它是 ② 便利层的
-拷贝式切分（见 §2.1）。
+缓冲式拷贝切分（签名 `split_into(separator, out, cap, slot_size)`，见 §2.1）。
 
 维护规则：新增 API 一次改三处（§4 表、模块 README、查证索引），缺一处视为未完成。
 
