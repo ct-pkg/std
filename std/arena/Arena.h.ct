@@ -21,7 +21,7 @@
  * `free_all` releases the arena completely. `alloc` returns NULL when a new block
  * cannot be obtained -- it never aborts.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 
 #include <stdlib.h>

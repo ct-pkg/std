@@ -10,7 +10,7 @@
  *
  * Only `double` has `to_str` / `to_string`; `Float` stays purely numeric.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 #include <math.h>
 

@@ -22,7 +22,7 @@
  * These are the same C symbols the module always exported; adding an ability
  * means adding it here, never going back to a `.h.ct`.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 #ifndef CT_STD_STR_STRING_SHIM_H
 #define CT_STD_STR_STRING_SHIM_H

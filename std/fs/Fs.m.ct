@@ -23,7 +23,7 @@
  *
  * This unit is the only import: `import std::fs::Fs;`.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 
 namespace std::fs;

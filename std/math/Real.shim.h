@@ -12,7 +12,7 @@
  * `std::num`. Both rings are **not thread-safe** and a fifth live result reuses
  * the first slot.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 #ifndef CT_STD_MATH_REAL_SHIM_H
 #define CT_STD_MATH_REAL_SHIM_H

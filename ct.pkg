@@ -36,9 +36,9 @@
 # segment of `import std::<mod>::<Unit>` comes from the directory tree under
 # it, not from this key).
 name = std
-publisher = ct
+publisher = std
 ns-root = .
 version = 0.3.1
-licence = GPL-3.0-or-later WITH GCC-exception-3.1
+licence = MIT
 requires = ct >= 0.30.0
 ldflags = -lm

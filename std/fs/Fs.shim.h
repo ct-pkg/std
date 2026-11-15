@@ -34,7 +34,7 @@
  * not thread-safe and not shared across translation units, same caveat as the
  * static slots in `std::num`.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 
 #ifndef CT_STD_FS_FS_SHIM_H

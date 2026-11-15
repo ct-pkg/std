@@ -509,11 +509,12 @@ shim 是主形态，我同意；但"零代码映射"这个描述只在**纯转�
 ```sh
 cd /tmp/conarg-probe
 CT=/Users/samxx/.local/bin/ct
+STD_ROOT=<本仓根>
 $CT build -I . probe5.ct  -o probe5.bin  --cflags "-Wall -Wextra"
-$CT build -I . probe10.ct -o probe10.bin --cflags "-Wall -Wextra" -I /Users/samxx/trae-ws/std
+$CT build -I . probe10.ct -o probe10.bin --cflags "-Wall -Wextra" -I "$STD_ROOT"
 
 # 跨 TU 错误：
 cd /tmp/conarg-errno
-$CT build -I . -I /Users/samxx/trae-ws/std main.ct -o main.bin --cflags "-Wall -Wextra"
+$CT build -I . -I "$STD_ROOT" main.ct -o main.bin --cflags "-Wall -Wextra"
 ./main.bin   # cross-TU first: rc=-1 err=0 / same-TU after: rc=-1 err=17
 ```

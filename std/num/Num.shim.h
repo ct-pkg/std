@@ -14,7 +14,7 @@
  * what the C library requires; that is the safe spelling compared with
  * forwarding the raw `int`/`char`.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 #ifndef CT_STD_NUM_NUM_SHIM_H
 #define CT_STD_NUM_NUM_SHIM_H

@@ -9,7 +9,7 @@
  * `Math` is the scalar pair; the methods that hang off a value (`x.sqrt()`,
  * `x.round()`) are in `Real.m.ct`.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 #include <math.h>
 

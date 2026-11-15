@@ -40,7 +40,7 @@
  * `to_int` / `to_double` are the C parsers (`atoi` / `atof`) behind the same
  * NULL check as the rest of the module: a missing receiver parses as 0.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 #include <stdlib.h>
 

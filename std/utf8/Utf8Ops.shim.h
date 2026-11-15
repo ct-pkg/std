@@ -28,7 +28,7 @@
  * `std_utf8_length` is now `std_utf8_codepoint_count`, because `String.len()`
  * already means bytes and one word cannot mean both.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 #ifndef CT_STD_UTF8_UTF8OPS_SHIM_H
 #define CT_STD_UTF8_UTF8OPS_SHIM_H

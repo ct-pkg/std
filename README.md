@@ -23,9 +23,10 @@
 
 ```
 name = std
-publisher = ct
+publisher = std
 ns-root = .
 version = 0.3.1
+licence = MIT
 requires = ct >= 0.30.0
 ldflags = -lm
 ```
@@ -34,7 +35,7 @@ ldflags = -lm
 是空操作。
 
 `publisher` 与 `ns-root` 属于替换 `-I vendor/<包名>` 的新包机制（需求 SP-002 / SP-003）：
-发布方是 `ct`，命名空间根就是包根自身（`import std::<mod>::<Unit>` 里的 `std/` 段来自目录树，
+发布方是 `std`，命名空间根就是包根自身（`import std::<mod>::<Unit>` 里的 `std/` 段来自目录树，
 不由这个键提供）。**实测 ct v0.53.0**：这两个键会被静默忽略——`read_manifest` 只认
 `name` / `version` / `dep` / `requires` / `ldflags`，未知键直接跳过，`ct build` 与 `tests/run.sh`
 行为不变、无告警。也就是说现在写上它们是「为将来的工具准备好的声明」，不影响当前构建。
@@ -522,5 +523,4 @@ int get_last_error();             /* std::fs::FsEnv.get_last_error()，见 §10.
 
 ## License
 
-GPL-3.0-or-later，附 GCC 运行时例外（见 `LICENSE` 与 `LICENSE.EXCEPTION`）。
-你写的 `.ct` 源码与编译器生成物不受 GPL 约束。
+MIT（见 `LICENSE`）。

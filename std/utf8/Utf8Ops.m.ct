@@ -27,7 +27,7 @@
  * U+10FFFF. A decoder that accepted those would let two different byte strings
  * mean the same text, which is exactly what the standard forbids.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 
 namespace std::utf8;

@@ -18,7 +18,7 @@
  * `malloc` leaves it garbage. Construct a value (or assign a compound literal,
  * which the compiler initializes) before the first method call.
  *
- * License: same as the rest of the compiler (see LICENSE / LICENSE.EXCEPTION).
+ * License: MIT (see LICENSE).
  */
 
 #include <stdio.h>
