@@ -34,23 +34,21 @@
 
 ### 1.3 在范围内
 
-C 标准库 + POSIX.1 中 CT 侧有稳定用法的能力：字符串/内存视图、stdio、目录、`stat`、时间、
-环境变量、进程身份、错误码文本、socket。自有设施：`Arena`、`Test`、`Utf8Ops`。
+C 标准库 + POSIX.1 的全部接口：只要有对应函数就纳入（① 映射优先），CT 模型差异只写成使用
+注意事项，不构成排除。字符串/内存、stdio、目录、`stat`、时间、环境变量、进程身份/控制/信号、
+错误码、socket、locale/宽字符、线程/异步等 POSIX 能力都在交付面。自有设施：`Arena`、`Test`、`Utf8Ops`。
 
-### 1.4 不归 std
+### 1.4 不归 std（仅三类）
 
 | 类别 | 理由 |
 | --- | --- |
 | 编译器内置层（`Vec` / `Map` / `Str`） | 0.3.0 已删 `std::vec` / `std::map`；重名撞内置类型 |
-| 泛型容器、分配器抽象、线程/并发、异步/事件循环 | 语言与运行时能力；**且这类安排不往 ct-lang 推** |
-| 第三方包（JSON / HTTP / 正则 / 日志 / CLI） | 独立 ct-pkg |
-| 进程控制与信号（`fork` / `exec*` / `system` / `popen`） | CT 无进程/并发模型 |
-| locale、宽字符、多编码 | 编码走 `std::utf8`；locale 是平台全局状态 |
-| Windows / 非 POSIX | 现有实现依赖 `dirent.h` / `unistd.h` |
+| 第三方包（JSON / HTTP / 日志 / CLI 框架） | 独立 ct-pkg；POSIX `regex` / `getopt` 不在此列，按 libc 纳入 |
 | 编译器诊断、构建工具、包管理器 | 属于 ct / ct-pkg |
 
-注：纯内存操作（`memcpy` / `memmove` / `memset` / `memcmp` / `memchr` / `strncmp`）不再排除——
-已由 `char *` 方法层封装（§2.1），方法层编译期展开，无运行时开销。
+判据只剩一条：**libc／POSIX 有没有对应函数，有就映射**。CT 模型差异（`fork` 后的运行时状态、
+`signal` 回调、`setlocale` 全局状态、平台差异、变参/回调/`iovec` 等）只写成使用注意事项，不构成
+排除。纯内存操作已由 `char *` 方法层封装（§2.1）。
 
 ### 1.5 ③ 的准入（只此一条）
 
@@ -158,7 +156,7 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 | `time`：`std::time::Time.from_parts(y, m, d, h, mi, s)` | ① 工厂（M1） | 返回 `long` 时间值；不引入 `TimeParts` 值类型，后续用 `Time.format(t, ...)` |
 | `time`：`Timer` + `Drop` | 纳入交付面；形态按 §1.1 判定 | 真资源；先判能否寄生基本类型，判不掉才建新类型 |
 | `env`：`name.get_env(out, cap)`；`std::env::Env.set(name, value)` / `unset(name)` | ② 方法层 + ① 底座（M0） | `getenv` 返回借用指针，方法层负责拷进调用方缓冲（`get` 带 `out` 更安全）；set/unset 无接收者价值，走 namespace |
-| `process`：`std::process::Process.get_pid()` `get_parent_pid()` `get_uid()` `get_euid()` `get_gid()` | ① 底座（M0） | 无接收者、无链式收益，五条单行 |
+| `process`：`std::process::Process.get_pid()` `get_parent_pid()` `get_uid()` `get_euid()` `get_gid()` | ① 底座（M0） | 无接收者、无链式收益，五条单行；控制/信号见 §2.9 |
 | `errno`：`std::errno::Errno.get_last()` | ① 底座（M1） | `errno` 是宏，一条 `return errno;` |
 | `errno`：`code.message()` / `std::errno::Errno.message(code)` | ② 方法层（M0/M1） | `123.message()` 链式可用；底层 `strerror`，返回借用指针 |
 | `net`：`"1.2.3.4".parse_ip(out)` | ② 方法层（M1） | `inet_pton` 出参适配 |
@@ -178,14 +176,25 @@ std 是对标准库的一次整体转化，不是分批交付：在本方案划�
 | 新 Drop 类型 4 个 | `Dir`/`Socket` 已定；`Fd`/`Timer` 按 §1.1 判定 | 只给真持有资源且无法寄生基本类型的类型 |
 | 新值类型 3 个 | **0 个** | 全部不建值类型（`FileStat`/`TimeParts` 以标量/namespace 补能力，`Address` 不建模） |
 
-### 2.9 明确不封装（能力仍可按 ① 直调 libc）
+### 2.9 原排除项：全部纳入（① 底座直连 + 注意事项）
 
-以下能力不新增 std 封装，但能力面不缺：调用方按 ① 直调 libc。内存操作不在本清单：已由 `char *`
-方法层封装（§2.1）。
+判据改为「libc／POSIX 有没有对应函数」：以下原排除项全部纳入，形态一律 ① 直连，不新增类型。
+内存操作已由 `char *` 方法层封装（§2.1）；其余 POSIX 接口（`pthread_*`、`aio_*`、`mmap`、
+`poll`/`select` 等）同样按此判据纳入，归属按头文件就近，不新增类型。
 
-`qsort` `bsearch` `scandir`（回调）；
-`scanf` 族、`sprintf`、`fprintf`（变参/无界）；`fork` `exec*` `system` `popen` `signal` `alarm`；
-locale 与宽字符；`ldexp` `frexp` `modf`（出参）；`sendmsg` `recvmsg`（`iovec`）。
+| 能力 | 形态 | 归属 | 注意事项 |
+| --- | --- | --- | --- |
+| `fork` / `exec*` / `system` / `popen` / `wait*` | ① 底座 | `std::process` | `fork` 后子进程中的运行时状态不可假定安全；`exec*` 替换进程镜像；`system`/`popen` 经 shell |
+| `signal` / `alarm` | ① 底座 | `std::process` | 回调式 `signal` 受函数指针限制，README 写清可支持的用法与不可用场景；不因此排除 |
+| `setlocale` / `localeconv` | ① 底座 | `std::locale` | `setlocale` 会影响 `printf`、`strtod` 的小数点与解析行为；全局状态需在文档写明 |
+| `<wchar.h>` 族（`mbstowcs` / `wcstombs` / `wcslen` 等） | ① 底座 | `std::wchar` | 宽字符宽度/编码随平台与 locale 变化；边界写清 |
+| `scanf` 族 / `sprintf` / `fprintf` | ① 底座 | `std::io` | 变参/无界风险，文档写明安全用法；不排除 |
+| `qsort` / `bsearch` | ① 底座 | `std::search` | 回调式比较；CT 侧函数指针支持范围写清 |
+| `scandir` | ① 底座 | `std::fs` | 回调过滤/排序；返回数组的释放责任写清 |
+| `ldexp` / `frexp` / `modf` | ① 底座 | `std::math` | 出参形态；不建值类型 |
+| `sendmsg` / `recvmsg` | ① 底座 | `std::net` | `iovec` 由调用方构造；边界与所有权写清 |
+
+全部 ① 直连项不新增类型；方法层只在 §1.2 的便利性判据成立时另加，不再以「CT 模型不支持」排除。
 
 ### 2.10 需要为某类型引入 struct 作「对等类型」的情况（单列，待负责人评估）
 
@@ -381,7 +390,7 @@ drop ran
 | 编号 | 偏离 | 为什么保留 | 取舍/后续 |
 | --- | --- | --- | --- |
 | D1 | `std::math::Math.sqrt(x)` 是函数式，不是 `x.sqrt()` | 历史接口；数学写法普遍 | 新 math 能力一律走 `Float`/`Real` 方法层；namespace 不再扩张，长期可考虑让 `Math` 退役 |
-| D2 | `printf` 变参走 namespace，不是字符串起头 | CT 没有变参接收者转发 | 唯一例外；不推广 |
+| D2 | `printf` 变参走 namespace，不是字符串起头 | CT 暂无变参接收者转发（形态偏离，不构成排除） | 唯一例外；不推广 |
 | D3 | `get_dir(out, cap)` 用出参，不是 `get_dir()` 返回值 | 无接收者，且返回静态缓冲区不安全 | 若将来允许静态槽（如 `to_string`），可改成链式 |
 | D4 | `parse_long(out)` / `format_time(out, cap)` 出参 + 状态码 | 失败必须可报；链式返回值无法同时表达 | 与 `copy`/`read_line` 同类，包内已有先例 |
 | D5 | `std::env::Env.set` / `std::process::Process.get_pid` 走 namespace | 无接收者 | 不强行造接收者 |
@@ -401,18 +410,22 @@ std/
   utf8/   Utf8Ops.m.ct + shim
   num/    Num.m.ct + shim
   math/   Math.m.ct  Real.m.ct + shim
+  search/ Search.m.ct                        （qsort/bsearch 等 ① 直连）
   arena/  Arena.h.ct
   test/   Test.h.ct
   env/     Env.m.ct                          （环境变量）
-  process/ Process.m.ct                      （进程身份）
+  process/ Process.m.ct                      （进程身份 + 控制/信号）
   errno/   Errno.m.ct                        （错误码）
+  locale/  Locale.m.ct                       （setlocale/localeconv）
+  wchar/   Wchar.m.ct                        （<wchar.h> ① 直连）
   time/   Time.m.ct                          （`Time` namespace 静态方法 + 工厂；不挂 `long`）
   net/    Net.m.ct  Socket.h.ct              （不建 Address）
 ```
 
-`env/`、`process/`、`errno/` 各自成模块，不合并为 `std::sys`：目录划分与 libc／POSIX 原有头文件
+`env/`、`process/`、`errno/` 各自成模块，不合并为 `std::sys`：这三个模块与 libc／POSIX 原有头文件
 一一对应，C 程序员不需要再学一套分类法。此条为负责人已定裁定（见 §8.2 Q4）；OO 封装只改变调用
-形态，不引入新的分类维度。
+形态，不引入新的分类维度。`locale/`、`wchar/` 分别对应 `<locale.h>`、`<wchar.h>`；`search/` 收纳
+`qsort`/`bsearch` 等通用算法。以上均按 ① 直连，不新增类型。
 
 ### 4.2 import 形态
 
@@ -490,7 +503,7 @@ import std::net::Socket;
 ## 3. 样例（可运行，来自 tests/<mod>/）
 ## 4. 与相邻模块的关系（宿主、同名冲突）
 ## 5. 版本与变更记录
-## 6. 未支持与已知限制
+## 6. 使用注意事项与已知限制
 ```
 
 API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 shim 就知道成本形态。样例必须来自
@@ -498,10 +511,10 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 
 ### 6.2 顶层索引（三张表）
 
-1. **按任务**：读文件、遍历目录、当前时间、网络……没有的显式写「未支持」。
+1. **按任务**：读文件、遍历目录、当前时间、网络……没有的写「不归 std（仅 §1.4 三类）」或注意事项。
 2. **按宿主**：`char *` / `IoFile *` / `Dir *` / `Socket *` / `long` / `double` / namespace。
 3. **libc → std 映射**：以 [libc 覆盖盘点](../libc-inventory.md) 为源，四列
-   「已在 std（层）/ 建议纳入（层）/ 直调 / 不纳入（理由）」。
+   「已在 std（层）/ 建议纳入（层）/ 直调 / 不归 std（仅 §1.4 三类）」。
 
 维护规则：新增 API 一次改三处（§4 表、模块 README、libc 映射表），缺一处视为未完成。
 
@@ -509,20 +522,22 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 
 原则：先铺 ①②，再补 ③；③ 只给真正持有资源且无法寄生基本类型的类型（已定 `Dir`、`Socket`；`Fd`、`Timer` 先判）；每个模块整块交付（§1.7），不做半截。
 
-P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验收，最终以 §2 能力面（含 §2.9 的直调能力）全库覆盖为完成，不以任一相的交付为完成；全库完成后再统一发布 `0.4.0`。
+P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验收，最终以 §2 能力面（含 §2.9 的 ① 直连能力）全库覆盖为完成，不以任一相的交付为完成；全库完成后再统一发布 `0.4.0`。
 
 | 序 | 内容 | 层 | 依赖 | 阶段验收 |
 | --- | --- | --- | --- | --- |
 | **P0** | `String` → `CStrOps`（issue 0001，`0.4.0`） | 改名 | 无 | 旧名零命中；`tests/run.sh` 全绿；文档同步 |
-| **P1** | `char` 7 个 `is_*`；`char *` 内存方法（`copy_from`/`fill`/`compare_with`/`find_byte`/`compare_prefix`）；`math` 新族（`Float`/`Real` 方法层） | ①② | P0 | 每条 M0/M1 转发；无宿主重名；重叠拷贝夹具；三态/指针返回验证 |
-| **P2** | 新增 `std::env` / `std::process` / `std::errno`（各一个模块） | ①② | P1 | 无新类型；借用指针语义写进 README |
-| **P3** | `stdio` 句柄映射补全（`seek`/`tell`/`rewind`/`eof`/`error`/`read_char`/`write_char`/`read_line`/`flush`）；`Fd` 形态判定（按 §1.1） | ②/③（`Fd` 待判） | P0 | EOF/错误位/幂等 close 有 fixture；`Fd` 判定结论落档 |
-| **P4** | `std::fs` 补充（`read_link`/`resize`/`set_mode`/`resolve_path`/`is_*`/`change_dir`/`file_*`） | ② | P2 | 不引入 `FileStat` 值类型；重复 `stat` 代价写进 README |
+| **P1** | `char` 7 个 `is_*`；`char *` 内存方法（`copy_from`/`fill`/`compare_with`/`find_byte`/`compare_prefix`）；`math` 新族（`Float`/`Real` 方法层）；`qsort`/`bsearch`、`ldexp`/`frexp`/`modf` ① 直连 | ①② | P0 | 每条 M0/M1 转发；无宿主重名；重叠拷贝夹具；三态/指针返回验证；回调/出参用法写明 |
+| **P2** | 新增 `std::env` / `std::process`（含控制/信号）/ `std::errno` / `std::locale` / `std::wchar`（各一个模块） | ①② | P1 | 无新类型；借用指针语义、`fork` 后状态、`setlocale` 全局影响写进 README |
+| **P3** | `stdio` 句柄映射补全（`seek`/`tell`/`rewind`/`eof`/`error`/`read_char`/`write_char`/`read_line`/`flush`）；`scanf`/`sprintf`/`fprintf` ① 直连；`Fd` 形态判定（按 §1.1） | ①②/③（`Fd` 待判） | P0 | EOF/错误位/幂等 close 有 fixture；`Fd` 判定结论落档；变参安全用法写明 |
+| **P4** | `std::fs` 补充（`read_link`/`resize`/`set_mode`/`resolve_path`/`is_*`/`change_dir`/`file_*`）；`scandir` ① 直连 | ①② | P2 | 不引入 `FileStat` 值类型；重复 `stat` 代价写进 README；回调与数组释放写明 |
 | **P5** | `std::time`：`now_sec`/`now_ns`/`diff_seconds`/`sleep_ms` + `Time` namespace 静态方法（`year`…`format`、`from_parts`）；`Timer` 形态判定（按 §1.1） | ①/③（`Timer` 待判） | P2 | 不挂 `long`；不做 `TimeParts` 值类型；`tm` 只在 shim 内；时区行为写明；`Timer` 判定结论落档 |
 | **P6** | `Dir` + `Drop`（模板）；`Fd`/`Timer` 若判为资源类型，按同一模板收口 | ③ | P3（模板） | `own` 样例；`close` 幂等；大目录流式列举；`Fd`/`Timer`（若适用） |
-| **P7** | `std::net`：`Socket`（TCP + UDP）+ `"host:80".connect()` + `resolve_host` + `setsockopt` | ①②③ | P6（模板） | TCP/UDP loopback 回环；`Drop` 关闭；超时与 `setsockopt` 行为写明 |
+| **P7** | `std::net`：`Socket`（TCP + UDP）+ `"host:80".connect()` + `resolve_host` + `setsockopt`；`sendmsg`/`recvmsg` ① 直连 | ①②③ | P6（模板） | TCP/UDP loopback 回环；`Drop` 关闭；超时与 `setsockopt` 行为写明；`iovec` 构造/所有权写明 |
 
 「暂不排期」状态不再存在：`Fd`、`Timer`、`FileStat`、`TimeParts` 均纳入交付面。`FileStat`、`TimeParts` 只补能力、不建值类型；`Fd`、`Timer` 先按 §1.1 判能否寄生基本类型，判不掉才动新类型。
+
+其余 POSIX 接口（`pthread_*`、`aio_*`、`mmap`、`poll`/`select` 等）随所属模块的施工序完成，不单列相位；归属按头文件就近，形态一律 ① 直连。
 
 ## 8. 风险与未决
 
@@ -538,7 +553,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 | `IoFile` 与新区则不一致 | `close` 只 `fclose`，包装体永不释放（`std/io/README.md:211-215`） | Q2；新类型一律 `Drop` 释放 |
 | 多次 `stat` | `file_size`/`file_mode`/`file_mtime` 各一次 | 文档写明；`FileStat` 不建值类型，保持标量查询 |
 | 借用指针生命周期 | `getenv` / `strerror` 可能被覆盖 | 方法层提供带 `out` 的复制版；文档写死 |
-| 表达力限制 | 变参、回调、`iovec`、`struct stat` 布局 | 直调或藏进 shim（M1），不建模；能力不缺失 |
+| 表达力注意 | 变参、回调、`iovec`、`struct stat` 布局 | ① 直连并在 README 写使用边界；不排除 |
 | 阻塞模型 | `Socket` 阻塞、DNS 无超时控制 | P7 写明阻塞语义与超时行为 |
 | 版本节奏 | 全库完成后统一发布 `0.4.0`，不按相发 minor | 以全库覆盖为完成判据（§7） |
 
