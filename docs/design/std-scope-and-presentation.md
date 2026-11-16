@@ -26,9 +26,9 @@
 不需要再拿生命周期论证。满足任一条即可补：
 
 - 链式读法明显更短：`"abc".starts_with("x")` 对 `str_starts_with(s, "x")`；
-- 基础类型的值能直接接方法：`n.to_string()`；
-- 工厂从字符串进：`"f".open("r")`、`"dir".open_dir()`、`"host:80".connect()`；
-- 结果还能继续走：`n.to_string().len()`。
+- 基础类型的值能直接接方法：`n.to_str(buf, sizeof buf)`；
+- 工厂从字符串进：`"f".open_file("r")`、`"dir".open_dir()`、`"host:80".connect()`；
+- 结果还能继续走：`"abc".length()`。
 
 不满足的（写了不比函数式短、或语义会被误读）不补，避免名字通胀。
 
@@ -49,7 +49,7 @@ locale/宽字符、线程/异步等 POSIX 能力都在交付面。自有设施�
 | 编译器诊断、构建工具、包管理器 | 属于 ct / ct-pkg |
 
 判据是：**libc／POSIX 有没有对应函数，有就映射**。CT 模型差异（`fork` 后的运行时状态、
-`signal` 回调、`set_locale` 全局状态、平台差异、回调/`iovec` 等）只写成使用注意事项，不构成排除。
+`signal` 回调、`Locale.apply` 全局状态、平台差异、回调/`iovec` 等）只写成使用注意事项，不构成排除。
 变参不是模型差异，而是 CT 无变参声明机制，按 §2.9 的成对替代处理（0.3.0 遗留的 `printf` 按破坏性变更删除）。纯内存操作已由 `char *` 方法层封装（§2.1）。
 
 ### 1.5 ③ 的准入（只此一条）
@@ -92,7 +92,7 @@ CT 里的裸指针（来自 C 互操作）是使用者的负担，接口应尽�
 
 | API | 形态 | 状态 | 说明 |
 | --- | --- | --- | --- |
-| `length` `find` `find_char` `starts_with` `ends_with` `copy` `slice` `to_lower` `to_upper` `compare` | ② 方法层（M1） | 已有 | 字符串起头的核心链路；`length` 整条替换旧 `len`，不留别名 |
+| `length` `find` `find_char` `starts_with` `ends_with` `copy` `slice` `lowercase` `uppercase` `compare` | ② 方法层（M1） | 已有 | 字符串起头的核心链路；`length` 整条替换旧 `len`，不留别名 |
 | `concat` 等产出型 API | ② 方法层（M1） | 已有 | 本仓只描述宿主为 `char *` 时的行为；若声明处目标为语言侧内置 `Str`，其行为以语言侧规范为准，本仓不复述、不定义 |
 | `to_int` `to_double` | ② 方法层（M0） | 已有 | `-> atoi/atof` |
 | `reverse_find_char` / `compare_ignore_case` | ② 方法层（M1） | 新增 | 补齐反向查找与忽略大小写比较 |
@@ -134,8 +134,8 @@ CT 里的裸指针（来自 C 互操作）是使用者的负担，接口应尽�
 | API | 形态 | 状态 |
 | --- | --- | --- |
 | `abs` `clamp` `max` `min` `to_base` | ② 方法层（M0/M1） | 已有；只登记整数宿主（`int`/`long`），浮点宿主归 §2.3 |
-| `to_string`（主名）/ `to_str`（别名） | ② 方法层（M1，`snprintf`） | 已有 |
-| `is_digit` `is_alpha` `is_space` `is_upper` `is_lower` `to_upper` `to_lower` | ② 方法层（M0） | 已有 |
+| `to_str` | ② 方法层（M1，`snprintf`） | 已有；`to_string` 已删除 |
+| `is_digit` `is_alpha` `is_space` `is_upper` `is_lower` `uppercase` `lowercase` | ② 方法层（M0） | 已有；ctype 名只做 snake_case 化，不展开英文 |
 | `is_alnum` `is_punctuation` `is_printable` `is_graphical` `is_control` `is_blank` `is_hex_digit` | ② 方法层（M0） | 新增（`char` 宿主，各 1 行） |
 
 ### 2.3 `std::math`（`float` / `double`）
@@ -149,20 +149,26 @@ CT 里的裸指针（来自 C 互操作）是使用者的负担，接口应尽�
 | `fmod` `remainder` `fdim` `fma` `copysign` | ② 方法层（M0） | 新增 |
 | `truncate` `min` `max` `is_nan` `is_infinite`（`Float` 补齐） | ② 方法层（M0） | 新增；`min`/`max` 只登记浮点宿主 |
 
+| `exponential_minus_one` `logarithm_one_plus` `positive_difference` `fused_multiply_add` `cube_root` `floating_modulo` `copy_sign` | ② 方法层（M0） | 新增（由生僻短名改为全称） |
+
 数学函数一律只提供方法形态：删除 `Math.sqrt`/`Math.fabs` 这类 namespace 入口，不再保留第二套写法。
-全名 `snake_case` 为主名，现有短名（`sqrt`/`pow`/`sin` 等）保留为别名；全名清单单独见
-[数学全名草案](std-math-full-names-draft.md)，**待确认后再并入正文定稿**。
+命名只改看不出意思的 7 个：`expm1`→`exponential_minus_one`、`log1p`→`logarithm_one_plus`、
+`fdim`→`positive_difference`、`fma`→`fused_multiply_add`、`cbrt`→`cube_root`、`fmod`→`floating_modulo`、
+`copysign`→`copy_sign`；其余（`abs`/`sqrt`/`pow`/`log`/`sin`/`cos`/`max`/`min`/`floor`/`round`/
+`remainder`/`truncate`/`is_nan`/`is_infinite`/`exp`/`exp2`/`log2`/`log10`/`tan`/`asin`/`acos`/`atan`/
+`atan2`/`sinh`/`cosh`/`tanh`/`hypot`/`ceil`）保留原名，只做 snake_case 化。清单见
+[数学全名草案](std-math-full-names-draft.md)，已按此定稿并入正文。
 
 ### 2.4 `std::io`
 
 | API | 形态 | 状态 |
 | --- | --- | --- |
-| `"f".open(mode)`（`Path` → `own File`） | ② 工厂方法（M1） | 已有 |
+| `"f".open_file(mode)`（`Path` → `own File`） | ② 工厂方法（M1） | 已有（原名 `open`） |
 | `read` `write` `close` `seek` `tell` `rewind_start` | ③（`File`，方法寄生 `FILE *`） | 已有/新增 |
 | `at_end_of_file()` `has_error()` `clear_error()` | ③（`File`） | 新增 |
 | `read_char()` `write_char(c)` `unread_char(c)` | ③（`File`） | 新增 |
 | `read_line(out, cap)` `write_line(s)` `flush()` | ③（`File`） | 新增 |
-| `"a.bin".open_as_fd(open_read)`（`Path` → `own FileDesc`） | ② 工厂 + ③ | 新增 |
+| `"a.bin".open_as_file_desc(open_read)`（`Path` → `own FileDesc`） | ② 工厂 + ③ | 新增 |
 | `read` `write` `seek` `close` `send` `receive`（`FileDesc`） | ③ | 新增；`send`/`receive` 返回接收者本身，可链式续接 |
 | `printf` | — | **已删除**（0.3.0 遗留变参接口，按破坏性变更记录） |
 
@@ -233,7 +239,7 @@ conn.receive(buf, 1024, &n)
 | `FileStat` 值类型 + 字段方法 | `stat(&st)` 原样暴露 `struct stat` + `size()` / `mode()` / `modification_time()` 便捷方法 | **OO1 → 不建包装**（`stat` 直连；便捷方法不替代 `stat`） |
 | `TimeParts` 值类型 + `make_epoch` / `to_local` / `to_utc` | `Time` namespace 静态方法（`Time.year(t)`…`Time.format(t, …)`）+ `Time.from_parts` 工厂；不挂 `long` | **OO1 → ① 且不建模**（Q8 已定；`tm` 藏在 shim 内） |
 | `Timer` + `Drop` | `(100).make_timer(SIGRTMIN)` / `(250).make_timer_once(SIGRTMIN)` + `start`/`stop`/`remaining` | **③ 资源对象（已定）**；通知走 `signal`，本包不含回调 |
-| `Fd` + `FdOps`（13 个方法） | `FileDesc`：`"a.bin".open_as_fd(open_read)` → `own FileDesc`；`read`/`write`/`seek`/`close` | **③ 资源对象（已定）**；`Socket` 为同义别名，关闭由包内做 |
+| `Fd` + `FdOps`（13 个方法） | `FileDesc`：`"a.bin".open_as_file_desc(open_read)` → `own FileDesc`；`read`/`write`/`seek`/`close` | **③ 资源对象（已定）**；`Socket` 为同义别名，关闭由包内做 |
 | `Address` 值类型 | 主机 `char *`、端口 `int`（方法寄生）+ `resolve_host` + `parse_ip` | **OO1 → 不建模**（地址不引入类型；`receive_from` 以出参回报来源） |
 | `math` 新增走 namespace `Math` | 删除 namespace，新增只走 `Float`/`Real` 方法层 | **① → ②**（已定；全名为主、短名为别名） |
 | 新 Drop 类型 4 个 | `File` / `Dir` / `FileDesc`（含 `Socket` 别名）/ `Timer` | 全部按 ③ 资源对象落地；`stdout` 等裸 `FILE *` 不归包管 |
@@ -249,7 +255,7 @@ conn.receive(buf, 1024, &n)
 | --- | --- | --- | --- |
 | `fork` / `execute*` / `system` / `pipe_open` / `wait*` | ① 底座 | `std::process` | `fork` 后子进程中的运行时状态不可假定安全；`execute*` 替换进程镜像；`system`/`pipe_open` 经 shell |
 | `signal` / `alarm` | ① 底座 | `std::process` | 回调式 `signal` 受函数指针限制，README 写清可支持的用法与不可用场景；不因此排除 |
-| `set_locale` / `get_locale_conventions` | ① 底座 | `std::locale` | `set_locale` 会影响格式化输出与浮点解析的小数点行为；全局状态需在文档写明 |
+| `"zh_CN.UTF-8".make_locale()` → `own Locale`；`apply(category)` / `conventions()` | ② 工厂 + ③ | `std::locale` | `apply` 改的是**进程全局状态**，线程不安全；`conventions` 返回借用指针；`make_locale` 只保存名字，不调用 `setlocale` |
 | `<wchar.h>` 族（按 §5.1 展开，见 §6.2 索引） | ① 底座 | `std::wchar` | 宽字符宽度/编码随平台与 locale 变化；边界写清 |
 | `sort` / `binary_search` | ① 底座 | `std::search` | 回调式比较；CT 侧函数指针支持范围写清 |
 | `scan_directory` | ① 底座 | `std::fs` | 回调过滤/排序；返回数组的释放责任写清 |
@@ -261,7 +267,7 @@ conn.receive(buf, 1024, &n)
 **不封装：语言限制例外（与模型差异不同）**：CT 无变参声明机制，`scanf` 族、`sprintf`、`fprintf` 不做
 封装，也无法靠 shim 绕开。0.3.0 遗留的 `printf` 一并删除（破坏性变更）。成对替代：
 
-- 格式化拼接 → `to_string()` / `concat()`
+- 格式化拼接 → `to_str()` / `concat()`
 - 解析 → `parse_int` / `parse_long` / `parse_double` 等 `parse_*`
 - `fprintf` → 先格式化，再 `write`
 
@@ -309,8 +315,10 @@ import std::io::File;
 
 int main(void)
 {
-    std::io::write_line(9.0.sqrt().to_string());
-    std::io::write_line((-2.5).abs().to_string());
+    char text[32];
+
+    std::io::write_line(9.0.sqrt().to_str(text, sizeof text));
+    std::io::write_line((-2.5).abs().to_str(text, sizeof text));
     return 0;
 }
 ```
@@ -320,8 +328,8 @@ int main(void)
 2.5
 ```
 
-数学函数只提供方法形态，`Math.sqrt`/`Math.fabs` 这类 namespace 入口已删除；`sqrt` 是短名别名，
-主名为全名 `snake_case`（全名清单待确认，见 §2.3）。shim 仍是 M0 一行转发到 libc。
+数学函数只提供方法形态，`Math.sqrt`/`Math.fabs` 这类 namespace 入口已删除；`sqrt` 保留原名，
+只有 7 个生僻短名改全称（§2.3）。shim 仍是 M0 一行转发到 libc。
 
 **挂法二：类型宿主方法**（接收者是值）——见 §3.2。
 
@@ -336,9 +344,10 @@ import std::io::File;
 int main(void)
 {
     char buf[8];
+    char text[32];
 
-    std::io::write_line("stdlib".length().to_string());
-    std::io::write_line("stdlib".starts_with("std").to_string());
+    std::io::write_line("stdlib".length().to_str(text, sizeof text));
+    std::io::write_line("stdlib".starts_with("std").to_str(text, sizeof text));
     "stdlib".copy(buf, sizeof buf);
     std::io::write_line(buf);
     return 0;
@@ -366,10 +375,11 @@ int main(void)
 {
     long n = 65;
     char buf[8];
+    char text[8];
 
-    std::io::write_line(n.to_string());
-    std::io::write_line(n.to_string().length().to_string());
-    std::io::write_line(n.to_string().starts_with("6").to_string());
+    std::io::write_line(n.to_str(buf, sizeof buf));
+    std::io::write_line(n.to_str(buf, sizeof buf).length().to_str(text, sizeof text));
+    std::io::write_line(n.to_str(buf, sizeof buf).starts_with("6").to_str(text, sizeof text));
     std::io::write_line(n.to_str(buf, sizeof buf));
     return 0;
 }
@@ -382,7 +392,7 @@ int main(void)
 65
 ```
 
-这正是负责人举的例子的形态：`n.to_string()`、`"abc".starts_with("x")` 都属这一层。
+这正是负责人举的例子的形态：`n.to_str(buf, sizeof buf)`、`"abc".starts_with("x")` 都属这一层。
 
 ### 3.4 ① 底座：一个能力一个展开名
 
@@ -420,10 +430,11 @@ int main(void)
 {
     own Buf *b = malloc(sizeof(Buf));
 
+    char text[16];
     b->data = (char *)malloc(8);
     b->len = 8;
     std::io::write_line("owned");
-    std::io::write_line(b->len.to_string());
+    std::io::write_line(b->len.to_str(text, sizeof text));
     /* no free() here: leaving the scope runs Buf.drop, then frees b */
     return 0;
 }
@@ -439,8 +450,8 @@ drop ran
 
 | 编号 | 偏离 | 为什么保留 | 取舍/后续 |
 | --- | --- | --- | --- |
-| D1 | ~~`std::math::Math.sqrt(x)` namespace~~ **已删除** | 负责人裁定：数学函数只提供方法形态，namespace 入口不再保留 | 无偏离；全名为主、短名为别名（§2.3） |
-| D2 | 变参格式化/解析不封装（`scanf`/`sprintf`/`fprintf`） | CT 无变参声明机制，shim 也绕不开；`printf` 按破坏性变更删除 | 不做；成对替代见 §2.9（`to_string`/`concat`、`parse_*`、格式化+`write`） |
+| D1 | ~~`std::math::Math.sqrt(x)` namespace~~ **已删除** | 负责人裁定：数学函数只提供方法形态，namespace 入口不再保留 | 无偏离；数学只改 7 个生僻名，其余保留原名（§2.3） |
+| D2 | 变参格式化/解析不封装（`scanf`/`sprintf`/`fprintf`） | CT 无变参声明机制，shim 也绕不开；`printf` 按破坏性变更删除 | 不做；成对替代见 §2.9（`to_str`/`concat`、`parse_*`、格式化+`write`） |
 | D3 | ~~`get_dir(out, cap)`~~ **已删除** | 负责人裁定改为对象式：`Dir.current()` / `dir.path(out, cap)` / `dir.enter()` | 无偏离 |
 | D4 | `parse_long(out)` / `format_time(out, cap)` 出参 + 状态码 | 失败必须可报；链式返回值无法同时表达 | 与 `copy`/`read_line` 同类，包内已有先例 |
 | D5 | `std::env::Env.set` / `std::process::Process.get_pid` 走 namespace | 无接收者 | 不强行造接收者 |
@@ -466,7 +477,7 @@ std/
   env/     Env.m.ct                          （环境变量）
   process/ Process.m.ct                      （进程身份 + 控制/信号）
   errno/   Errno.m.ct                        （错误码）
-  locale/  Locale.m.ct                       （set_locale/get_locale_conventions）
+  locale/  Locale.m.ct                       （`"zh_CN.UTF-8".make_locale()` → `own Locale`；`apply`/`conventions`）
   wchar/   Wchar.m.ct                        （<wchar.h> 族 ① 直连）
   time/   Time.m.ct  Timer.h.ct              （`Time` namespace 静态方法 + `Timer` ③；不挂 `long`）
   net/    Net.m.ct                           （`Socket` 为 `FileDesc` 同义别名；不建 Address）
@@ -508,9 +519,9 @@ import std::net::Socket;      // 同义别名，与 FileDesc 互相赋值
   例：`frexp` → `split_exponent`、`ldexp` → `scale_by_power_of_two`、`modf` → `split_fraction`、
   `qsort` → `sort`、`bsearch` → `binary_search`、`strtol` → `parse_long`、`atoi` → `to_int`、
   `strerror` → `error_message`。
-- **例外：数学函数全名为主、短名为别名。** 全名 `snake_case`（如 `square_root`、`power`）为主名，
-  现有短名（`sqrt`、`pow` 等）保留为别名；全名清单见[草案](std-math-full-names-draft.md)，待确认后并入。
-  看不出意思的 `frexp`/`modf`/`ldexp` 直接改用展开名，不设短名别名。
+- **例外：数学只改 7 个生僻名，ctype 只做 snake_case 化。** `expm1`/`log1p`/`fdim`/`fma`/`cbrt`/`fmod`/`copysign`
+  改全称（§2.3）；其余数学名保留原名。ctype 的 `is_*` 全部保留；`to_upper`/`to_lower` 去掉 `to`，定名
+  `uppercase`/`lowercase`。`concat` 保留短名；`to_string` 删除，只留 `to_str`。
 - **例外二：已成为通用词的缩写保留**：`http`、`utf8`、`pid` 等；`isalnum` → `is_alnum` 这类拆分照旧。
 - 方案只立展开名这一套；§6.2 的映射表是**查证索引**，用来从展开名反查对应 libc 函数，不构成第二套写法。
 - **便利层也受同宿主唯一名约束**：补方法前必须查表。
@@ -523,20 +534,20 @@ import std::net::Socket;      // 同义别名，与 FileDesc 互相赋值
 
 | 宿主 | 现状 | 本版新增 | 合计（最坏） |
 | --- | --- | --- | --- |
-| `char *` | 25（`README.md:145-153`） | `reverse_find_char` `compare_ignore_case` `parse_long` `parse_long_long` `parse_unsigned_long` `parse_real` `open_dir` `read_link` `resize` `set_mode` `resolve_path` `is_readable` `is_writable` `access` `stat` `open_as_fd` `size` `mode` `modification_time` `parse_ip` `connect` `fill` `compare_with` `find_byte` `compare_prefix` `copy_from` `move_from` `split_into`（28 个新增名；`copy_from`/`move_from` 替代既有 `copy_to`，`length` 一换一替代 `len`，删除 `get_dir`/`change_dir`，净增 27，即 25 − 1 + 28；名字均按 §5.1） | 52 |
+| `char *` | 25（`README.md:145-153`） | `reverse_find_char` `compare_ignore_case` `parse_long` `parse_long_long` `parse_unsigned_long` `parse_real` `open_dir` `make_locale` `read_link` `resize` `set_mode` `resolve_path` `is_readable` `is_writable` `access` `stat` `open_as_file_desc` `size` `mode` `modification_time` `parse_ip` `connect` `fill` `compare_with` `find_byte` `compare_prefix` `copy_from` `move_from` `split_into`（29 个新增名；`copy_from`/`move_from` 替代既有 `copy_to`，`length` 一换一替代 `len`，`open` 一换一改 `open_file`，删除 `get_dir`/`change_dir`，净增 28，即 25 − 1 + 29；名字均按 §5.1） | 53 |
 | `long` | 7 | 0（时间不挂 `long`，Q8 已定） | 7 |
 | `float`/`double` | 5 / 9 | math 新族（约 20；`abs`/`min`/`max` 只登记浮点宿主，不重复计数） | 25 / 29 |
 | `char` | 7 | 7 个 `is_*`（`is_alnum` / `is_punctuation` / `is_printable` / `is_graphical` / `is_control` / `is_blank` / `is_hex_digit`） | 14 |
 
-`char *` 合计 52：本版新增 `access`/`stat`/`open_as_fd`，删除 `get_dir`/`change_dir`，把 `len` 换成
-`length`（一换一），并把 `memcpy`/`memmove` 拆成 `copy_from`/`move_from`、新增 `split_into`。
-换名本身不改变名字数量，`char` 仍为 14；展开名与既有同宿主名无冲突。`float`/`double` 合计以全名清单
+`char *` 合计 53：本版新增 `access`/`stat`/`open_as_file_desc`/`make_locale`，删除 `get_dir`/`change_dir`，把 `len` 换成
+`length`（一换一）、`open` 换成 `open_file`（一换一），并把 `memcpy`/`memmove` 拆成 `copy_from`/`move_from`、
+新增 `split_into`。换名本身不改变名字数量，`char` 仍为 14；展开名与既有同宿主名无冲突。`float`/`double` 合计以全名清单
 确认后复核（短名是别名，不重复计数）。
 
 冲突处理：`open` 已被 `Path` 占用 → 目录用 `open_dir`；`read`/`write`/`close` 不再占 `char *`；
 `copy_from`/`move_from` 取代既有 `copy_to`（`src.copy_to(dst, n)` → `dst.copy_from(src, n)` 或
 `dst.move_from(src, n)`），内存版只保留一个方向、但区分是否允许重叠；`copy` 仍是带容量 / `\0` 的字符串拷贝；
-`long` 不再新增时间方法（Q8 已定），因此没有 `format` 与既有 `to_str`/`to_string` 的冲突。
+`long` 不再新增时间方法（Q8 已定），因此没有 `format` 与既有 `to_str` 的冲突。
 
 ### 5.3 失败表达
 
@@ -548,7 +559,7 @@ import std::net::Socket;      // 同义别名，与 FileDesc 互相赋值
 | 字节数 | `n`；`0` = EOF；`-1` = 错误 |
 | 构造资源 | `NULL`（`0`） |
 | 错误详情 | 模块 `xxxEnv.get_last_error()`；新增 `std::errno::Errno.get_last()` |
-| 缓冲区不足 | `-1`，不截断、不返回部分结果（`to_string` 例外） |
+| 缓冲区不足 | `-1`，不截断、不返回部分结果（`to_str` 例外） |
 
 ### 5.4 所有权
 
@@ -595,7 +606,7 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 | std 展开名 | libc 函数 |
 | --- | --- |
 | `length` | `strlen` |
-| `to_string` / `to_str` | `snprintf` |
+| `to_str` | `snprintf` |
 | `to_int` | `atoi` |
 | `parse_long` | `strtol` |
 | `parse_long_long` | `strtoll` |
@@ -607,7 +618,8 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 | `size` / `mode` / `modification_time` | `stat` |
 | `access` | `access` |
 | `stat` | `stat`（原样暴露 `struct stat`） |
-| `open_as_fd` | `open` |
+| `open_file` | `fopen` |
+| `open_as_file_desc` | `open` |
 | `path` / `enter` | `getcwd` / `chdir` |
 | `make_timer` / `make_timer_once` | `timer_create`（周期/一次性由 `timer_settime` 参数区分） |
 | `at_end_of_file` | `feof` |
@@ -619,7 +631,9 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 | `sort` / `binary_search` / `scan_directory` | `qsort` / `bsearch` / `scandir` |
 | `scale_by_power_of_two` / `split_exponent` / `split_fraction` | `ldexp` / `frexp` / `modf` |
 | `send_message` / `receive_message` | `sendmsg` / `recvmsg` |
-| `set_locale` / `get_locale_conventions` | `setlocale` / `localeconv` |
+| `make_locale` | 无对应，自实现（只保存 locale 名字，不调用 `setlocale`） |
+| `apply` | `setlocale`（改进程全局状态，线程不安全） |
+| `conventions` | `localeconv`（返回借用指针） |
 | `pipe_open` / `execute*` | `popen` / `exec*` |
 | `wide_string_length` / `multibyte_to_wide_string` / `wide_to_multibyte_string` | `wcslen` / `mbstowcs` / `wcstombs` |
 | `reverse_find_char` | `strrchr` |
@@ -639,13 +653,13 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 | 序 | 内容 | 层 | 依赖 | 阶段验收 |
 | --- | --- | --- | --- | --- |
-| **P0** | `String` → `CStrOps`（issue 0001，`0.4.0`）；`len` → `length`（整条替换、不留别名）；删除 `printf`（破坏性） | 改名/删除 | 无 | 旧名零命中；`tests/run.sh` 全绿；文档同步 |
+| **P0** | `String` → `CStrOps`（issue 0001，`0.4.0`）；`len` → `length`；`open` → `open_file`；`to_string` 删除（只留 `to_str`）；`to_upper`/`to_lower` → `uppercase`/`lowercase`；删除 `printf`（破坏性） | 改名/删除 | 无 | 旧名零命中；`tests/run.sh` 全绿；文档同步 |
 | **P1** | `char` 7 个 `is_*`；`char *` 内存方法（`copy_from`/`move_from`/`fill`/`compare_with`/`find_byte`/`compare_prefix`）与 `split_into`；`math` 新族（`Float`/`Real` 方法层，全名为主、短名为别名）；`sort`/`binary_search`、`scale_by_power_of_two`/`split_exponent`/`split_fraction` ① 直连 | ①② | P0 | 每条 M0/M1 转发；无宿主重名；重叠/不重叠拷贝夹具；三态/指针返回验证；回调/出参用法写明 |
-| **P2** | 新增 `std::env` / `std::process`（含控制/信号）/ `std::errno` / `std::locale` / `std::wchar`（各一个模块） | ①② | P1 | 无新类型；借用指针语义、`fork` 后状态、`set_locale` 全局影响写进 README |
-| **P3** | `stdio`：`File`（`FILE *` 宿主）+ `FileDesc`（`open_as_fd`）；方法补全（`seek`/`tell`/`rewind`/`at_end_of_file`/`has_error`/`read_char`/`write_char`/`read_line`/`flush`）；变参格式化/解析按 §2.9 成对替代，不封装（`printf` 已在 P0 删除） | ③ | P0 | `own` 关闭与幂等 `close` fixture；`stdout` 裸宿主不归包管；`to_string`/`concat`、`parse_*`、格式化+`write` 样例覆盖 |
+| **P2** | 新增 `std::env` / `std::process`（含控制/信号）/ `std::errno` / `std::locale` / `std::wchar`（各一个模块） | ②③ | P1 | 无新类型（`Locale` 除外）；借用指针语义、`fork` 后状态、`Locale.apply` 改进程全局状态且线程不安全，写进 README |
+| **P3** | `stdio`：`File`（`FILE *` 宿主）+ `FileDesc`（`open_as_file_desc`）；方法补全（`seek`/`tell`/`rewind`/`at_end_of_file`/`has_error`/`read_char`/`write_char`/`read_line`/`flush`）；变参格式化/解析按 §2.9 成对替代，不封装（`printf` 已在 P0 删除） | ③ | P0 | `own` 关闭与幂等 `close` fixture；`stdout` 裸宿主不归包管；`to_str`/`concat`、`parse_*`、格式化+`write` 样例覆盖 |
 | **P4** | `std::fs` 补充（`access`/`stat`/`read_link`/`resize`/`set_mode`/`resolve_path`/`is_*`/`size`/`mode`/`modification_time`）；`Dir.current()`/`dir.path`/`dir.enter`；`scan_directory` ① 直连 | ①②③ | P2 | `struct stat` 原样暴露；三个便捷方法不替代 `stat`；`is_readable`/`is_writable` 按真实身份判定的限制写进 README |
 | **P5** | `std::time`：`now_seconds`/`now_nanoseconds`/`diff_seconds`/`sleep_milliseconds` + `Time` namespace 静态方法（`year`…`format`、`from_parts`）；`Timer`（`make_timer`/`make_timer_once` + `start`/`stop`/`remaining`） | ①③ | P2 | 不挂 `long`；不做 `TimeParts` 值类型；`tm` 只在 shim 内；时区行为写明；`Timer` 通知走 `signal`、不含回调 |
-| **P6** | `File` / `Dir` / `FileDesc` / `Timer` 的 `Drop` 模板收口（`Socket` 为 `FileDesc` 别名） | ③ | P3（模板） | `own` 样例；`close` 幂等；大目录流式列举；别名与 `raw_fd()` 边界 |
+| **P6** | `File` / `Dir` / `FileDesc` / `Timer` 的 `Drop` 模板收口（`Socket` 为 `FileDesc` 别名） | ③ | P3（模板） | `own` 样例；`close` 幂等；大目录流式列举；别名与 `raw_file_desc()` 边界 |
 | **P7** | `std::net`：`Socket`（TCP + UDP，`FileDesc` 同义别名）+ `"host:80".connect()` + `resolve_host` + `set_option`；`send`/`receive` 链式；`send_message`/`receive_message` ① 直连 | ②③ | P6（模板） | TCP/UDP loopback 回环；`Drop` 关闭；`receive` 字节数出参；超时与 `set_option` 行为写明；`iovec` 构造/所有权写明 |
 
 「暂不排期」状态不再存在：`File`、`Dir`、`FileDesc`、`Timer` 均按 ③ 资源对象纳入交付面，形态已定；
@@ -659,7 +673,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 | 风险 | 说明 | 缓解 |
 | --- | --- | --- |
-| 便利层铺宽 → 名字通胀 | `char *` 25 → 52；`long` 保持 7（Q8 已定不挂时间） | 每个名字必须给出「比函数式省多少」；同宿主查表 |
+| 便利层铺宽 → 名字通胀 | `char *` 25 → 53；`long` 保持 7（Q8 已定不挂时间） | 每个名字必须给出「比函数式省多少」；同宿主查表 |
 | 宿主污染 | 领域方法挂基础类型会让所有同类型值获得该方法（如 `size.year()`） | Q8 已定：时间不挂 `long`，走 `Time` namespace；其他宿主按 §5.2 查表 |
 | 时区/线程安全 | `localtime_r` 无时区参数；`strerror` 静态缓冲 | 文档写明「本地时区」与 `strerror` 非线程安全 |
 | `own` 初始化式很窄 | 只认 `malloc`/`calloc`/`struct X *` 工厂；强转与别名不认（实测） | 工厂返回类型写 `struct X *`；每个新类型加 `own` 样例 |
@@ -668,7 +682,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 | 多次 `stat` | `size`/`mode`/`modification_time` 各一次 | `stat(&st)` 原样暴露；三个便捷方法不替代 `stat`，重复代价写进 README |
 | 借用指针生命周期 | `getenv` / `strerror` 可能被覆盖 | 方法层提供带 `out` 的复制版；文档写死 |
 | 表达力注意 | 回调、`iovec`、`struct stat` 布局 | ① 直连并在 README 写使用边界；不排除 |
-| 变参限制 | CT 无变参声明机制；`scanf`/`sprintf`/`fprintf` 等不做 | 不做封装；按 §2.9 成对替代（`to_string`/`concat`、`parse_*`、格式化+`write`）；`printf` 按破坏性变更删除 |
+| 变参限制 | CT 无变参声明机制；`scanf`/`sprintf`/`fprintf` 等不做 | 不做封装；按 §2.9 成对替代（`to_str`/`concat`、`parse_*`、格式化+`write`）；`printf` 按破坏性变更删除 |
 | `Socket` 别名依赖语言侧 | `Socket` 与 `FileDesc` 是同一类型、可互相赋值，依赖语言侧别名能力 | 方案只记这一依赖；未提供前不造第二套类型 |
 | 数学全名清单 | 全名为主、短名为别名，全名清单尚未确认 | 清单确认后再并入正文；短名保持可用 |
 | 阻塞模型 | `Socket` 阻塞、DNS 无超时控制 | P7 写明阻塞语义与超时行为 |
@@ -678,7 +692,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 - **Q1（已定）**：`std/io/File.m.ct` 不拆编译单元，一张映射表放一处。
 - **Q2（已定）**：`File` 按 ③ 资源对象：`own` 离开作用域由包内关闭；显式 `close()` 供提前关闭，关后失效、重复调用是空操作；`stdout` 等裸 `FILE *` 不归包管。
-- **Q3（部分已定）**：方法名不设长度上限（已定）；`char *` 名字总数是否设上限仍待定（当前 52）。
+- **Q3（部分已定）**：方法名不设长度上限（已定）；`char *` 名字总数是否设上限仍待定（当前 53）。
 - **Q4（已定）**：`env`/`process`/`errno` **不合并**为 `std::sys`，三者各自成模块，目录与 libc／POSIX 原有头文件一一对应。依据：降低 C 程序员的心智成本——做的是 OO 封装，不引入新的分类法。
 - **Q5（不再适用）**：P0–P7 改为施工顺序，不按相发布；合并相邻相发布的讨论随之取消，版本节奏见 §7 / §8.1。
 - **Q6（已定）**：`net` 一次做全，UDP、`resolve_host`、`set_option` 全部纳入，不再留在暂不排期。依据：不做半截模块——只封一半会让使用者不知道到底该用封装还是退回 libc。`Address` 不建类型（已定）：主机用 `char *`、端口用 `int`，方法寄生在这两个宿主上；`receive_from(buf, len, ipbuf, &port)` 以出参回报来源。依据：静态映射优先、能力寄生在基本类型上，不引入值类型。
@@ -692,7 +706,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 ### 8.3 本文可被证伪的假设
 
-1. 「便利层铺宽是净收益」——若评审认为 52 个 `char *` 名字的维护成本过高，需按 Q3 收缩。
+1. 「便利层铺宽是净收益」——若评审认为 53 个 `char *` 名字的维护成本过高，需按 Q3 收缩。
 2. 「时间方法可以挂 `long`」——Q8 已定否掉；时间走 `Time` namespace，不再作为假设。
 3. 「`FileDesc` / `Timer` 可以先不做」——已定按 ③ 资源对象落地，本条不再作为假设。
 4. 「`Address` 不建类型，多地址回退由调用方在 `resolve_host` 结果上自行处理」——若统一地址表示成为硬需求，需重开该裁定。
