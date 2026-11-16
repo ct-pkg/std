@@ -255,7 +255,12 @@ conn.receive(buf, 1024, &n)
 | --- | --- | --- | --- |
 | `fork` / `execute*` / `system` / `pipe_open` / `wait*` | ① 底座 | `std::process` | `fork` 后子进程中的运行时状态不可假定安全；`execute*` 替换进程镜像；`system`/`pipe_open` 经 shell |
 | `signal` / `alarm` | ① 底座 | `std::process` | 回调式 `signal` 受函数指针限制，README 写清可支持的用法与不可用场景；不因此排除 |
-| `"zh_CN.UTF-8".make_locale()` → `own Locale`；`apply(category)` / `conventions()` | ② 工厂 + ③ | `std::locale` | `apply` 改的是**进程全局状态**，线程不安全；`conventions` 返回借用指针；`make_locale` 只保存名字，不调用 `setlocale` |
+| `"zh_CN.UTF-8".make_locale()` → `own Locale`；`apply(category)` / `conventions()` | ② 工厂 + ③ | `std::locale` | `apply` 改的是**进程全局区域设置**，线程不安全；`conventions` 返回借用指针；`make_locale` 只保存名字，不调用 `setlocale` |
+
+**`LC_NUMERIC` 与浮点往返**：`setlocale` / `Locale.apply` 改的是进程全局区域设置，其中 `LC_NUMERIC`
+决定小数点字符。受影响的只有浮点相关路径：`parse_real`（`strtod` 族）的解析、`to_str` 对浮点值的
+格式化（`snprintf`）；整数解析与格式化（`strtol` 族、`to_base`）不受影响。可执行建议二选一：
+启动时固定 `"C"`；或显式跟随环境，并在浮点往返处始终按同一 `Locale` 设置处理。
 | `<wchar.h>` 族（按 §5.1 展开，见 §6.2 索引） | ① 底座 | `std::wchar` | 宽字符宽度/编码随平台与 locale 变化；边界写清 |
 | `sort` / `binary_search` | ① 底座 | `std::search` | 回调式比较；CT 侧函数指针支持范围写清 |
 | `scan_directory` | ① 底座 | `std::fs` | 回调过滤/排序；返回数组的释放责任写清 |
@@ -287,7 +292,7 @@ struct 作为它的对等类型」**，一旦引入就多出装箱/拆箱、拷�
 | A1 | `char`（现状：标量宿主可直接挂方法） | 现状**不需要** struct；`Char` 是 trait 不是类型 | 若改为 struct：可携带状态（如编码/大小写表），但现有方法都是纯函数，无状态可带 | 装箱：每个字符一次 `malloc` → 热路径不可接受；拷贝：值语义与 `char` 不再等价；互操作：所有 C 侧 `char` 参数都要拆箱；命名/文档：`Char` 从 trait 变类型，语义双写 | **已定：不建 struct**。`Char` 保持 trait 直接映射 `char`；trait 编译期展开、无装箱；现有方法纯函数，无状态可带 |
 | A2 | `char *` 与语言侧内置 `Str`（非本包） | `char *` 能挂方法（`CStrOps` 就是），但**不拥有**；长度要每次 `strlen`，且无法表达「内嵌 `\0` + 长度」。`Str` 由语言侧提供拥有语义，两者不是替代关系 | 拥有堆缓冲 + 显式长度 + `Drop`；非 NUL 结尾也能安全传递 | 装箱：每次构造一次 `malloc`；拷贝：带 `Drop` 的值不能浅拷贝，复制必须深拷贝或显式 `clone`；所有权：与借用 `char *` 混用时边界要写清；互操作：所有 libc/shim 入口仍要 `.data` 取裸指针；命名/文档：同一能力可能两种写法（`"s".length()` vs `s.length()`） | **已定：`Str` 归语言侧内置类型，本仓完全删除——不定义、不提供、不提供方法层，只作消费方**。`char *` 是借用视图、`Str` 是拥有型，二者关系与分工由语言侧决定，不在本仓定义 |
 | A3 | `DIR *` → 本方案 `Dir` | C 侧 `DIR` 是不透明类型，CT 看不到定义；裸指针无法挂方法（需要可命名的 CT 类型），且必须 `closedir` | 可命名、可 `Drop`、`close` 幂等；`next()` 等方法有接收者 | 装箱：每个目录句柄一个 `malloc`（约一个指针 + 状态）；拷贝：句柄不可拷贝，需禁止或只允许 `own` 转移；所有权：与 `open_dir()` 的工厂语义绑定；互操作：`readdir` 的 `struct dirent` 仍在 shim 内，返回的是拷出的名字，调用方拿不到原始 `dirent`；命名/文档：`Dir` 与 `FsOps.list` 两种列举方式并存，需说明取舍 | **已定：建 `Dir`（③ 资源对象）**；`File` 与 `Dir` 是两个独立对象，属性方法各不同 |
-| A4 | `int`（fd）→ 本方案 `FileDesc`（`Socket` 同义别名） | `int` 本身是合法宿主（`Int` 已存在），技术上能挂 `send`/`close`，但会把 socket 方法挂到**所有整数**上 | 可命名、可 `Drop`、`accept()` 产出新句柄，所有权清晰；`Socket` 与 `FileDesc` 是同一类型、方法一套、可互相赋值 | 装箱：每个句柄一个包装 struct；拷贝：fd 不可拷贝，需禁止；所有权：`accept` 产生新 `own`，与 `open_as_file_desc` 一致；互操作：需要 fd 时得开 `raw_file_desc()`（是否暴露待定），否则无法和 `select`/`poll` 等未包裹能力配合；命名/文档：`Socket` 是别名，不是第二套类型 | **已定：建 `FileDesc`（③ 资源对象），`Socket` 为同义别名**；别名能力依赖语言侧 |
+| A4 | `int`（fd）→ 本方案 `FileDesc`（`Socket` 同义别名） | `int` 本身是合法宿主（`Int` 已存在），技术上能挂 `send`/`close`，但会把 socket 方法挂到**所有整数**上 | 可命名、可 `Drop`、`accept()` 产出新句柄，所有权清晰；`Socket` 与 `FileDesc` 是同一类型、方法一套、可互相赋值 | 装箱：每个句柄一个包装 struct；拷贝：fd 不可拷贝，需禁止；所有权：`accept` 产生新 `own`，与 `open_as_file_desc` 一致；互操作：需要 fd 时得开 `raw_file_desc()`（按 P6 实现），否则无法和 `select`/`poll` 等未包裹能力配合；命名/文档：`Socket` 是别名，不是第二套类型 | **已定：建 `FileDesc`（③ 资源对象），`Socket` 为同义别名**；别名能力依赖语言侧 |
 | A5 | 数组 / 动态列表 / `Map`（语言侧内置类型） | 不属本包：这些容器由语言侧提供，std 不再造对等类型 | — | — | **已定：不引入**。数组、动态列表、`Map` 均归语言侧，std 不涉及；删除 `make_list` 一类表述 |
 
 不属本节的两类（放在 §2.8 处理，不要混进来）：
@@ -692,7 +697,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 - **Q1（已定）**：`std/io/File.m.ct` 不拆编译单元，一张映射表放一处。
 - **Q2（已定）**：`File` 按 ③ 资源对象：`own` 离开作用域由包内关闭；显式 `close()` 供提前关闭，关后失效、重复调用是空操作；`stdout` 等裸 `FILE *` 不归包管。
-- **Q3（部分已定）**：方法名不设长度上限（已定）；`char *` 名字总数是否设上限仍待定（当前 53）。
+- **Q3（已定）**：不设方法名长度上限，也不设 `char *` 名字数量上限（当前 53）；保留准入判据与软阈值复审。
 - **Q4（已定）**：`env`/`process`/`errno` **不合并**为 `std::sys`，三者各自成模块，目录与 libc／POSIX 原有头文件一一对应。依据：降低 C 程序员的心智成本——做的是 OO 封装，不引入新的分类法。
 - **Q5（不再适用）**：P0–P7 改为施工顺序，不按相发布；合并相邻相发布的讨论随之取消，版本节奏见 §7 / §8.1。
 - **Q6（已定）**：`net` 一次做全，UDP、`resolve_host`、`set_option` 全部纳入，不再留在暂不排期。依据：不做半截模块——只封一半会让使用者不知道到底该用封装还是退回 libc。`Address` 不建类型（已定）：主机用 `char *`、端口用 `int`，方法寄生在这两个宿主上；`receive_from(buf, len, ipbuf, &port)` 以出参回报来源。依据：静态映射优先、能力寄生在基本类型上，不引入值类型。
@@ -702,7 +707,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 - **Q10（已定）**：`Str` 归语言侧内置类型，本仓完全删除——不定义、不提供、不提供方法层，只作消费方。此前「允许在 `Str` 上挂方法」的结论作废；`char *` 与 `Str` 的分工由语言侧决定，本仓不再制定。
 - **Q11（已定）**：`Dir` / `File` / `FileDesc` 均接受 struct 对等类型（③）；`Socket` 为 `FileDesc` 同义别名，不用裸类型宿主。
 - **Q12（已定）**：不引入列表 struct；数组、动态列表、`Map` 归语言侧，std 不涉及。
-- Q3 的数量上限仍待定；其余评审项均已由本轮裁定关闭。
+- 评审项均已关闭；`Socket` 别名能力为唯一外部依赖（待语言侧）。
 
 ### 8.3 本文可被证伪的假设
 

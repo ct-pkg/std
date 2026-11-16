@@ -132,8 +132,8 @@
 
 ### 2.10 Q11、Q12
 
-- **Q11（`Dir`/`Socket` 接受 struct 对等类型，还是用别名/裸类型宿主）**：结论同 A3、A4——**接受 struct 对等类型**，不用裸类型宿主；Q11 可随之关闭（待裁定）。
-- **Q12（数组/列表类结果是否引入列表 struct）**：结论同 A5——**不引入**；Q12 可随之关闭（待裁定）。
+- **Q11（`Dir`/`Socket` 接受 struct 对等类型，还是用别名/裸类型宿主）**：结论同 A3、A4——**接受 struct 对等类型**，不用裸类型宿主；Q11 已定。
+- **Q12（数组/列表类结果是否引入列表 struct）**：结论同 A5——**不引入**；Q12 关闭，状态为“不做”。
 
 **影响面**：§2.10 A3/A4/A5、§8.2 Q11/Q12。
 
@@ -141,69 +141,77 @@
 
 | 不一致 | 处理 | 状态 |
 | --- | --- | --- |
-| §1.5「已定 `Dir`、`Socket`」与 §2.10 A3/A4「待评估」、Q11 未决 | 已统一为「`File` / `Dir` / `FileDesc` 均 ③；`Socket` 为 `FileDesc` 同义别名」，A3/A4/Q11 关闭 | 已裁定 |
+| §1.5「已定 `Dir`、`Socket`」与 §2.10 A3/A4 旧口径、Q11 未决 | 已统一为「`File` / `Dir` / `FileDesc` 均 ③；`Socket` 为 `FileDesc` 同义别名」，A3/A4/Q11 关闭 | 已裁定 |
 | §3.6 D1 保留 `Math` 与 Q9 询问是否退役 | 裁定删除 `Math` namespace，数学函数只提供方法形态；D1 改为「已删除」 | 已裁定 |
 | §5.1「守 §5.1」自指笔误 | 直接改为「守命名规范」 | 已改 |
 
 ### 3.1 裁定结果（已落地到设计正文）
 
-| 项 | 裁定 | 落地位置 |
-| --- | --- | --- |
-| `Fd` | 不寄生 `int`，定名 `FileDesc`，③ 资源对象；`"a.bin".open_as_fd(open_read)` → `own FileDesc` | §1.5、§2.4、§2.7、§2.8 |
-| `Timer` | ③ 资源对象；`(100).make_timer(SIGRTMIN)` / `(250).make_timer_once(SIGRTMIN)` + `start`/`stop`/`remaining`；通知走 `signal`，不含回调 | §2.7、§2.8 |
-| A3 | 建 `Dir`（③）；`File` 与 `Dir` 为两个独立对象 | §2.5、§2.10 |
-| A4 | 建 `FileDesc`（③）；`Socket` 为同义别名，别名能力依赖语言侧 | §2.7、§2.10 |
-| A5 / Q12 | 不引入列表 struct；数组、动态列表、`Map` 归语言侧 | §2.10、§8.2 |
-| Q1 | `File.m.ct` 不拆编译单元 | §4.3、§8.2 |
-| Q2 | `File` 按 `own` + `Drop` 释放，显式 `close()` 幂等；`stdout` 等裸 `FILE *` 不归包管 | §2.4、§5.4、§8.2 |
-| Q3 | 方法名不设长度上限（已定）；`char *` 名字总数上限仍待定 | §5.1、§8.2 |
-| Q9 | 删除 `Math` namespace；数学函数只提供方法形态，全名为主、短名为别名 | §2.3、§3.6、§8.2 |
-| Q11 | 接受 `Dir` / `File` / `FileDesc` 为 struct 对等类型 | §1.5、§2.10、§8.2 |
-| `recv` | 改名 `receive`；`receive`/`send` 返回接收者本身，链式续接，字节数出参带回 | §2.4、§2.7、§6.2 |
-| 命名去冗余 | 方法名不重复宿主/命名空间已交代的信息：`file_size`/`file_mode`/`file_mtime` → `size`/`mode`/`modification_time`；`read_file`/`write_file` → `read`/`write`；`set_socket_option` → `set_option` | §5.1、§2.5、§2.7、§6.2 |
+状态只用三类：**已定**、**待语言侧**、**不做**。本文只保留这三类。
+
+| 项 | 状态 | 结论 | 落地位置 |
+| --- | --- | --- | --- |
+| `Fd` | 已定 | 定名 `FileDesc`，③ 资源对象；`"a.bin".open_as_file_desc(open_read)` → `own FileDesc` | §1.5、§2.4、§2.7、§2.8 |
+| `Timer` | 已定 | ③ 资源对象；`(100).make_timer(SIGRTMIN)` / `(250).make_timer_once(SIGRTMIN)` + `start`/`stop`/`remaining`；通知走 `signal`，不含回调 | §2.7、§2.8 |
+| A3 | 已定 | 建 `Dir`（③）；`File` 与 `Dir` 为两个独立对象 | §2.5、§2.10 |
+| A4 | 已定 | 建 `FileDesc`（③）；`Socket` 为同义别名 | §2.7、§2.10 |
+| `Socket` 别名能力 | 待语言侧 | `Socket` 与 `FileDesc` 同一类型、可互相赋值，依赖语言侧能力；本仓只记依赖 | §1.5、§2.7 |
+| A5 / Q12 | 不做 | 不引入列表 struct；数组、动态列表、`Map` 归语言侧 | §2.10、§8.2 |
+| Q1 | 已定 | `File.m.ct` 不拆编译单元 | §4.3、§8.2 |
+| Q2 | 已定 | `File` 按 `own` + `Drop` 释放，显式 `close()` 幂等；裸 `FILE *` 不归包管 | §2.4、§5.4、§8.2 |
+| Q3 | 不做 | 不设方法名长度上限，也不设 `char *` 名字数量上限；保留准入判据与软阈值复审 | §5.1、§8.2 |
+| Q9 | 已定 | 删除 `Math` namespace；数学只提供方法形态 | §2.3、§3.6、§8.2 |
+| Q11 | 已定 | 接受 `Dir` / `File` / `FileDesc` 为 struct 对等类型 | §1.5、§2.10、§8.2 |
+| `recv` | 已定 | 改名 `receive`；`receive`/`send` 返回接收者本身，链式续接，字节数出参带回 | §2.4、§2.7、§6.2 |
+| 命名去冗余 | 已定 | `file_size`/`file_mode`/`file_mtime` → `size`/`mode`/`modification_time`；`read_file`/`write_file` → `read`/`write`；`set_socket_option` → `set_option` | §5.1、§2.5、§2.7、§6.2 |
+| 工厂族命名 | 已定 | `open` → `open_file`；`open_dir` 保留；`open_as_fd` → `open_as_file_desc`；`raw_fd` → `raw_file_desc` | §2.4、§2.10、§6.2 |
+| 数学命名 | 已定 | 仅 7 个生僻名改全称；其余保留原名、只做 snake_case 化 | §2.3、§5.1、数学清单 |
+| ctype 命名 | 已定 | `is_*` 全部保留；`to_upper`/`to_lower` → `uppercase`/`lowercase` | §2.1、§2.2 |
+| `to_string` | 不做 | 删除，只留 `to_str` | §2.2、§6.2 |
+| `std::locale` | 已定 | 工厂 `make_locale()` → `own Locale`；`apply(category)` / `conventions()`；`apply` 改进程全局状态、线程不安全 | §2.9、§4.1、§6.2 |
 
 ## 4. 评审轮次、顺序与裁定节点
 
 顺序原则：先定影响面最大的资源形态，再定对等类型，最后定兼容与命名。
 
-| 轮次 | 评审对象 | 影响阶段 | 裁定节点 |
-| --- | --- | --- | --- |
-| R0（本轮） | 状态表不一致清理；阶段划分 | 全部 | 无需裁定，文档自洽即可 |
-| R1 | `Fd`、`Timer` 形态 | P3、P5、P6 | **G1** |
-| R2 | A3、A4、A5、Q11、Q12 | P4、P6、P7 | **G2** |
-| R3 | Q1、Q2、Q3、Q9 | P0、P1、P3 | **G3** |
-| 收口 | 全部裁定复核 | 全部 | **G-final** |
+| 轮次 | 评审对象 | 影响阶段 | 裁定节点 | 状态 |
+| --- | --- | --- | --- | --- |
+| R0 | 状态表不一致清理；阶段划分 | 全部 | — | 已关闭 |
+| R1 | `Fd`、`Timer` 形态 | P3、P5、P6 | **G1** | 已关闭（已定） |
+| R2 | A3、A4、A5、Q11、Q12 | P4、P6、P7 | **G2** | 已关闭（A3/A4/Q11 已定；A5/Q12 不做；`Socket` 别名待语言侧） |
+| R3 | Q1、Q2、Q3、Q9 | P0、P1、P3 | **G3** | 已关闭（Q1/Q2/Q9 已定；Q3 不做） |
+| 收口 | 全部裁定复核 | 全部 | **G-final** | **已达成** |
 
-- **G1–G3** 各自是负责人对该轮结论的裁定；裁定前不进入对应实现。
-- **G-final** 是「全部未定项均已裁定」的状态；**G-final 之前不动实现**。
-- 每轮裁定后，把结论回填到 §2.10、§8.2 与 §7，不允许只停留在本文。
+- G1–G3 均已关闭；G-final 已达成。
+- **G-final 之前不动实现**的约束已满足；实现按 §7 施工顺序推进，开工仍需负责人点头。
+- 结论已回填 §2.10、§8.2 与 §7，本文只保留终态。
 
 ## 5. 实现阶段划分（以 §7 的 P0–P7 为底）
 
 **总门禁：评审与裁定完成前不动实现。** 下表的「依赖裁定」用于说明每个阶段在开工前必须已经落地的结论；即使某阶段没有未定项依赖，也仍受 G-final 约束。
 
-| 阶段 | 内容（§7 原表） | 依赖的裁定 | 前置门禁 | 说明 |
+| 阶段 | 内容（§7 原表） | 依赖的裁定（已关闭） | 前置门禁 | 说明 |
 | --- | --- | --- | --- | --- |
-| P0 | `String` → `CStrOps`（issue 0001） | Q1（拆不拆） | G-final | 不拆则只改 trait 名；拆则 P0 范围扩大 |
-| P1 | `char` 的 `is_*`、内存方法、`split_into`、`math` 新族、`sort`/`binary_search` | Q3（名字上限）、Q9（`Math` 退役） | G-final | 名字数量与 `math` 落点随裁定调整 |
-| P2 | `env`/`process`/`errno`/`locale`/`wchar` | 无未定项（Q4 已定） | G-final | 仍受总门禁约束 |
-| P3 | stdio 补全、`Fd`、变参替代 | Q2（`IoFile`）、`Fd` 形态（R1） | G-final | `Fd` 形态决定是否建类型 |
-| P4 | `fs` 补全、`scan_directory` | A5/Q12（列表 struct） | G-final | 若否决列表，保持缓冲式 |
-| P5 | `time` 补全、`Timer` | `Timer` 形态（R1）、Q8（已定） | G-final | 资源型与测耗时要分开 |
-| P6 | `Dir` + `Drop` 模板、`Fd`/`Timer` 收口 | A3（R2）、`Fd`/`Timer`（R1） | G-final | 依赖 R1、R2 全部裁定 |
-| P7 | `net`（TCP＋UDP、`resolve_host`、`set_option`） | A4/Q11（R2）、Q6（已定） | G-final | `Socket` 形态决定是否暴露 `raw_fd()` |
+| P0 | `String` → `CStrOps`、`len` → `length`、`open` → `open_file`、删 `to_string`、`printf` 删除 | Q1 已定 | G-final 已达成 | 不拆 unit，只做改名与删除 |
+| P1 | `char` 的 `is_*`、内存方法、`split_into`、`math` 新族、`sort`/`binary_search` | Q3 不做、Q9 已定 | G-final 已达成 | 不设名字上限；`Math` namespace 删除，仅 7 个生僻名改全称 |
+| P2 | `env`/`process`/`errno`/`locale`/`wchar` | Q4 已定 | G-final 已达成 | `Locale` 为工厂对象；`apply` 全局状态与 `LC_NUMERIC` 影响已写入方案 |
+| P3 | stdio 补全、`FileDesc`、变参替代 | Q2 已定、`FileDesc` 已定 | G-final 已达成 | `File` 用 `own` + 幂等 `close`；`printf` 已删 |
+| P4 | `fs` 补全、`scan_directory` | A5/Q12 不做 | G-final 已达成 | 保持缓冲式，不引入列表 struct |
+| P5 | `time` 补全、`Timer` | `Timer` 已定、Q8 已定 | G-final 已达成 | `Timer` 为 ③ 资源对象 |
+| P6 | `File`/`Dir`/`FileDesc`/`Timer` 的 `Drop` 模板收口 | A3 已定、`FileDesc`/`Timer` 已定 | G-final 已达成 | 资源对象模板统一 |
+| P7 | `net`（TCP＋UDP、`resolve_host`、`set_option`） | A4/Q11 已定、Q6 已定 | G-final 已达成 | `Socket` 别名能力待语言侧；不阻塞其他阶段 |
 
-**必须等全部裁定才能开始的阶段**：按总门禁，P0–P7 全部属于此列。若负责人将来放宽门禁，可按「依赖裁定」逐阶段提前，但不得跳过 G1/G2/G3 中对应的那一项。
+**开工条件**：所有评审项已归入「已定」「待语言侧」「不做」，G-final 已达成。P0–P6 无外部阻塞；
+P7 只受「`Socket` 别名能力待语言侧」影响，别名未提供前按 `FileDesc` 同一类型使用。
 
 ## 6. 不复审的项（边界声明）
 
-以下已由负责人裁定，本文不评审、不建议修改：Q4（模块不合并）、Q6（`net` 一次做全、`Address` 不建模）、Q7（`file_*` 标量查询）、Q8（时间不挂 `long`）、Q10（`Str` 归语言侧）、A1（`char` 不建 struct）、A2（`Str` 只消费）、命名展开与取消原名豁免、内存方法与 `split_into` 签名、变参不封装、全库覆盖与 P0–P7 施工顺序、数学记号保留，以及 §1.8「指针不对外，包内消化」准绳本身。
+以下已由负责人裁定，本文不评审、不建议修改：Q4（模块不合并）、Q6（`net` 一次做全、`Address` 不建模）、Q7（`stat` 原样暴露，`size`/`mode`/`modification_time` 为便捷方法）、Q8（时间不挂 `long`）、Q10（`Str` 归语言侧）、A1（`char` 不建 struct）、A2（`Str` 只消费）、命名展开与取消原名豁免、内存方法与 `split_into` 签名、变参不封装、全库覆盖与 P0–P7 施工顺序、数学仅 7 个生僻名改全称、`std::locale` 工厂形态，以及 §1.8「指针不对外，包内消化」准绳本身。
 
 ## 7. 复核
 
 ```sh
-grep -n "待负责人裁定" docs/design/std-scope-and-presentation.md
 grep -n "G-final\|不动实现" docs/design/std-open-items-review-and-staging.md
 ```
 
-裁定完成后，本文只保留结论与门禁，不再保留「待裁定」字样。
+本文只保留结论与门禁；`待语言侧` 仅指 `Socket` 别名能力这一条外部依赖。

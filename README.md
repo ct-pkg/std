@@ -525,3 +525,5 @@ int get_last_error();             /* std::fs::FsEnv.get_last_error()，见 §10.
 ## License
 
 MIT（见 `LICENSE`）。
+
+来源与授权确认：`std/` 源码源自 `ct-lang`（GPLv3）；经负责人确认，本包整体改为 MIT 发布。
