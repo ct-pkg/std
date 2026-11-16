@@ -1,7 +1,7 @@
-# `std::str` — `char *` 的字节字符串方法（`String`）
+# `std::str` — `char *` 的字节字符串方法（`CStrOps`）
 
 `char *` 上的查询、拷贝、拼接、大小写与数字解析。全部是**静态类型宿主映射**：
-`s.len()` 在调用点直接展开成 `std_str_len(s)`，没有 wrapper、没有 vtable、不改变 C 布局。
+`s.length()` 在调用点直接展开成 `std_str_len(s)`，没有 wrapper、没有 vtable、不改变 C 布局。
 
 ## 1. 定位与边界
 
@@ -17,7 +17,7 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `String.m.ct` | `pub trait String` + `map trait String for type char *`（14 个方法） |
+| `String.m.ct` | `pub trait CStrOps` + `map trait CStrOps for type char *`（14 个方法） |
 | `String.shim.h` | `std_str_*` 的 `static inline` 实现，编译器自动 include |
 
 引入方式：`import std::str::String;`。
@@ -47,7 +47,7 @@ int main(void)
     char *s = "Hello, ct";
     int n;
 
-    std::io::printf("len=%d find=%d\n", s.len(), s.find("ct"));
+    std::io::printf("len=%d find=%d\n", s.length(), s.find("ct"));
 
     n = s.slice(0, 5, buf, 32);
     std::io::printf("slice rc=%d value=%s\n", n, buf);
@@ -72,7 +72,7 @@ slice rc=0 value=Hello
 copy rc=0 value=Hello, ct
 ```
 
-注意接收者写成变量 `s`。v0.19.1 及更早版本不接受字面量接收者，`"abc".len()` 会报
+注意接收者写成变量 `s`。v0.19.1 及更早版本不接受字面量接收者，`"abc".length()` 会报
 `method receiver must be a variable, an element, a call or a field chain`；
 字面量写法需要 **0.20.0**。
 
@@ -90,8 +90,8 @@ copy rc=0 value=Hello, ct
 | `copy(out, cap)` | `int copy(char *out, int cap)` | 成功 0；放不下（含 NUL）返回 `-1` |
 | `slice(start, end, out, cap)` | `int slice(int start, int end, char *out, int cap)` | 半开区间 `[start, end)`；越界或放不下返回 `-1` |
 | `concat(other, out, cap)` | `int concat(const char *other, char *out, int cap)` | 成功 0；放不下返回 `-1` |
-| `to_lower(out, cap)` | `int to_lower(char *out, int cap)` | 结果写 `out`，成功 0；放不下或 `NULL` 返回 `-1` |
-| `to_upper(out, cap)` | `int to_upper(char *out, int cap)` | 结果写 `out`，成功 0；放不下或 `NULL` 返回 `-1` |
+| `lowercase(out, cap)` | `int lowercase(char *out, int cap)` | 结果写 `out`，成功 0；放不下或 `NULL` 返回 `-1` |
+| `uppercase(out, cap)` | `int uppercase(char *out, int cap)` | 结果写 `out`，成功 0；放不下或 `NULL` 返回 `-1` |
 | `compare(other)` | `int compare(const char *other)` | 字典序，负 / 0 / 正；`NULL` 当空串 |
 | `copy_to(dst, n)` | `void copy_to(char *dst, int n)` | `memcpy` 形状：接收者的恰好 `n` 字节写进 `dst` |
 | `to_int()` | `int to_int()` | `atoi`；`NULL` 返回 0，溢出是 C 的未定义行为 |
@@ -110,12 +110,12 @@ import std::io::Io;
 int main(void)
 {
     char *s = "abc";
-    std::io::printf("len=%s\n", s.len().to_string());
+    std::io::printf("len=%s\n", s.length().to_string());
     return 0;
 }
 ```
 
-输出 `len=3`。这里合法是因为 `s.len()` 是**调用**，属于允许的接收者形态；
+输出 `len=3`。这里合法是因为 `s.length()` 是**调用**，属于允许的接收者形态；
 字面量 `(5).to_string()` 仍然需要 0.20.0。
 
 ## 5. 教程
@@ -148,9 +148,9 @@ int main(void)
     n = s.compare(other);
     std::io::printf("compare rc=%d\n", n < 0 ? -1 : (n > 0 ? 1 : 0));
 
-    seed.to_lower(word, 8);
+    seed.lowercase(word, 8);
     std::io::printf("lower=%s\n", word);
-    seed.to_upper(word, 8);
+    seed.uppercase(word, 8);
     std::io::printf("upper=%s\n", word);
 
     hw.copy_to(raw, 5);
@@ -182,7 +182,7 @@ to_int=42 to_double=2.5
 
 ### 5.3 产出新字符串：缓冲区由调用方给
 
-`copy` / `slice` / `concat` / `to_lower` / `to_upper` 都不分配内存：
+`copy` / `slice` / `concat` / `lowercase` / `uppercase` 都不分配内存：
 
 1. `cap` 包含结尾 NUL，`"Hello, ct"` 是 9 字节，`cap` 至少 10；
 2. 放不下返回 `-1`，不会截断，也不会扩容；
@@ -205,13 +205,13 @@ to_int=42 to_double=2.5
 
 ### 5.5 大小写转换：接收者只读，结果写 `out`
 
-`to_lower` / `to_upper` 与 `copy` 同构：读接收者，把转换结果写进调用方的 `out + cap`，
+`lowercase` / `uppercase` 与 `copy` 同构：读接收者，把转换结果写进调用方的 `out + cap`，
 NUL 结尾，放不下返回 `-1`。
 
 ```ct
 char out[8];
-"Hello".to_lower(out, 8);   /* out == "hello"，返回 0 */
-"Hello".to_upper(out, 5);   /* 放不下，返回 -1，out 内容不可用 */
+"Hello".lowercase(out, 8);   /* out == "hello"，返回 0 */
+"Hello".uppercase(out, 5);   /* 放不下，返回 -1，out 内容不可用 */
 ```
 
 因为不写接收者，**字面量可以直接当接收者**，不需要先 `copy` 到自己的数组。
@@ -222,7 +222,7 @@ char out[8];
 
 `"é"` 在 UTF-8 里是两个字节：
 
-`char *s = "é";` 时 `s.len() == 2`；`import std::utf8::Utf8Ops;` 之后
+`char *s = "é";` 时 `s.length() == 2`；`import std::utf8::Utf8Ops;` 之后
 `s.count_codepoints() == 1`。
 
 `find` / `find_char` / `slice` 的索引同样是字节偏移，按字节切可能切断一个字符。
@@ -256,9 +256,9 @@ int main(void)
 
     pos = line.find_char('=');
     line.slice(0, pos, key, 16);
-    line.slice(pos + 1, line.len(), val, 16);
+    line.slice(pos + 1, line.length(), val, 16);
     n = val.to_int();
-    key.to_upper(upper, 16);
+    key.uppercase(upper, 16);
     std::io::printf("key=%s value=%d\n", upper, n);
     return 0;
 }
@@ -275,11 +275,11 @@ key=COUNT value=42
 | 任务 | 写法 |
 | --- | --- |
 | 安全复制 | `if (s.copy(buf, sizeof buf) < 0) { /* 缓冲区太小 */ }` |
-| 取前缀 / 后缀 | `s.slice(0, 5, out, cap)` / `s.slice(s.len() - 3, s.len(), out, cap)` |
+| 取前缀 / 后缀 | `s.slice(0, 5, out, cap)` / `s.slice(s.length() - 3, s.length(), out, cap)` |
 | 拼接 | `a.concat(b, out, cap)` |
-| 转大写 | `s.to_upper(out, cap)` |
+| 转大写 | `s.uppercase(out, cap)` |
 | 找子串位置 | `int pos = s.find("needle"); if (pos >= 0) { ... }` |
-| 得到长度的十进制文本 | `s.len().to_string()`（`int` 宿主，0.19.1 可用） |
+| 得到长度的十进制文本 | `s.length().to_string()`（`int` 宿主，0.19.1 可用） |
 
 ## 7. 排错
 
@@ -308,7 +308,7 @@ main.ct:6:1: error: no method 'nope' for type 'char *'
 int main(void)
 {
     char *s = "abc";
-    int n = s.len();
+    int n = s.length();
     return n;
 }
 ```
@@ -327,7 +327,7 @@ import std::str::String;
 int main(void)
 {
     char out[8];
-    "abc".to_lower(out, 8);
+    "abc".lowercase(out, 8);
     return 0;
 }
 ```
@@ -336,7 +336,7 @@ int main(void)
 main.ct:6:1: error: method receiver must be a variable, an element, a call or a field chain
 ```
 
-先赋给变量：`char *s = "abc"; s.to_lower(out, 8);`。字面量接收者需要 0.20.0。
+先赋给变量：`char *s = "abc"; s.lowercase(out, 8);`。字面量接收者需要 0.20.0。
 
 ### 7.4 少给参数
 
@@ -361,13 +361,13 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 
 - **不分配、无动态字符串**：没有 `append` / `format` / `replace`；产出永远走 `out + cap`。
 - **字节单位**：`len` / `find` / `slice` 都是字节；没有码点索引。
-- **没有写接收者的方法**：`to_lower` / `to_upper` 与 `copy` 一样把结果写进 `out + cap`，
+- **没有写接收者的方法**：`lowercase` / `uppercase` 与 `copy` 一样把结果写进 `out + cap`，
   字面量接收者因此永远安全。
-- **大小写只覆盖 ASCII**：`to_lower` / `to_upper` 按 `A-Z` / `a-z` 逐字节转换，不做 locale。
+- **大小写只覆盖 ASCII**：`lowercase` / `uppercase` 按 `A-Z` / `a-z` 逐字节转换，不做 locale。
 - **`char *` 上的方法名全局共享**：同一接收者上两个可见 trait 声明同名方法，调用点报
   `ambiguous type-host map for method 'x' on type 'char *'`。本模块占用
   `len` / `find` / `find_char` / `starts_with` / `ends_with` / `copy` / `copy_to` /
-  `slice` / `concat` / `to_lower` / `to_upper` / `compare` / `to_int` / `to_double`；
+  `slice` / `concat` / `lowercase` / `uppercase` / `compare` / `to_int` / `to_double`；
   新增 `char *` trait 前先 grep。
 - **字面量接收者从 0.20.0 起可用**（本包下限 0.30.0）；0.19.1 只接受变量、元素、调用和字段链。
 - **多给实参不报错**（SH-56）：`s.copy(buf, 8, 9)` 编译通过，`9` 被丢弃；少给才报
@@ -378,7 +378,7 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.1.0` | 未打 tag、未发布 | 当前版本。`to_lower` / `to_upper` 改为 out 缓冲（`s.to_upper(out, cap)`）；移除写接收者的 `copyFrom`，`dst.copyFrom(src, n)` 改成 `src.copy_to(dst, n)`。 |
+| `0.1.0` | 未打 tag、未发布 | 当前版本。`lowercase` / `uppercase` 改为 out 缓冲（`s.uppercase(out, cap)`）；移除写接收者的 `copyFrom`，`dst.copyFrom(src, n)` 改成 `src.copy_to(dst, n)`。 |
 
 编译器下限 `ct >= 0.30.0`。本文所有程序都有对应夹具，由 `bash tests/run.sh` 在 ct v0.53.0 上跑过；
 字面量接收者写法从 0.20.0 起可用。

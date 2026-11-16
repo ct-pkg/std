@@ -97,8 +97,8 @@ pub trait Char {
     int is_space();
     int is_upper();
     int is_lower();
-    int to_upper();
-    int to_lower();
+    int uppercase();
+    int lowercase();
 }
 
 map trait Char for type char {
@@ -107,6 +107,6 @@ map trait Char for type char {
     is_space(v) -> std_num_is_space(v);
     is_upper(v) -> std_num_is_upper(v);
     is_lower(v) -> std_num_is_lower(v);
-    to_upper(v) -> std_num_char_upper(v);
-    to_lower(v) -> std_num_char_lower(v);
+    uppercase(v) -> std_num_char_upper(v);
+    lowercase(v) -> std_num_char_lower(v);
 }

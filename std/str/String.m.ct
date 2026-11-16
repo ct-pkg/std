@@ -1,24 +1,24 @@
 /*
  * String.m.ct - the method spellings for `char *` in std::str (std::str::String).
  *
- * Every binding is a zero-cost static mapping: `s.len()` expands at the call
+ * Every binding is a zero-cost static mapping: `s.length()` expands at the call
  * site into `std_str_len(s)`, with no wrapper, no interface value and no
  * vtable. The functions it calls are defined `static inline` in String.shim.h;
  * this unit adds spelling only, never semantics.
  *
- * The trait is `String`, not `Str`: there is no `Str` struct here at all, and
+ * The trait is `CStrOps`, not `Str`: there is no `Str` struct here at all, and
  * a `pub trait Str` would still be a poor name beside the C `std_str_*` layer.
- * `String` is a distinct name, so nothing shadows it.
+ * `CStrOps` is a distinct name, so nothing shadows it.
  *
  * `map trait ... for type` is legal only in `.m.ct`, so this is the only CT
  * unit of std::str; the C surface lives in the shim pair next to it, not in a
  * `.h.ct`.
  *
  * Every method here reads the receiver. Anything that produces bytes --
- * `copy`, `slice`, `concat`, `to_lower`, `to_upper` -- writes into a
+ * `copy`, `slice`, `concat`, `lowercase`, `uppercase` -- writes into a
  * caller-supplied buffer plus capacity and returns a status code; nothing
  * allocates and nothing mutates the receiver. The `to` prefix therefore does
- * not mean "returns a fresh value" either: `s.to_upper(out, cap)` still needs
+ * not mean "returns a fresh value" either: `s.uppercase(out, cap)` still needs
  * the caller's buffer.
  *
  * `copy_to` is the one raw shape: exactly `n` bytes of the receiver into `dst`,
@@ -34,7 +34,7 @@
  * the shim, so the generated `.c` has the definitions it needs. The C functions
  * (`std_str_len`, ...) are still callable from C or from a raw
  * `#include "String.shim.h"` block -- they are `static inline`, so each
- * translation unit gets its own copy; the CT-level `std::str::len(...)` spelling
+ * translation unit gets its own copy; the CT-level `std::str::length(...)` spelling
  * no longer exists.
  *
  * `to_int` / `to_double` are the C parsers (`atoi` / `atof`) behind the same
@@ -46,8 +46,8 @@
 
 namespace std::str;
 
-pub trait String {
-    int len();
+pub trait CStrOps {
+    int length();
     int find(const char *needle);
     int find_char(int c);
     int starts_with(const char *prefix);
@@ -55,16 +55,16 @@ pub trait String {
     int copy(char *out, int cap);
     int slice(int start, int end, char *out, int cap);
     int concat(const char *other, char *out, int cap);
-    int to_lower(char *out, int cap);
-    int to_upper(char *out, int cap);
+    int lowercase(char *out, int cap);
+    int uppercase(char *out, int cap);
     int compare(const char *other);
     void copy_to(char *dst, int n);
     int to_int();
     double to_double();
 }
 
-map trait String for type char * {
-    len(s) -> std_str_len(s);
+map trait CStrOps for type char * {
+    length(s) -> std_str_len(s);
     find(s, needle) -> std_str_find(s, needle);
     find_char(s, c) -> std_str_find_char(s, c);
     starts_with(s, prefix) -> std_str_starts_with(s, prefix);
@@ -72,8 +72,8 @@ map trait String for type char * {
     copy(s, out, cap) -> std_str_copy(s, out, cap);
     slice(s, start, end, out, cap) -> std_str_slice(s, start, end, out, cap);
     concat(s, other, out, cap) -> std_str_concat(s, other, out, cap);
-    to_lower(s, out, cap) -> std_str_lower(s, out, cap);
-    to_upper(s, out, cap) -> std_str_upper(s, out, cap);
+    lowercase(s, out, cap) -> std_str_lower(s, out, cap);
+    uppercase(s, out, cap) -> std_str_upper(s, out, cap);
     compare(s, other) -> std_str_compare(s, other);
     copy_to(s, dst, n) -> std_str_copy_to(s, dst, n);
     to_int(s) -> std_str_to_int(s);

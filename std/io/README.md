@@ -1,7 +1,7 @@
 # `std::io` — 标准输出与文件（`Io` / `Stdout` / `File`）
 
 `stdio.h` 的一层薄映射：`printf` / `puts` / `putchar` / `getchar` / `fflush`，以及
-`"path".open(mode)` 拿到的 `IoFile *` 与 `read` / `write` / `close`。
+`"path".open_file(mode)` 拿到的 `IoFile *` 与 `read` / `write` / `close`。
 除变参 `printf` 外全是静态映射，调用点直接展开成 C 调用。
 
 ## 1. 定位与边界
@@ -53,12 +53,12 @@ int main(void)
     std::io::printf("hello, %s (%d)\n", "ct", 1);
     std::io::Stdout.puts("second line");
 
-    f = path.open("w");
+    f = path.open_file("w");
     if (f == 0) return 1;
     f.write("hello", 5);
     f.close();
 
-    f = path.open("r");
+    f = path.open_file("r");
     if (f == 0) return 1;
     n = f.read(buf, 15);
     buf[n] = 0;
@@ -86,7 +86,7 @@ read 5 bytes: hello
 CT 侧的句柄类型是 `IoFile *`：`File.m.ct` 用 `pub type IoFile = struct ct_io_file;`
 给 C 侧的不透明句柄起了一个 CT 私名。C tag 仍是 `struct ct_io_file`，helper 符号
 仍是 `std_io_*`，一个字没改。这个别名需要 **0.20.3**；字面量接收者
-（`"/tmp/x".open("r")`）从 **0.20.0** 起可用（本包下限 0.30.0），v0.19.1 请先赋给 `char *` 变量。
+（`"/tmp/x".open_file("r")`）从 **0.20.0** 起可用（本包下限 0.30.0），v0.19.1 请先赋给 `char *` 变量。
 
 ## 4. API 全表
 
@@ -156,16 +156,16 @@ int main(void)
     n = std::io::printf("printf=%d\n", 7);
     std::io::printf("printf rc=%d\n", n);
 
-    missing = bad.open("r");
+    missing = bad.open_file("r");
     std::io::printf("missing null=%d close=%d\n", missing == 0, missing.close());
 
-    f = path.open("w");
+    f = path.open_file("w");
     std::io::printf("write=%d\n", f.write("hello", 5));
     std::io::printf("close1=%d\n", f.close());
     std::io::printf("close2=%d\n", f.close());
     std::io::printf("write-after-close=%d\n", f.write("x", 1));
 
-    f = path.open("r");
+    f = path.open_file("r");
     n = f.read(buf, 15);
     buf[n] = 0;
     std::io::printf("read=%d data=%s\n", n, buf);
@@ -231,18 +231,18 @@ int main(void)
     char *dst = "/tmp/std-io-dst.txt";
     int n;
 
-    in = src.open("w");
+    in = src.open_file("w");
     in.write("copy me", 7);
     in.close();
 
-    in = src.open("r");
-    out = dst.open("w");
+    in = src.open_file("r");
+    out = dst.open_file("w");
     n = in.read(buf, 64);
     out.write(buf, n);
     in.close();
     out.close();
 
-    in = dst.open("r");
+    in = dst.open_file("r");
     n = in.read(buf, 64);
     buf[n] = 0;
     in.close();
@@ -269,8 +269,8 @@ copied=7 data=copy me
 | 打印到 stdout | `std::io::printf("x=%d\n", x)` |
 | 输出一行并换行 | `std::io::Stdout.puts("done")` |
 | 逐字节读取 | `int c = std::io::Stdout.getchar();` |
-| 追加写 | `f = path.open("a");` |
-| 二进制读 | `f = path.open("rb");` |
+| 追加写 | `f = path.open_file("a");` |
+| 二进制读 | `f = path.open_file("rb");` |
 | 读满一个缓冲区 | `n = f.read(buf, sizeof buf);` |
 
 ## 7. 排错
@@ -285,7 +285,7 @@ int main(void)
     IoFile *f;
     char buf[8];
     char *p = "/tmp/x";
-    f = p.open("r");
+    f = p.open_file("r");
     return f.read(buf);
 }
 ```
@@ -302,7 +302,7 @@ main.ct:9:1: error: a map call has fewer arguments than its binding
 int main(void)
 {
     char *p = "/tmp/x";
-    IoFile *f = p.open("r");
+    IoFile *f = p.open_file("r");
     return f == 0;
 }
 ```
@@ -320,7 +320,7 @@ import std::io::File;
 
 int main(void)
 {
-    IoFile *f = "/tmp/x".open("r");
+    IoFile *f = "/tmp/x".open_file("r");
     return f == 0;
 }
 ```
@@ -329,7 +329,7 @@ int main(void)
 main.ct:5:1: error: method receiver must be a variable, an element, a call or a field chain
 ```
 
-先写 `char *p = "/tmp/x"; f = p.open("r");`。字面量接收者需要 0.20.0。
+先写 `char *p = "/tmp/x"; f = p.open_file("r");`。字面量接收者需要 0.20.0。
 
 ## 8. 限制与未支持
 

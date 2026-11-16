@@ -190,14 +190,14 @@ int main(void)
     tp->check_eq_int(ca.is_lower(), 1, "Char.is_lower: 'a'");
     tp->check_eq_int(c_a.is_lower(), 0, "Char.is_lower: 'A'");
     tp->check_eq_int(c1.is_lower(), 0, "Char.is_lower: '1'");
-    tp->check_eq_int(ca.to_upper(), 'A', "Char.to_upper: 'a'");
-    tp->check_eq_int(cz.to_upper(), 'Z', "Char.to_upper: 'z'");
-    tp->check_eq_int(c1.to_upper(), '1', "Char.to_upper: non-letter unchanged");
-    tp->check_eq_int(cus.to_upper(), '_', "Char.to_upper: punctuation unchanged");
-    tp->check_eq_int(c_a.to_lower(), 'a', "Char.to_lower: 'A'");
-    tp->check_eq_int(c_z.to_lower(), 'z', "Char.to_lower: 'Z'");
-    tp->check_eq_int(c1.to_lower(), '1', "Char.to_lower: non-letter unchanged");
-    tp->check_eq_int(cus.to_lower(), '_', "Char.to_lower: punctuation unchanged");
+    tp->check_eq_int(ca.uppercase(), 'A', "Char.uppercase: 'a'");
+    tp->check_eq_int(cz.uppercase(), 'Z', "Char.uppercase: 'z'");
+    tp->check_eq_int(c1.uppercase(), '1', "Char.uppercase: non-letter unchanged");
+    tp->check_eq_int(cus.uppercase(), '_', "Char.uppercase: punctuation unchanged");
+    tp->check_eq_int(c_a.lowercase(), 'a', "Char.lowercase: 'A'");
+    tp->check_eq_int(c_z.lowercase(), 'z', "Char.lowercase: 'Z'");
+    tp->check_eq_int(c1.lowercase(), '1', "Char.lowercase: non-letter unchanged");
+    tp->check_eq_int(cus.lowercase(), '_', "Char.lowercase: punctuation unchanged");
 
     return tp->report();
 }

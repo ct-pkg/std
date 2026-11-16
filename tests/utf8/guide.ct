@@ -26,9 +26,9 @@ int main(void)
     tp->init();
 
     /* 1. Two units, two names: bytes vs code points. */
-    tp->check_eq_int("é".len(), 2, "String.len counts bytes");
+    tp->check_eq_int("é".length(), 2, "CStrOps.len counts bytes");
     tp->check_eq_int("é".count_codepoints(), 1, "count_codepoints counts code points");
-    tp->check_eq_int("héllo".len(), 6, "héllo is six bytes");
+    tp->check_eq_int("héllo".length(), 6, "héllo is six bytes");
     tp->check_eq_int("héllo".count_codepoints(), 5, "héllo is five code points");
 
     /* 2. decode: one code point, and the number of bytes it took. */

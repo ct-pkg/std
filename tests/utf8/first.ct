@@ -19,7 +19,7 @@ int main(void)
 
     tp->init();
 
-    tp->check_eq_int("é".len(), 2, "len counts bytes");
+    tp->check_eq_int("é".length(), 2, "len counts bytes");
     tp->check_eq_int("é".count_codepoints(), 1, "count_codepoints counts code points");
 
     tp->check_eq_int("é".decode(&cp), 2, "decode returns the bytes consumed");

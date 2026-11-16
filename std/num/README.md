@@ -1,14 +1,14 @@
 # `std::num` — 整数与字符宿主（`Int` / `Long` / `LLong` / `Char`）
 
 给 C 的数值与字符类型挂方法：`n.to_string()` / `n.to_base(16, buf, cap)` / `n.clamp(lo, hi)` /
-`c.is_digit()` / `c.to_upper()`。四个宿主各映射一次，同名方法跨宿主允许，同一宿主内唯一。
+`c.is_digit()` / `c.uppercase()`。四个宿主各映射一次，同名方法跨宿主允许，同一宿主内唯一。
 
 ## 1. 定位与边界
 
 - 覆盖四种宿主：`int`（`Int`）、`long`（`Long`）、`long long`（`LLong`）、`char`（`Char`）。
 - 数值宿主提供：`abs` / `clamp` / `max` / `min` / `to_str` / `to_string` / `to_base`。
 - `char` 宿主提供 ctype 表面：`is_digit` / `is_alpha` / `is_space` / `is_upper` / `is_lower` /
-  `to_upper` / `to_lower`；`char` 不会提升成 `int`，所以两套方法互不干扰。
+  `uppercase` / `lowercase`；`char` 不会提升成 `int`，所以两套方法互不干扰。
 - **不分配**：`to_str` / `to_base` 写调用方缓冲区；`to_string` 用静态环形槽（非线程安全）。
 - 不做格式化宽度、精度、千分位；需要时用 C 的 `printf`。
 
@@ -53,7 +53,7 @@ int main(void)
 
     std::io::printf("%s %s %d\n", n.to_string(), n.to_base(16, buf, 32), lo.clamp(0, 3));
     std::io::printf("digit=%d alpha=%d upper=%c\n",
-                    digit.is_digit(), letter.is_alpha(), (char)letter.to_upper());
+                    digit.is_digit(), letter.is_alpha(), (char)letter.uppercase());
     return 0;
 }
 ```
@@ -104,8 +104,8 @@ digit=1 alpha=1 upper=A
 | `is_space()` | `int is_space()` | 是空白返回非 0 |
 | `is_upper()` | `int is_upper()` | 是大写返回非 0 |
 | `is_lower()` | `int is_lower()` | 是小写返回非 0 |
-| `to_upper()` | `int to_upper()` | 转换后的字符（`int`）；非字母原样返回 |
-| `to_lower()` | `int to_lower()` | 转换后的字符（`int`）；非字母原样返回 |
+| `uppercase()` | `int uppercase()` | 转换后的字符（`int`）；非字母原样返回 |
+| `lowercase()` | `int lowercase()` | 转换后的字符（`int`）；非字母原样返回 |
 
 负数会先转成 `unsigned char` 再交给 C 的 ctype，这是 C 标准要求的安全写法。
 
@@ -140,7 +140,7 @@ int main(void)
     std::io::printf("ring %s %s\n", r1, r2);
     std::io::printf("base small null=%d\n", n.to_base(16, small, 2) == 0);
     std::io::printf("char digit=%d alpha=%d upper=%c\n",
-                    digit.is_digit(), letter.is_alpha(), (char)letter.to_upper());
+                    digit.is_digit(), letter.is_alpha(), (char)letter.uppercase());
     return 0;
 }
 ```
@@ -239,7 +239,7 @@ ff 1010 -1
 | 夹取范围 | `n.clamp(0, 100)` |
 | 两数较大 / 较小 | `a.max(b)` / `a.min(b)` |
 | 判断数字字符 | `c.is_digit()` |
-| 字符转大写 | `(char)c.to_upper()` |
+| 字符转大写 | `(char)c.uppercase()` |
 | 字符转数值 | `c - '0'`（先确认 `c.is_digit()`） |
 
 ## 7. 排错

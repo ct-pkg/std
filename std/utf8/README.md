@@ -45,7 +45,7 @@ int main(void)
 
     n = s.decode(&cp);
     std::io::printf("bytes=%d cp=%d len=%d count=%d\n",
-                    n, cp, s.len(), s.count_codepoints());
+                    n, cp, s.length(), s.count_codepoints());
 
     n = buf.encode(cp, 8);
     buf[n] = 0;
@@ -95,7 +95,7 @@ encoded=2 text=é
 | `"€"` | 3 | 1 |
 | `"😀"`（U+1F600） | 4 | 1 |
 
-两个名字不能互换：`String.len` 数字节，`Utf8Ops.count_codepoints` 数码点。
+两个名字不能互换：`CStrOps.length` 数字节，`Utf8Ops.count_codepoints` 数码点。
 
 ### 5.2 解码一个码点
 
@@ -255,7 +255,7 @@ cp=8364 bytes=3
 | 读第一个码点 | `int cp; int step = s.decode(&cp);` |
 | 只求步长 | `int step = s.decode(0);` |
 | 编码一个码点 | `int n = buf.encode(cp, sizeof buf);`，再 `buf[n] = 0;` |
-| 字节长度 | `int bytes = s.len();`（`std::str`） |
+| 字节长度 | `int bytes = s.length();`（`std::str`） |
 
 ## 7. 排错
 

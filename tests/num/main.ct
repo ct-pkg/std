@@ -52,8 +52,8 @@ int main(void)
     tp->check_eq_int(digit.is_digit(), 1, "is_digit");
     tp->check_true(letter.is_alpha(), "is_alpha");
     tp->check_true(!digit.is_alpha(), "is_alpha on a digit");
-    tp->check_eq_int(letter.to_upper(), 'A', "to_upper");
-    tp->check_eq_int(upper.to_lower(), 'a', "to_lower");
+    tp->check_eq_int(letter.uppercase(), 'A', "uppercase");
+    tp->check_eq_int(upper.lowercase(), 'a', "lowercase");
     tp->check_true(upper.is_upper(), "is_upper");
     tp->check_true(letter.is_lower(), "is_lower");
 

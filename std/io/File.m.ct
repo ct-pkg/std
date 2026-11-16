@@ -9,11 +9,11 @@ namespace std::io;
 pub type IoFile = struct ct_io_file;
 
 pub trait Path {
-    IoFile *open(const char *mode);
+    IoFile *open_file(const char *mode);
 }
 
 map trait Path for type char * {
-    open(path, mode) -> std_io_open(path, mode);
+    open_file(path, mode) -> std_io_open(path, mode);
 }
 
 pub trait File {

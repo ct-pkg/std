@@ -17,9 +17,9 @@ int main(void)
 
     tp->init();
 
-    tp->check_eq_int(s.len(), 5, "len");
-    tp->check_eq_int("hi".len(), 2, "literal receiver");
-    tp->check_eq_int(cs.len(), 5, "const receiver");
+    tp->check_eq_int(s.length(), 5, "len");
+    tp->check_eq_int("hi".length(), 2, "literal receiver");
+    tp->check_eq_int(cs.length(), 5, "const receiver");
     tp->check_eq_int(s.find("ll"), 2, "find a hit");
     tp->check_eq_int(s.find("z"), -1, "find a miss");
     tp->check_eq_int(s.find_char('l'), 2, "find_char a hit");
@@ -44,21 +44,21 @@ int main(void)
     tp->check_eq_int("ab".concat("cd", buf, 5), 0, "concat fits exactly");
     tp->check_eq_int("ab".concat("cd", buf, 4), -1, "concat needs room for the NUL");
 
-    tp->check_eq_int(buf.to_lower(word, 16), 0, "to_lower");
-    tp->check_eq_str(word, "abcd", "to_lower value");
-    tp->check_eq_int(buf.to_upper(word, 16), 0, "to_upper");
-    tp->check_eq_str(word, "ABCD", "to_upper value");
+    tp->check_eq_int(buf.lowercase(word, 16), 0, "lowercase");
+    tp->check_eq_str(word, "abcd", "lowercase value");
+    tp->check_eq_int(buf.uppercase(word, 16), 0, "uppercase");
+    tp->check_eq_str(word, "ABCD", "uppercase value");
 
     tp->check_eq_int("abc".compare("abd"), -1, "compare less");
     tp->check_eq_int("abc".compare("abc"), 0, "compare equal");
     tp->check_eq_int("abd".compare("abc"), 1, "compare greater");
 
     /* The receiver is only read, so a literal works and `word` receives it. */
-    tp->check_eq_int("Hello!".to_lower(word, 16), 0, "to_lower on a literal");
-    tp->check_eq_str(word, "hello!", "to_lower value");
-    tp->check_eq_int("Hello!".to_upper(word, 16), 0, "to_upper on a literal");
-    tp->check_eq_str(word, "HELLO!", "to_upper value");
-    tp->check_eq_int("Hello!".to_upper(word, 6), -1, "to_upper needs room for the NUL");
+    tp->check_eq_int("Hello!".lowercase(word, 16), 0, "lowercase on a literal");
+    tp->check_eq_str(word, "hello!", "lowercase value");
+    tp->check_eq_int("Hello!".uppercase(word, 16), 0, "uppercase on a literal");
+    tp->check_eq_str(word, "HELLO!", "uppercase value");
+    tp->check_eq_int("Hello!".uppercase(word, 6), -1, "uppercase needs room for the NUL");
 
     return tp->report();
 }

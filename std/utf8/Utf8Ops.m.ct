@@ -15,7 +15,7 @@
  * That is deliberate: `cap` belongs to the buffer, and `encode` is the one
  * operation whose subject is where the bytes go rather than their text.
  *
- * `count_codepoints` is the old `length`. `String.len()` (also imported here in
+ * `count_codepoints` is the old `length`. `CStrOps.length()` (also imported here in
  * `test/std/all`) counts BYTES; `count_codepoints` counts CODE POINTS and returns
  * -1 for invalid UTF-8. Two different numbers, two different names.
  *

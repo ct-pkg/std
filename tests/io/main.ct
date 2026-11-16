@@ -28,19 +28,19 @@ int main(int argc, char **argv)
        next to the current directory instead. */
     path = (argc > 1) ? argv[1] : "std-io-test.txt";
 
-    missing = "/nonexistent-dir/ct-std-io".open("r");
+    missing = "/nonexistent-dir/ct-std-io".open_file("r");
     tp->check_true(missing == 0, "open of a missing path returns NULL");
     tp->check_eq_int(missing.close(), 0, "close(NULL) is a no-op success");
     tp->check_eq_int(missing.read(buf, 1), -1, "read on a NULL handle returns -1");
 
-    f = path.open("w");
+    f = path.open_file("w");
     tp->check_true(f != 0, "open for write");
     tp->check_eq_int(f.write("hello", 5), 5, "write returns the byte count");
     tp->check_eq_int(f.close(), 0, "close succeeds");
     tp->check_eq_int(f.close(), 0, "second close is idempotent");
     tp->check_eq_int(f.write("x", 1), -1, "write after close returns -1");
 
-    f = path.open("r");
+    f = path.open_file("r");
     tp->check_true(f != 0, "open for read");
     n = f.read(buf, 5);
     tp->check_eq_int(n, 5, "read returns the byte count");

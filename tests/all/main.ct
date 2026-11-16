@@ -25,10 +25,10 @@ int main(void)
 
     /* The three `char *` hosts (str / fs / utf8) coexist in one unit: str's
        `len` counts bytes, utf8's `count_codepoints` counts code points. */
-    tp->check_eq_int("std".len(), 3, "str len counts bytes");
+    tp->check_eq_int("std".length(), 3, "str len counts bytes");
     tp->check_eq_int("std".count_codepoints(), 3, "utf8 count_codepoints on ASCII");
     tp->check_eq_int("é".count_codepoints(), 1, "one two-byte code point");
-    tp->check_eq_int("é".len(), 2, "str len counts the same text as two bytes");
+    tp->check_eq_int("é".length(), 2, "str len counts the same text as two bytes");
     tp->check_eq_int("A".decode(&cp), 1, "utf8 decode");
     tp->check_eq_int(cp, 65, "utf8 value");
     tp->check_eq_int(buf.encode(233, 16), 2, "utf8 encode");

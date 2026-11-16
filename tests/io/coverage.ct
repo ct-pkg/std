@@ -22,16 +22,16 @@ int main(int argc, char **argv)
     path = (argc > 1) ? argv[1] : "std-io-coverage.txt";
 
     /* ---- open failures ------------------------------------------------- */
-    missing = "/nonexistent-dir/ct-std-io-coverage".open("r");
+    missing = "/nonexistent-dir/ct-std-io-coverage".open_file("r");
     tp->check_true(missing == 0, "Path.open: missing path returns NULL");
     tp->check_eq_int(missing.close(), 0, "File.close: NULL handle is success");
-    missing = path.open("q");
+    missing = path.open_file("q");
     tp->check_true(missing == 0, "Path.open: an invalid mode returns NULL");
-    dir = dot.open("w");
+    dir = dot.open_file("w");
     tp->check_true(dir == 0, "Path.open: a directory cannot be opened for writing");
 
     /* ---- write side ---------------------------------------------------- */
-    f = path.open("w");
+    f = path.open_file("w");
     tp->check_true(f != 0, "Path.open: create for writing");
     tp->check_eq_int(f.write("hello", 5), 5, "File.write: returns the byte count");
     tp->check_eq_int(f.write("", 0), 0, "File.write: n == 0 writes nothing");
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     tp->check_eq_int(f.read(buf, 1), -1, "File.read: after close fails");
 
     /* ---- read side ----------------------------------------------------- */
-    f = path.open("r");
+    f = path.open_file("r");
     tp->check_true(f != 0, "Path.open: open for reading");
     tp->check_eq_int(f.read(buf, 0), 0, "File.read: n == 0 reads nothing");
     tp->check_eq_int(f.read(buf, -1), -1, "File.read: a negative count fails");
@@ -59,11 +59,11 @@ int main(int argc, char **argv)
     tp->check_eq_int(f.close(), 0, "File.close: the read handle closes");
 
     /* ---- append -------------------------------------------------------- */
-    f = path.open("a");
+    f = path.open_file("a");
     tp->check_true(f != 0, "Path.open: append mode");
     tp->check_eq_int(f.write("cd", 2), 2, "File.write: append");
     tp->check_eq_int(f.close(), 0, "File.close: the append handle closes");
-    f = path.open("r");
+    f = path.open_file("r");
     tp->check_eq_int(f.read(buf, 7), 7, "File.read: appended length");
     buf[7] = 0;
     tp->check_eq_str(buf, "hellocd", "File.read: appended content");

@@ -21,7 +21,7 @@ int main(void)
     tp->init();
 
     /* 1. Read: every index is a BYTE offset, every length is in BYTES. */
-    tp->check_eq_int(s.len(), 9, "len");
+    tp->check_eq_int(s.length(), 9, "len");
     tp->check_eq_int(s.find("ct"), 7, "find");
     tp->check_eq_int(s.find("zz"), -1, "find misses");
     tp->check_eq_int(s.find_char(','), 5, "find_char");
@@ -47,14 +47,14 @@ int main(void)
 
     /* 3. Case folding: the receiver is only read, the result goes to a buffer.
        A literal receiver is safe here because nothing writes through it. */
-    tp->check_eq_int("Hello".to_lower(word, 8), 0, "to_lower");
-    tp->check_eq_str(word, "hello", "to_lower result");
-    tp->check_eq_int("Hello".to_upper(word, 8), 0, "to_upper");
-    tp->check_eq_str(word, "HELLO", "to_upper result");
-    tp->check_eq_int("Hello".to_upper(word, 5), -1, "to_upper needs room for the NUL");
+    tp->check_eq_int("Hello".lowercase(word, 8), 0, "lowercase");
+    tp->check_eq_str(word, "hello", "lowercase result");
+    tp->check_eq_int("Hello".uppercase(word, 8), 0, "uppercase");
+    tp->check_eq_str(word, "HELLO", "uppercase result");
+    tp->check_eq_int("Hello".uppercase(word, 5), -1, "uppercase needs room for the NUL");
 
     /* 4. Bytes, not characters: "é" is one character and two bytes. */
-    tp->check_eq_int("é".len(), 2, "len counts bytes");
+    tp->check_eq_int("é".length(), 2, "len counts bytes");
     tp->check_eq_int("é".find_char('z'), -1, "indexes are byte offsets too");
 
     return tp->report();
