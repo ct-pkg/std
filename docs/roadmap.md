@@ -1,0 +1,99 @@
+# `std` Roadmap（分期提案）
+
+| 项 | 值 |
+| --- | --- |
+| 性质 | 路线图提案；版本位**待负责人确认**，不是既成事实 |
+| 依据 | [设计正文 §7 施工顺序](std-scope-and-presentation.md)、[评审与阶段文档](std-open-items-review-and-staging.md) |
+| 当前版本 | `0.3.2`（`v0.3.2`） |
+
+## 1. 分期总表
+
+| 期 | 主题 | 版本位（提案） | 依赖 | 是否可并行 |
+| --- | --- | --- | --- | --- |
+| P0 | 改名与删除（破坏性） | `0.4.0` | 无 | 起点 |
+| P1 | `str` 内存方法、`num` ctype、`math` 新族 | `0.5.0` | P0 | 与 P3 可并行 |
+| P2 | `env` / `process` / `errno` / `locale` / `wchar` | `0.6.0` | P1 | 与 P3 可并行 |
+| P3 | stdio：`File` / `FileDesc` | `0.7.0` | P0 | 与 P1、P2 可并行 |
+| P4 | `fs` 补全与 `Dir` | `0.8.0` | P2 | 与 P5 可并行 |
+| P5 | `time` 与 `Timer` | `0.9.0` | P2 | 与 P4 可并行 |
+| P6 | 资源对象 `Drop` 模板收口 | `0.10.0` | P3、P4、P5 | 串行汇合点 |
+| P7 | `net`（TCP + UDP） | `0.11.0` | P6 + 语言侧别名 | 串行末段 |
+
+版本规则提案：每期一个 MINOR 位，PATCH 留给期内的修复；`0.4.0` 起按上表递增。**全部版本位待负责人确认。**
+
+## 2. 各期交付与验收
+
+通用验收：构建通过、`tests/run.sh` 通过、`ct pkg check` 通过。下表只列该期特有检查。
+
+### P0 — 改名与删除（`0.4.0` 提案）
+
+- 交付：`String` → `CStrOps`；`len` → `length`；`open` → `open_file`；删除 `to_string`（只留 `to_str`）；`to_upper`/`to_lower` → `uppercase`/`lowercase`；删除 `printf`。
+- 验收：旧名零命中；`printf` 相关样例改为 `to_str`/`concat` + `write` 并跑通。
+
+### P1 — `str` / `num` / `math`（`0.5.0` 提案）
+
+- 交付：`char` 的 7 个 `is_*`；`char *` 的 `copy_from`/`move_from`/`fill`/`compare_with`/`find_byte`/`compare_prefix` 与 `split_into`；`math` 新族（7 个生僻名改全称，其余保留原名）；`sort`/`binary_search`、`scale_by_power_of_two`/`split_exponent`/`split_fraction`。
+- 验收：每条 M0/M1 转发；无宿主重名；重叠/不重叠拷贝、三态比较、指针返回各有夹具；`split_into` 缓冲不足返回所需数量且不写入。
+
+### P2 — `env` / `process` / `errno` / `locale` / `wchar`（`0.6.0` 提案）
+
+- 交付：`get_env`/`Env.set`/`unset`；`Process.get_pid` 等与 `fork`/`execute*`/`system`/`pipe_open`/`wait*`、`signal`/`alarm`；`Errno.get_last`/`error_message`；`"zh_CN.UTF-8".make_locale()` → `own Locale` + `apply`/`conventions`；宽字符模块。
+- 验收：借用指针语义写明；`fork` 后状态注意事项；`Locale.apply` 全局状态与 `LC_NUMERIC` 浮点往返说明；宽字符转换夹具。
+
+### P3 — stdio（`0.7.0` 提案）
+
+- 交付：`File`（`FILE *` 宿主，③）与 `FileDesc`（`open_as_file_desc`，③）；`seek`/`tell`/`rewind_start`/`at_end_of_file`/`has_error`/`clear_error`/`read_char`/`write_char`/`unread_char`/`read_line`/`write_line`/`flush`；变参替代（`to_str`/`concat`、`parse_*`、格式化 + `write`）。
+- 验收：`own` 关闭与幂等 `close` 夹具；`stdout`/`stderr`/`stdin` 裸宿主不归包管；EOF/错误位覆盖。
+
+### P4 — `fs` 与 `Dir`（`0.8.0` 提案）
+
+- 交付：`access`/`stat(&st)`/`read_link`/`resize`/`set_mode`/`resolve_path`/`is_readable`/`is_writable`/`size`/`mode`/`modification_time`；`Dir.current()`/`dir.path`/`dir.enter`/`open_dir`；`scan_directory`。
+- 验收：`struct stat` 原样暴露；三个便捷方法不替代 `stat`；`is_readable`/`is_writable` 的真实身份限制；大目录流式列举。
+
+### P5 — `time` 与 `Timer`（`0.9.0` 提案）
+
+- 交付：`now_seconds`/`now_nanoseconds`/`diff_seconds`/`sleep_milliseconds`；`Time.year`/`month`/`day`/`hour`/`minute`/`second`/`format`/`from_parts`；`Timer`（`make_timer`/`make_timer_once` + `start`/`stop`/`remaining`）。
+- 验收：不挂 `long`；不做 `TimeParts` 值类型；`tm` 只在 shim 内；时区行为写明；`Timer` 通知走 `signal`、不含回调。
+
+### P6 — 资源对象收口（`0.10.0` 提案）
+
+- 交付：`File` / `Dir` / `FileDesc` / `Timer` 的 `Drop` 模板统一；`Socket` 为 `FileDesc` 别名（能力待语言侧）。
+- 验收：`own` 样例、`close` 幂等、别名边界；四类资源释放路径一致。
+
+### P7 — `net`（`0.11.0` 提案）
+
+- 交付：`Socket`（TCP + UDP）+ `"host:80".connect()` + `bind_to`/`listen_backlog`/`accept`/`send`/`receive`/`shutdown_both`/`close`；`resolve_host`；`set_option`；`parse_ip`；`receive_from`；`send_message`/`receive_message`。
+- 验收：TCP/UDP loopback 回环；`Drop` 关闭；`receive` 字节数出参；超时与 `set_option` 行为；`iovec` 构造/所有权写明。
+
+## 3. 外部依赖
+
+| 依赖 | 影响期 | 状态 | 处理 |
+| --- | --- | --- | --- |
+| `Socket` 与 `FileDesc` 的别名能力（同一类型、可互相赋值） | P7 | **待语言侧** | 落地前 P7 不开工；P6 可先按 `FileDesc` 单一类型收口 |
+| 语言侧 `Str` 内置化 | `Str` 删除作业 | **待语言侧** | 内置化落地且可在 std 使用前，不执行任何删除 |
+
+## 4. `Str` 删除的挂载
+
+- 作业单：[`Str` 删除作业单](str-removal-work-order.md)。
+- 挂载期次：**P2 之后、与 P4/P5 并行**的文档清理项；不单独占版本位。
+- 触发条件：语言侧 `Str` 内置化落地并可在 std 正常使用；之前不许删。
+- 执行方式：按作业单四批（代码注释、周边文档、设计文档、历史记录）各自独立提交，按批回退。
+
+## 5. 关键路径
+
+```
+P0 ── P1 ── P2 ──┬── P4 ──┐
+ │                └── P5 ──┼── P6 ── P7
+ └── P3 ───────────────────┘
+```
+
+- **串行主干**：P0 → P1 → P2 → P4/P5 → P6 → P7。
+- **可并行**：P3 在 P0 之后即可与 P1/P2 同时进行；P4 与 P5 在 P2 之后可并行。
+- **汇合点**：P6 必须等 P3、P4、P5 全部完成。
+- **整体可用里程碑**：**P6**。此时字符串、数值、IO、文件系统、时间与资源释放均可按 CT 方式直接书写，C 程序员可照着写日常程序；P7 在其上补网络，达成全库覆盖。
+
+## 6. 待确认
+
+1. 版本位映射（`0.4.0`–`0.11.0`）是否照此提案。
+2. `Str` 删除是否按“P2 后并行”安排。
+3. P6 作为“整体可用”里程碑、P7 作为“全库覆盖”是否认可。
