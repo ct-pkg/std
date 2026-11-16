@@ -56,7 +56,7 @@ locale/宽字符、线程/异步等 POSIX 能力都在交付面。自有设施�
 ### 1.5 ③ 的准入（只此一条）
 
 **真的持有资源**：一次调用创建、多次调用共享、必须显式关闭。命中后仍先判能否寄生基本类型；
-判不掉才允许新类型 + `Drop`，其余留在 ① 或 ②。已定 `Dir`、`Socket`；`Fd`、`Timer` 按此条判定。
+判不掉才允许新类型 + `Drop`，其余留在 ① 或 ②。已定 `Dir`、`Socket`（与 §2.10 A3/A4、§8.2 Q11 的「待评估」表述不一致，评审建议见[评审稿](std-open-items-review-and-staging.md)，**待负责人裁定**）；`Fd`、`Timer` 按此条判定。
 
 ### 1.6 风格准绳与偏离登记
 
@@ -405,7 +405,7 @@ drop ran
 
 | 编号 | 偏离 | 为什么保留 | 取舍/后续 |
 | --- | --- | --- | --- |
-| D1 | `std::math::Math.sqrt(x)` 是函数式，不是 `x.sqrt()` | 数学记号可读性最好，且是历史接口（§5.1 保留记号、不展开） | 新 math 能力一律走 `Float`/`Real` 方法层；namespace 不再扩张，长期可考虑让 `Math` 退役 |
+| D1 | `std::math::Math.sqrt(x)` 是函数式，不是 `x.sqrt()` | 数学记号可读性最好，且是历史接口（§5.1 保留记号、不展开） | 新 math 能力一律走 `Float`/`Real` 方法层；namespace 不再扩张，长期可考虑让 `Math` 退役。与 Q9 存在张力，评审建议 0.4.0 不退役（见[评审稿](std-open-items-review-and-staging.md)，**待负责人裁定**） |
 | D2 | 变参格式化/解析不封装（`scanf`/`sprintf`/`fprintf`） | CT 无变参声明机制，shim 也绕不开；`printf` 仅保留 0.3.0 遗留、不再扩展 | 不做；成对替代见 §2.9（`to_string`/`concat`、`parse_*`、格式化+`write`） |
 | D3 | `get_dir(out, cap)` 用出参，不是 `get_dir()` 返回值 | 无接收者，且返回静态缓冲区不安全 | 若将来允许静态槽（如 `to_string`），可改成链式 |
 | D4 | `parse_long(out)` / `format_time(out, cap)` 出参 + 状态码 | 失败必须可报；链式返回值无法同时表达 | 与 `copy`/`read_line` 同类，包内已有先例 |
@@ -467,7 +467,7 @@ import std::net::Socket;
 
 ### 5.1 命名
 
-- 守 §5.1：`snake_case`、动词开头；`get_` / `set_` / `has_` / `is_` / `to_` / `from_` 合规。
+- 守命名规范：`snake_case`、动词开头；`get_` / `set_` / `has_` / `is_` / `to_` / `from_` 合规。
 - **方法层一律用展开式**：能读出「动作 + 对象」的 `snake_case`，不再豁免 libc 缩写。
   例：`frexp` → `split_exponent`、`ldexp` → `scale_by_power_of_two`、`modf` → `split_fraction`、
   `qsort` → `sort`、`bsearch` → `binary_search`、`strtol` → `parse_long`、`atoi` → `to_int`、
@@ -633,6 +633,7 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 - **Q10（已定）**：`Str` 归语言侧内置类型，本仓完全删除——不定义、不提供、不提供方法层，只作消费方。此前「允许在 `Str` 上挂方法」的结论作废；`char *` 与 `Str` 的分工由语言侧决定，本仓不再制定。
 - **Q11**（§2.10 A3/A4）：`Dir` / `Socket` 接受 struct 对等类型，还是尝试用别名/裸类型宿主？
 - **Q12**（§2.10 A5）：数组/列表类结果是否引入列表 struct，还是继续用调用方缓冲？
+- Q1–Q3、Q9、Q11、Q12 的评审结论见[评审稿](std-open-items-review-and-staging.md)，均**待负责人裁定**。
 
 ### 8.3 本文可被证伪的假设
 
