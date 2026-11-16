@@ -516,7 +516,7 @@ int get_last_error();             /* std::fs::FsEnv.get_last_error()，见 §10.
 
 保留名豁免（**不是合规范例**，按规范 §5.1 的保留名条款处理，不随本条改名）：
 
-- `std::str` 的 `len()` —— 与内置 `Str.len` / `Vec.len` 对齐的既有查询名；
+- `std::str` 的 `len()` —— 与语言侧内置 `Str.len` / `Vec.len` 对齐的既有查询名；
 - `std::num` 的 `max()` / `min()` —— `0.2.0` 起的存量名，数学惯用词，首词不是动词，
   但已列入保留清单（CT 侧同步补进 §5.1）。
 

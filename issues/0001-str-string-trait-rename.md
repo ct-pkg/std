@@ -33,7 +33,7 @@ vtable、不分配、不持有长度。真正拥有内存、带长度的字符�
 | `std/str/String.m.ct:49` | `pub trait String {` —— 14 个纯读/写调用方缓冲区的方法，无字段、无 Drop |
 | `std/str/String.m.ct:66` | `map trait String for type char * {` —— 宿主是裸 `char *`，零成本静态映射 |
 | `std/str/String.m.ct:17-22` | 「Every method here reads the receiver…nothing allocates and nothing mutates the receiver」 |
-| `ct-lang/lib/std/Str.h.ct:18-21` | `pub struct Str { char *data; int len; } use Drop;` —— 内置、拥有、带长度、随作用域释放 |
+| 语言侧内置 `Str`（实现不在本仓） | `pub struct Str { char *data; int len; } use Drop;` —— 内置、拥有、带长度、随作用域释放 |
 
 即：同一个包里，`String` 不拥有，`Str` 拥有；名字给出的暗示与所有权相反。
 

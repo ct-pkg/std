@@ -92,7 +92,7 @@
 | `strrstr` | 无 | 不建议包 | 非标准（GNU），需求低 |
 | `strspn` / `strcspn` / `strpbrk` | 无 | 不建议包 | 低频，语义易与 `find` 混淆 |
 | `strtok` / `strtok_r` | 无 | 不建议包 | 有状态分词；应由自建游标类型承担 |
-| `strdup` / `strndup` | 无 | 不建议包 | 拥有字符串归内置 `Str`；`char *` 层不引入分配 |
+| `strdup` / `strndup` | 无 | 不建议包 | 拥有字符串归语言侧内置 `Str`；`char *` 层不引入分配 |
 | `strcoll` / `strxfrm` | 无 | 不建议包 | locale 排序 |
 | `strerror` | 无 | 建议包·第二档 | `std::errno::Errno.message(code, out, cap)`；`-1` 放不下（§2.7） |
 | `strcasecmp` / `strncasecmp`（`strings.h`） | 无 | 建议包·第二档 | `compare_ignore_case(other)`，宿主 `char *`；返回 `<0` / `0` / `>0` |

@@ -236,7 +236,7 @@ shim 是主形态，我同意；但"零代码映射"这个描述只在**纯转�
 | 候选 struct | 用途 | 是否必要 | 不动 struct 的等价路子 | 备注 |
 | --- | --- | --- | --- | --- |
 | `Char`（`char` 的对等体） | 挂 `is_digit` / `to_upper` | **不必要** | 已有 `std::num::Char` trait 映射 `char` 宿主（`Num.m.ct:94-112`） | 再造 struct 等于同一批方法两套入口 |
-| `Str`（`char *` 的对等体） | 长度 + 拥有 + 方法 | **对"便利"不必要**；对"拥有"已有内置 `Str` | `std::str::String` 已映射 `char *`；内置 `Str`（`lib/std/Str.h.ct`）已拥有 | 再造第三个"字符串"是语义重叠，见 §2.6.3 |
+| `Str`（`char *` 的对等体） | 长度 + 拥有 + 方法 | **对"便利"不必要**；对"拥有"已有内置 `Str` | `std::str::String` 已映射 `char *`；语言侧内置 `Str` 已拥有（实现不在本仓） | 再造第三个"字符串"是语义重叠，见 §2.6.3 |
 | `Path` struct | 挂 `open` / `exists` | **不必要** | 现有 `Path` trait 已挂 `char *`（`std/io/File.m.ct:11-16`） | 变 struct 要先决定借用还是拥有，并为此加转换 |
 | 数组包装 struct | 让数组"有方法" | **不必要** | 传 `T *` + `len`（本仓 `slice` / `copy_to` 就是） | CT 的数组参数本来就退化为指针 |
 | `Dir`（`DIR *` 对等体） | 遍历 | **可作为不透明别名，不必是 CT struct** | 沿用 `IoFile` 先例：`pub type Dir = struct ct_dir;` + 显式 `close` | 不需要 vptr、不需要 `Drop` |
@@ -500,7 +500,7 @@ shim 是主形态，我同意；但"零代码映射"这个描述只在**纯转�
 | 18 | `struct Char { char c; } use CharOps;` + `Char a[4]` | `sizeof(Char)=16`、`sizeof(char)=1`、`sizeof(a)=64` |
 | 19 | `chain_new(1).get()`（工厂返回 struct 值） | `error: a method call on a temporary is only allowed at the start of a statement or of an assignment` |
 | 20 | 同命名空间 `pub trait Char` + `pub struct Char` | 生成 `.c` 写 `pkg_x_Char *_self = (pkg_x_Char *)self;`（缺 `struct`），cc 报 3 错 |
-| 21 | `char *` ↔ `Str`：`str_from` / `str_c_str` / `retain` | 规范口径：三者都**分配副本**（`Str.h.ct:37`、`:117-118`、`:132-133`），`str_c_str` 的返回值由调用方 `free`；未实跑 |
+| 21 | `char *` ↔ `Str`：`str_from` / `str_c_str` / `retain` | 规范口径：三者都**分配副本**（语言侧内置 `Str` 的实现，不在本仓）`str_c_str` 的返回值由调用方 `free`；未实跑 |
 | 22 | `struct Char2 { char c; }` + 固有 `impl Char2 { is_digit() }` | `sizeof(Char2)=1`、`Char2[4]`=4 B；生成头是真原型、无 vptr |
 | 23 | `chain2_new(9).get()`（固有方法、值返回） | 与 #19 同一条 rvalue 错误 |
 
