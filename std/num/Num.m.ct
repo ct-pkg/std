@@ -13,12 +13,8 @@
  * `static inline`, so the calls stay direct -- no wrapper, no interface value,
  * no vtable.
  *
- * `to_string()` is the convenience form: four static 32-byte slots handed out
- * round-robin, **not thread-safe**; two calls inside one expression take two
- * different slots, and a fifth live result reuses the first. Use
- * `to_str(buf, cap)` when the buffer's lifetime or thread matters.
- * `to_str` truncates silently; `to_base` never does -- it returns NULL when the
- * sign and every digit do not fit.
+ * `to_str` writes into the caller's buffer and truncates silently; `to_base`
+ * never does -- it returns NULL when the sign and every digit do not fit.
  *
  * License: MIT (see LICENSE).
  */
@@ -35,7 +31,6 @@ pub trait Int {
     int   max(int other);
     int   min(int other);
     char *to_str(char *out, int cap);
-    char *to_string();
     char *to_base(int base, char *out, int cap);
 }
 
@@ -45,7 +40,6 @@ map trait Int for type int {
     max(v, other) -> std_num_max(v, other);
     min(v, other) -> std_num_min(v, other);
     to_str(v, out, cap) -> std_num_to_str(v, out, cap);
-    to_string(v) -> std_num_to_string(v);
     to_base(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
 }
 
@@ -56,7 +50,6 @@ pub trait Long {
     long  max(long other);
     long  min(long other);
     char *to_str(char *out, int cap);
-    char *to_string();
     char *to_base(int base, char *out, int cap);
 }
 
@@ -66,7 +59,6 @@ map trait Long for type long {
     max(v, other) -> std_num_max(v, other);
     min(v, other) -> std_num_min(v, other);
     to_str(v, out, cap) -> std_num_to_str(v, out, cap);
-    to_string(v) -> std_num_to_string(v);
     to_base(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
 }
 
@@ -76,7 +68,6 @@ pub trait LLong {
     long long max(long long other);
     long long min(long long other);
     char     *to_str(char *out, int cap);
-    char     *to_string();
     char     *to_base(int base, char *out, int cap);
 }
 
@@ -86,7 +77,6 @@ map trait LLong for type long long {
     max(v, other) -> std_num_max(v, other);
     min(v, other) -> std_num_min(v, other);
     to_str(v, out, cap) -> std_num_to_str(v, out, cap);
-    to_string(v) -> std_num_to_string(v);
     to_base(v, base, out, cap) -> std_num_to_base(v, base, out, cap);
 }
 

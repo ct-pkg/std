@@ -3,10 +3,8 @@
  *
  * Covers the parts with observable semantics: the failure return values (NULL
  * from open, -1 from read/write after close), the byte counts, the idempotent
- * close, and one real roundtrip through the filesystem. `printf` is checked
- * only for its return value; its bytes go to stdout and are not captured.
+ * close, and one real roundtrip through the filesystem.
  */
-import std::io::Io;
 import std::io::Stdout;
 import std::io::File;
 import std::test::Test;
@@ -49,7 +47,6 @@ int main(int argc, char **argv)
     tp->check_eq_int(f.read(buf, 1), 0, "read at EOF returns 0");
     tp->check_eq_int(f.close(), 0, "close of the read handle");
 
-    tp->check_eq_int(std::io::printf(""), 0, "printf with an empty format writes nothing");
     std::io::Stdout.putchar('\n');
 
     return tp->report();

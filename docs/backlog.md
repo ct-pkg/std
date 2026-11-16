@@ -138,3 +138,44 @@
 - 不动 `ct.pkg` 的身份字段，不动版本号，不打 tag，除非有明确的发布决定。
 - `Vec`、`Map` 属内置层：本包**只调用，不泛化、不补齐**，也不把这类缺口转成别处的任务；本仓
   不为它们排任何工作。
+
+## 7. README 待改（P0 删除批留痕）
+
+**状态：待做项，不是已完成变更。** P0 删除批只删了代码里的 `to_string` 与 `printf`（含
+`std/io/Io.h.ct`），README 示例未改写，留到后续文档批统一处理。处数为命中行数，不是调用次数。
+
+| 文件 | `to_string` | `printf` | `std::io::Io` | 需要换成 |
+| --- | --- | --- | --- | --- |
+| `std/io/README.md` | 0 | 28 | 5 | 演示输出改 `fprintf(stdout, ...)`，或删段落；删 `import std::io::Io;` 与 `Io.h.ct` 表项 |
+| `std/str/README.md` | 3 | 12 | 4 | `to_string` → `to_str(buf, cap)`；输出改 `fprintf(stdout, ...)`；删 `Io` import |
+| `std/num/README.md` | 21 | 11 | 3 | 删四槽环形说明；`to_string` → `to_str(buf, cap)`；输出改 `fprintf(stdout, ...)`；删 `Io` import |
+| `std/math/README.md` | 21 | 9 | 3 | 删四槽环形说明；`to_string` → `to_str(buf, cap)`；输出改 `fprintf(stdout, ...)`；删 `Io` import |
+| `std/utf8/README.md` | 0 | 8 | 4 | 输出改 `fprintf(stdout, ...)`；删 `Io` import |
+| `std/fs/README.md` | 0 | 7 | 4 | 输出改 `fprintf(stdout, ...)`；删 `Io` import |
+| `std/arena/README.md` | 0 | 2 | 2 | 输出改 `fprintf(stdout, ...)`；删 `Io` import |
+| `std/README.md` | 0 | 0 | 1 | 模块表的 `std::io::Io` 改为 `File`/`Stdout` |
+
+关联事实：`std/io/Io.h.ct` 已删除；`std::num` / `std::math` 的 `to_string` 方法已删除；成长写法只剩
+`to_str(buf, cap)`。
+
+## 7. P0 删除后的 README 待改点（后续文档批）
+
+`to_string` 与 `printf` 已从代码删除（`Io.h.ct` 已移除），README 示例尚未跟改。下表按**命中行数**
+计，不是出现次数。后续文档批按此表逐文件处理：
+
+| 文件 | 待改项 | 处数 | 改法 |
+| --- | --- | --- | --- |
+| `std/math/README.md` | `to_string` | 21 | 改为 `to_str(buf, cap)` 示例；删除四槽环形缓冲区相关段落 |
+| `std/math/README.md` | `printf` | 12 | 演示输出改 `fprintf(stdout, ...)`，或删除该段示例 |
+| `std/num/README.md` | `to_string` | 21 | 改为 `to_str(buf, cap)`；删除四槽环形缓冲区相关段落 |
+| `std/num/README.md` | `printf` / `std::io::Io` | 14 | 演示输出改 `fprintf(stdout, ...)`；删除 `import std::io::Io;` |
+| `std/str/README.md` | `to_string` | 3 | 改为 `to_str(buf, cap)` |
+| `std/str/README.md` | `printf` / `std::io::Io` | 16 | 演示输出改 `fprintf(stdout, ...)`；删除 `import std::io::Io;` |
+| `std/io/README.md` | `printf` / `std::io::Io` | 31 | 删除 printf 与 `Io.h.ct` 相关段落；演示输出改 `fprintf(stdout, ...)` |
+| `std/utf8/README.md` | `printf` / `std::io::Io` | 12 | 演示输出改 `fprintf(stdout, ...)`；删除 `import std::io::Io;` |
+| `std/fs/README.md` | `printf` / `std::io::Io` | 11 | 同上 |
+| `std/arena/README.md` | `printf` / `std::io::Io` | 4 | 同上 |
+| `std/README.md` | `std::io::Io` | 1 | 模块表去掉 `Io` |
+
+验收：改完后 `grep -rn "to_string\|std::io::printf\|std::io::Io" std/*/README.md std/README.md`
+无命中；本批不改代码。

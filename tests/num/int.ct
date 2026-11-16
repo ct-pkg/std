@@ -2,8 +2,8 @@
  *
  * `int` is an ordinary host: the same method set as `Long` / `LLong`, under
  * its own type key, so an `int` and a `long` never borrow each other's methods.
- * The receiver must be a variable on compilers before 0.20.0; the literal
- * spelling `(5).to_string()` is rejected there.
+ * The receiver must be a variable on compilers before 0.20.0; a literal
+ * receiver was rejected there.
  *
  * This program is compiled and run by tests/run.sh. */
 import std::num::Num;
@@ -19,7 +19,6 @@ int main(void)
 
     tp->init();
 
-    tp->check_eq_str(n.to_string(), "65", "to_string");
     tp->check_eq_str(n.to_base(16, buf, 16), "41", "to_base 16");
     tp->check_eq_int(lo.clamp(0, 3), 3, "clamp");
 

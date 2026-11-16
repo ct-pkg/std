@@ -31,12 +31,10 @@ int main(void)
     tp->check_eq_int((int)a.max(b), 9, "max");
     tp->check_eq_int((int)a.min(b), 5, "min");
     tp->check_eq_str(v.to_str(buf, 32), "65", "to_str");
-    tp->check_eq_str(a.to_string(), "5", "to_string");
     tp->check_eq_str(v.to_base(16, buf, 32), "41", "to_base 16");
     tp->check_true(v.to_base(16, buf, 2) == 0, "to_base refuses to truncate");
 
     tp->check_eq_int((int)ll.abs(), 88, "long long abs");
-    tp->check_eq_str(ll.to_string(), "-88", "long long to_string");
     tp->check_eq_str(ll.to_base(2, buf, 32), "-1011000", "long long to_base 2");
 
     tp->check_eq_int(iv.abs(), 65, "int abs");
@@ -45,7 +43,6 @@ int main(void)
     tp->check_eq_int(ia.max(ib), 9, "int max");
     tp->check_eq_int(ia.min(ib), 5, "int min");
     tp->check_eq_str(iv.to_str(buf, 32), "65", "int to_str");
-    tp->check_eq_str(ia.to_string(), "5", "int to_string");
     tp->check_eq_str(iv.to_base(16, buf, 32), "41", "int to_base 16");
     tp->check_true(iv.to_base(16, buf, 2) == 0, "int to_base refuses to truncate");
 

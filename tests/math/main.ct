@@ -36,10 +36,6 @@ int main(void)
     tp->check_true(inf.is_inf(), "is_inf");
 
     tp->check_eq_str(d.to_str(buf, 32), "2.6", "to_str keeps the short form");
-    tp->check_eq_str(d.to_string(), "2.6", "to_string keeps the short form");
-    tp->check_eq_str(precise.to_string(), "1.2345678899999999",
-                   "17 digits when 6 do not round-trip");
-    tp->check_true(atof(third.to_string()) == third, "to_string round-trips through atof");
     tp->check_true(atof(precise.to_str(buf, 32)) == precise, "to_str round-trips through atof");
 
     return tp->report();

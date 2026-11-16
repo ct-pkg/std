@@ -6,9 +6,7 @@
  * directory as an include root. Everything is `static inline`, so an unused
  * helper is dropped instead of triggering `-Wunused-function`.
  *
- * `to_str` writes into the caller's buffer; `to_string` is **not thread-safe**:
- * it hands out one of four static 32-byte slots, so a fifth live result reuses
- * the first slot.
+ * `to_str` writes into the caller's buffer and truncates silently.
  *
  * A negative argument to the ctype helpers is cast to `unsigned char`, which is
  * what the C library requires; that is the safe spelling compared with
@@ -47,18 +45,6 @@ static inline char *std_num_to_str(long long v, char *out, int cap)
 {
     if (out == 0 || cap <= 0) return out;
     snprintf(out, (size_t)cap, "%lld", v);
-    return out;
-}
-
-/* Four slots, handed out round-robin. Not thread-safe; a fifth live result
-   overwrites the first, and two calls inside one expression take two slots. */
-static inline char *std_num_to_string(long long v)
-{
-    static char ring[4][32];
-    static int slot = 0;
-    char *out = ring[slot];
-    slot = (slot + 1) & 3;
-    snprintf(out, sizeof ring[0], "%lld", v);
     return out;
 }
 

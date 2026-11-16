@@ -2,13 +2,12 @@
  * Real.m.ct - the value half of std::math (`float` / `double` methods).
  *
  * `float` keeps the `f`-suffixed libm entry points so the argument and the
- * result stay `float`; `double` uses the unsuffixed ones. `to_str` / `to_string`
- * call the helpers in `Real.shim.h`, which sits beside this file and shares its
- * base name; that ring is separate from the integer one in `std::num` and is
- * likewise **not thread-safe**. The text is round-trip exact: `%g` when it
- * already reads back as the same `double`, `%.17g` otherwise.
+ * result stay `float`; `double` uses the unsuffixed ones. `to_str` calls the
+ * helper in `Real.shim.h`, which sits beside this file and shares its base name.
+ * The text is round-trip exact: `%g` when it already reads back as the same
+ * `double`, `%.17g` otherwise.
  *
- * Only `double` has `to_str` / `to_string`; `Float` stays purely numeric.
+ * Only `double` has `to_str`; `Float` stays purely numeric.
  *
  * License: MIT (see LICENSE).
  */
@@ -41,7 +40,6 @@ pub trait Real {
     int     is_nan();
     int     is_inf();
     char   *to_str(char *out, int cap);
-    char   *to_string();
 }
 
 map trait Real for type double {
@@ -53,5 +51,4 @@ map trait Real for type double {
     is_nan(v) -> isnan(v);
     is_inf(v) -> isinf(v);
     to_str(v, out, cap) -> std_math_double_to_str(v, out, cap);
-    to_string(v) -> std_math_double_to_string(v);
 }

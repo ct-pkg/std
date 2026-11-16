@@ -1,5 +1,5 @@
 /* std::num - every method of the four hosts (Int / Long / LLong / Char), with
- * the buffer-capacity boundaries, the base conversions and the to_string ring.
+ * the buffer-capacity boundaries and the base conversions.
  *
  * `abs(INT_MIN)` / `labs(LONG_MIN)` / `llabs(LLONG_MIN)` are undefined
  * behaviour in C (the result is not representable), so those calls are
@@ -118,20 +118,6 @@ int main(void)
     tp->check_true(i65.to_base(16, sent, 0) == sent, "Int.to_base: cap 0 returns the buffer");
     tp->check_eq_str(sent, "XYZ", "Int.to_base: cap 0 leaves it untouched");
 
-    /* ---- Int: the four-slot to_string ring ----------------------------- */
-    r0 = i0.to_string();
-    r1 = i1.to_string();
-    r2 = i5.to_string();
-    r3 = i9.to_string();
-    tp->check_true(r0 != r1 && r1 != r2 && r2 != r3 && r0 != r3,
-                  "Int.to_string: four live results take four slots");
-    r4 = i65.to_string();
-    tp->check_true(r4 == r0, "Int.to_string: the fifth call reuses slot 0");
-    tp->check_eq_str(r0, "65", "Int.to_string: slot 0 now holds the fifth value");
-    tp->check_eq_str(r1, "-1", "Int.to_string: slot 1 stayed intact");
-    tp->check_eq_str(r2, "5", "Int.to_string: slot 2 value");
-    tp->check_eq_str(r3, "9", "Int.to_string: slot 3 value");
-
     /* ---- Long --------------------------------------------------------- */
     tp->check_eq_int((int)l0.abs(), 0, "Long.abs: 0");
     tp->check_eq_int((int)l1.abs(), 1, "Long.abs: -1");
@@ -145,7 +131,6 @@ int main(void)
     tp->check_eq_int((int)l5.max(5), 5, "Long.max: equal");
     tp->check_true(l65.to_str(buf, 32) == buf, "Long.to_str: returns the buffer");
     tp->check_eq_str(buf, "65", "Long.to_str: 65");
-    tp->check_eq_str(lneg.to_string(), "-77", "Long.to_string: -77");
     tp->check_eq_str(l255.to_base(16, buf, 32), "ff", "Long.to_base: 255/16");
     tp->check_eq_str(lm255.to_base(16, buf, 4), "-ff", "Long.to_base: -255/16 cap 4 exact");
     tp->check_true(lm255.to_base(16, buf, 3) == 0, "Long.to_base: -255/16 cap 3 refused");
@@ -159,7 +144,6 @@ int main(void)
     tp->check_eq_int((int)llneg.max(ll255), 255, "LLong.max");
     tp->check_eq_int((int)llneg.min(ll255), -88, "LLong.min");
     tp->check_eq_str(ll255.to_str(buf, 32), "255", "LLong.to_str: 255");
-    tp->check_eq_str(llneg.to_string(), "-88", "LLong.to_string: -88");
     tp->check_eq_str(ll255.to_base(2, buf, 32), "11111111", "LLong.to_base: 255/2");
     tp->check_eq_str(llm255.to_base(10, buf, 32), "-255", "LLong.to_base: -255/10");
     tp->check_true(llmin.to_str(buf, 21) == buf, "LLong.to_str: LLONG_MIN cap 21 exact");
