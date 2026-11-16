@@ -124,7 +124,7 @@
 
 **反席（不退役）**：`Math` 是既有接口，退役破坏兼容；无接收者场景（常量表达式、静态计算）仍自然；D1 已登记保留。
 
-**结论：建议否决 0.4.0 退役**。新能力只加 `Float`/`Real` 方法层；`Math` 退役留到 1.0 评估，且必须先有兼容策略。
+**结论：建议否决 0.4.0 退役**。新能力只加 `Float`/`Real` 方法层；`Math` 退役留到 1.0 评估，且必须先有兼容策略。（负责人后续裁定直接删除 `Math` namespace，本节建议不采用；以裁定为准。）
 
 **依据**：§1.7 的破坏面控制；D1 的「namespace 不再扩张」已足够限制两套写法扩散。
 
@@ -141,9 +141,26 @@
 
 | 不一致 | 处理 | 状态 |
 | --- | --- | --- |
-| §1.5「已定 `Dir`、`Socket`」与 §2.10 A3/A4「待评估」、Q11 未决 | 评审建议统一为「接受 `Dir`/`Socket` 为 ③」，并据此关闭 A3/A4/Q11；已在该节加注指向本文 | **待负责人裁定** |
-| §3.6 D1 保留 `Math` 与 Q9 询问是否退役 | 评审建议 D1 保留（0.4.0 不退役），Q9 标为「0.4.0 不退役、1.0 再评估」；已在 D1 加注指向本文 | **待负责人裁定** |
+| §1.5「已定 `Dir`、`Socket`」与 §2.10 A3/A4「待评估」、Q11 未决 | 已统一为「`File` / `Dir` / `FileDesc` 均 ③；`Socket` 为 `FileDesc` 同义别名」，A3/A4/Q11 关闭 | 已裁定 |
+| §3.6 D1 保留 `Math` 与 Q9 询问是否退役 | 裁定删除 `Math` namespace，数学函数只提供方法形态；D1 改为「已删除」 | 已裁定 |
 | §5.1「守 §5.1」自指笔误 | 直接改为「守命名规范」 | 已改 |
+
+### 3.1 裁定结果（已落地到设计正文）
+
+| 项 | 裁定 | 落地位置 |
+| --- | --- | --- |
+| `Fd` | 不寄生 `int`，定名 `FileDesc`，③ 资源对象；`"a.bin".open_as_fd(open_read)` → `own FileDesc` | §1.5、§2.4、§2.7、§2.8 |
+| `Timer` | ③ 资源对象；`(100).make_timer(SIGRTMIN)` / `(250).make_timer_once(SIGRTMIN)` + `start`/`stop`/`remaining`；通知走 `signal`，不含回调 | §2.7、§2.8 |
+| A3 | 建 `Dir`（③）；`File` 与 `Dir` 为两个独立对象 | §2.5、§2.10 |
+| A4 | 建 `FileDesc`（③）；`Socket` 为同义别名，别名能力依赖语言侧 | §2.7、§2.10 |
+| A5 / Q12 | 不引入列表 struct；数组、动态列表、`Map` 归语言侧 | §2.10、§8.2 |
+| Q1 | `File.m.ct` 不拆编译单元 | §4.3、§8.2 |
+| Q2 | `File` 按 `own` + `Drop` 释放，显式 `close()` 幂等；`stdout` 等裸 `FILE *` 不归包管 | §2.4、§5.4、§8.2 |
+| Q3 | 方法名不设长度上限（已定）；`char *` 名字总数上限仍待定 | §5.1、§8.2 |
+| Q9 | 删除 `Math` namespace；数学函数只提供方法形态，全名为主、短名为别名 | §2.3、§3.6、§8.2 |
+| Q11 | 接受 `Dir` / `File` / `FileDesc` 为 struct 对等类型 | §1.5、§2.10、§8.2 |
+| `recv` | 改名 `receive`；`receive`/`send` 返回接收者本身，链式续接，字节数出参带回 | §2.4、§2.7、§6.2 |
+| 命名去冗余 | 方法名不重复宿主/命名空间已交代的信息：`file_size`/`file_mode`/`file_mtime` → `size`/`mode`/`modification_time`；`read_file`/`write_file` → `read`/`write`；`set_socket_option` → `set_option` | §5.1、§2.5、§2.7、§6.2 |
 
 ## 4. 评审轮次、顺序与裁定节点
 
@@ -174,7 +191,7 @@
 | P4 | `fs` 补全、`scan_directory` | A5/Q12（列表 struct） | G-final | 若否决列表，保持缓冲式 |
 | P5 | `time` 补全、`Timer` | `Timer` 形态（R1）、Q8（已定） | G-final | 资源型与测耗时要分开 |
 | P6 | `Dir` + `Drop` 模板、`Fd`/`Timer` 收口 | A3（R2）、`Fd`/`Timer`（R1） | G-final | 依赖 R1、R2 全部裁定 |
-| P7 | `net`（TCP＋UDP、`resolve_host`、`set_socket_option`） | A4/Q11（R2）、Q6（已定） | G-final | `Socket` 形态决定 `raw_fd()` |
+| P7 | `net`（TCP＋UDP、`resolve_host`、`set_option`） | A4/Q11（R2）、Q6（已定） | G-final | `Socket` 形态决定是否暴露 `raw_fd()` |
 
 **必须等全部裁定才能开始的阶段**：按总门禁，P0–P7 全部属于此列。若负责人将来放宽门禁，可按「依赖裁定」逐阶段提前，但不得跳过 G1/G2/G3 中对应的那一项。
 
