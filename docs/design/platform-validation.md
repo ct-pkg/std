@@ -6,7 +6,7 @@
 | 编译器 | **ct v0.67.0**（`requires = ct >= 0.67.0` 的唯一验证版本） |
 | macOS | arm64，clang，`bash tests/run.sh` **20/20** |
 | Linux | Ubuntu 24.04，gcc 13，Podman 镜像 `localhost/ct-ci:24.04`，`bash tests/run.sh` **20/20，0 warnings** |
-| CI | `.github/workflows/test.yml` 的 host 矩阵钉 `CT_REF: v0.67.0`（ubuntu/gcc + macos/clang）；`compiler-head` 仍跟 ct-lang `main` |
+| CI | run [44423095663](https://github.com/ct-pkg/std/actions/runs/44423095663)：ubuntu-latest/gcc **success**，macos-latest/clang **success**；`compiler-head` 未调度（仅 schedule / dispatch）。host 矩阵钉 `CT_REF: v0.67.0`，`compiler-head` 仍跟 main |
 
 ## 复现命令
 
