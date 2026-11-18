@@ -5,11 +5,6 @@ import std::math::Math;
 import std::math::Real;
 import std::test::Test;
 
-#include <float.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
-
 int main(void)
 {
     Test t;
@@ -34,8 +29,6 @@ int main(void)
     double nan = zero / zero;
     double inf = one / zero;
     double ninf = -one / zero;
-    double dmax = DBL_MAX;
-    double dmin = DBL_MIN;
     double dtiny = 5e-324;
     double sqneg;
     float fneg = -2.5f;
@@ -109,7 +102,8 @@ int main(void)
     tp->check_eq_str(inf.to_str(buf, 16), "inf", "Real.to_str: +inf");
     tp->check_eq_str(ninf.to_str(buf, 16), "-inf", "Real.to_str: -inf");
     tp->check_true(nan.to_str(buf, 16) == buf, "Real.to_str: NaN writes something");
-    tp->check_eq_int(isnan(strtod(buf, 0)), 1, "Real.to_str: NaN text reads back as NaN");
+    tp->check_eq_str(buf, "nan", "Real.to_str: NaN text");
+    tp->check_true(nan.is_nan(), "Real.is_nan: the value is NaN");
 
     return tp->report();
 }

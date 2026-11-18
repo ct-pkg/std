@@ -9,16 +9,12 @@
 import std::arena::Arena;
 import std::test::Test;
 
-#include <stdlib.h>
-
 int main(void)
 {
     Test t;
     Test *tp = &t;
     Arena a;
     Arena *ap = &a;
-    Arena seed;
-    Arena *heap;
     char *first;
     char *p;
     char *q;
@@ -60,16 +56,6 @@ int main(void)
     p = (char *)ap->alloc(8);
     tp->check_true(p != 0, "alloc after re-init");
     ap->free_all();
-
-    /* 6. A heap arena: copy an initialised value in before dispatching. */
-    seed.init(16);
-    heap = (Arena *)malloc(sizeof(Arena));
-    if (!heap) return 2;
-    *heap = seed;
-    p = (char *)heap->alloc(8);
-    tp->check_true(p != 0, "alloc through a heap pointer");
-    heap->free_all();
-    free(heap);
 
     return tp->report();
 }

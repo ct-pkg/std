@@ -4,12 +4,14 @@
 
    std::fs has no function form: the receiver is the path, so every call is
    `path.method(...)`. */
-#include <stdio.h>
-#include <errno.h>
-
 import std::fs::Fs;
 import std::str::String;
 import std::test::Test;
+
+/* POSIX errno values used by the checks below. A `.ct` file may not include
+   <errno.h>; both values are the same on Linux and macOS. */
+#define ENOENT_VALUE 2
+#define EEXIST_VALUE 17
 
 int main(int argc, char **argv)
 {
@@ -94,14 +96,14 @@ int main(int argc, char **argv)
     dir.concat("/no-such-parent/sub.ct", sub, 256);
     tp->check_eq_int(sub.mkdir(0755), -1,
                    "mkdir fails when the parent is missing");
-    tp->check_eq_int(std::fs::FsEnv.get_last_error(), ENOENT, "mkdir records ENOENT");
+    tp->check_eq_int(std::fs::FsEnv.get_last_error(), ENOENT_VALUE, "mkdir records ENOENT");
 
     dir.concat("/sub.ct", sub, 256);
     tp->check_eq_int(sub.mkdir(0755), 0, "mkdir creates a directory");
     tp->check_true(sub.exists(), "the new directory exists");
     tp->check_eq_int(std::fs::FsEnv.get_last_error(), 0, "a success clears the errno");
     tp->check_eq_int(sub.mkdir(0755), -1, "mkdir refuses an existing path");
-    tp->check_eq_int(std::fs::FsEnv.get_last_error(), EEXIST, "mkdir records EEXIST");
+    tp->check_eq_int(std::fs::FsEnv.get_last_error(), EEXIST_VALUE, "mkdir records EEXIST");
     tp->check_eq_int(sub.remove(), 0, "remove deletes an empty directory");
     tp->check_true(!sub.exists(), "the removed directory is gone");
 
@@ -113,7 +115,7 @@ int main(int argc, char **argv)
     tp->check_eq_int(ren.remove(), 0, "remove deletes a file");
     tp->check_true(!ren.exists(), "the removed file is gone");
     tp->check_eq_int(ren.remove(), -1, "remove of a missing path fails");
-    tp->check_eq_int(std::fs::FsEnv.get_last_error(), ENOENT, "remove records ENOENT");
+    tp->check_eq_int(std::fs::FsEnv.get_last_error(), ENOENT_VALUE, "remove records ENOENT");
 
     return tp->report();
 }

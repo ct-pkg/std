@@ -236,42 +236,11 @@ int main(void)
 
 ### 5.4 堆上的 arena
 
-```ct
-import std::arena::Arena;
-import std::test::Test;
+方法调用展开成 `p->__vptr->alloc(p, ...)`，而 `malloc` 不会写 vptr。若把 arena 放在堆上，必须先把
+一个已初始化的值整体复制进去，再调用方法；否则第一次调用会经空 vptr 跳转。
 
-#include <stdlib.h>
-
-int main(void)
-{
-    Test t;
-    Test *tp = &t;
-    Arena seed;
-    Arena *heap;
-    char *p;
-
-    tp->init();
-    seed.init(16);
-    heap = (Arena *)malloc(sizeof(Arena));
-    if (!heap) return 2;
-    *heap = seed;
-    p = (char *)heap->alloc(8);
-    tp->check_true(p != 0, "alloc through a heap pointer");
-    heap->free_all();
-    free(heap);
-    return tp->report();
-}
-```
-
-输出：
-
-```text
-1 checks, 0 failures
-```
-
-方法调用展开成 `p->__vptr->alloc(p, ...)`，而 `malloc` 不会写 vptr。先让 `seed` 在声明处拿到
-vptr，再 `*heap = seed` 整体复制。此时 `seed` 与 `heap` 共享同一块 `mem`，只释放一次
-（`heap->free_all()`），之后不要再碰 `seed`。
+本仓的 `.ct` 夹具不允许 `#include`，因此这一场景没有可编译样例，也不在门禁内。需要堆上放置时，
+由调用方自行 `malloc` / `free`，并按上一段的方式先赋值再调用。
 
 ## 6. 常见配方
 

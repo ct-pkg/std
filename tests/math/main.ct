@@ -3,8 +3,6 @@ import std::math::Math;
 import std::math::Real;
 import std::test::Test;
 
-#include <stdlib.h>
-
 int main(void)
 {
     Test t;
@@ -36,7 +34,10 @@ int main(void)
     tp->check_true(inf.is_inf(), "is_inf");
 
     tp->check_eq_str(d.to_str(buf, 32), "2.6", "to_str keeps the short form");
-    tp->check_true(atof(precise.to_str(buf, 32)) == precise, "to_str round-trips through atof");
+    /* 1.23456789 is not representable, so the short form does not round-trip
+       and the shim falls back to 17 significant digits. */
+    tp->check_eq_str(precise.to_str(buf, 32), "1.2345678899999999",
+                     "to_str widens when 6 digits do not round-trip");
 
     return tp->report();
 }

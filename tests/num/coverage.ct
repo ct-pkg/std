@@ -8,7 +8,14 @@
 import std::num::Num;
 import std::test::Test;
 
-#include <limits.h>
+/* The width limits are spelled out because a `.ct` file may not include C
+   headers; the assertions below already pin the LP64 values. */
+#define INT_MAX_VALUE   2147483647
+#define INT_MIN_VALUE   (-2147483647 - 1)
+#define LONG_MAX_VALUE  9223372036854775807L
+#define LONG_MIN_VALUE  (-9223372036854775807L - 1)
+#define LLONG_MAX_VALUE 9223372036854775807LL
+#define LLONG_MIN_VALUE (-9223372036854775807LL - 1)
 
 int main(void)
 {
@@ -32,9 +39,9 @@ int main(void)
     int im255 = -255;
     int ineg = -77;
     int ineg2 = -88;
-    int imax = INT_MAX;
-    int imin1 = INT_MIN + 1;
-    int imin = INT_MIN;
+    int imax = INT_MAX_VALUE;
+    int imin1 = INT_MIN_VALUE + 1;
+    int imin = INT_MIN_VALUE;
     long l0 = 0;
     long l1 = -1;
     long l5 = 5;
@@ -43,13 +50,13 @@ int main(void)
     long lneg = -77;
     long l255 = 255;
     long lm255 = -255;
-    long lmin1 = LONG_MIN + 1;
+    long lmin1 = LONG_MIN_VALUE + 1;
     long long ll0 = 0;
     long long llneg = -88;
     long long ll255 = 255;
     long long llm255 = -255;
-    long long llmin = LLONG_MIN;
-    long long llmin1 = LLONG_MIN + 1;
+    long long llmin = LLONG_MIN_VALUE;
+    long long llmin1 = LLONG_MIN_VALUE + 1;
     char c0 = '0';
     char c9 = '9';
     char ca = 'a';
@@ -68,8 +75,8 @@ int main(void)
     /* ---- Int: abs / clamp / max / min -------------------------------- */
     tp->check_eq_int(i0.abs(), 0, "Int.abs: 0");
     tp->check_eq_int(i1.abs(), 1, "Int.abs: -1");
-    tp->check_eq_int(imax.abs(), INT_MAX, "Int.abs: INT_MAX");
-    tp->check_eq_int(imin1.abs(), INT_MAX, "Int.abs: INT_MIN+1");
+    tp->check_eq_int(imax.abs(), INT_MAX_VALUE, "Int.abs: INT_MAX");
+    tp->check_eq_int(imin1.abs(), INT_MAX_VALUE, "Int.abs: INT_MIN+1");
     tp->check_eq_int(i65.clamp(0, 3), 3, "Int.clamp: above hi");
     tp->check_eq_int(ineg.clamp(0, 3), 0, "Int.clamp: below lo");
     tp->check_eq_int(i5.clamp(0, 9), 5, "Int.clamp: inside");
@@ -122,7 +129,7 @@ int main(void)
     tp->check_eq_int((int)l0.abs(), 0, "Long.abs: 0");
     tp->check_eq_int((int)l1.abs(), 1, "Long.abs: -1");
     tp->check_eq_int((int)lneg.abs(), 77, "Long.abs: -77");
-    tp->check_true(lmin1.abs() == LONG_MAX, "Long.abs: LONG_MIN+1");
+    tp->check_true(lmin1.abs() == LONG_MAX_VALUE, "Long.abs: LONG_MIN+1");
     tp->check_eq_int((int)l65.clamp(0, 3), 3, "Long.clamp: above hi");
     tp->check_eq_int((int)lneg.clamp(-100, -50), -77, "Long.clamp: inside a negative range");
     tp->check_eq_int((int)lneg.clamp(-10, 10), -10, "Long.clamp: below lo");
@@ -139,7 +146,7 @@ int main(void)
     /* ---- LLong -------------------------------------------------------- */
     tp->check_eq_int((int)ll0.abs(), 0, "LLong.abs: 0");
     tp->check_eq_int((int)llneg.abs(), 88, "LLong.abs: -88");
-    tp->check_true(llmin1.abs() == LLONG_MAX, "LLong.abs: LLONG_MIN+1");
+    tp->check_true(llmin1.abs() == LLONG_MAX_VALUE, "LLong.abs: LLONG_MIN+1");
     tp->check_eq_int((int)ll255.clamp(0, 3), 3, "LLong.clamp");
     tp->check_eq_int((int)llneg.max(ll255), 255, "LLong.max");
     tp->check_eq_int((int)llneg.min(ll255), -88, "LLong.min");
