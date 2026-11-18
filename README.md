@@ -78,7 +78,7 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 
 ### 当前发布状态
 
-`0.11.0` 是当前版本，待打 `v0.11.0`；`0.6.0`–`0.10.0` 是开发里程碑，**从未发布、没有 tag**。
+`0.11.0` 是当前版本，已打 `v0.11.0`；`0.6.0`–`0.10.0` 是开发里程碑，**从未发布、没有 tag**。
 `0.11.0`（P7）补全 `std::net`：TCP/UDP 工厂、`bind_to` /
 `listen_backlog` / `accept`、`send_to` / `receive_from`、`send_message` / `receive_message`、
 `resolve_host` / `parse_ip`、超时与 `set_option`；`Socket` 仍是 `FileDesc` 别名。同时补齐 P1 漏项
@@ -436,7 +436,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.11.0` | 当前版本，待打 `v0.11.0` | **P7 net**：TCP/UDP 工厂与 `bind_to` / `listen_backlog` / `accept` / `local_address` / `local_port`；`send_to` / `receive_from` / `send_message` / `receive_message`；`shutdown_*`、`set_option` / `set_reuse_address` / `set_*_timeout`；`resolve_host` / `parse_ip`。`Socket` 保持 `FileDesc` 别名。同时补齐 `std::str` 的 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`、`reverse_find_char` 与 `compare_ignore_case`（P1 漏项），以及 `Float` / `Real` 的 `exp2`。 |
+| `0.11.0` | 已打 `v0.11.0` | **P7 net**：TCP/UDP 工厂与 `bind_to` / `listen_backlog` / `accept` / `local_address` / `local_port`；`send_to` / `receive_from` / `send_message` / `receive_message`；`shutdown_*`、`set_option` / `set_reuse_address` / `set_*_timeout`；`resolve_host` / `parse_ip`。`Socket` 保持 `FileDesc` 别名。同时补齐 `std::str` 的 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`、`reverse_find_char` 与 `compare_ignore_case`（P1 漏项），以及 `Float` / `Real` 的 `exp2`。 |
 | `0.10.0` | 未发布（开发里程碑，未打 tag） | **P6 资源模板收口**：`File` / `FileDesc` / `Dir` / `Timer` 的 `Drop` 统一调用幂等 `close()`；`Timer` 新增 `close`；`std::net::Socket` 声明为 `FileDesc` 别名（无新类型）。 |
 | `0.9.0` | 未发布（开发里程碑，未打 tag） | **P5 time**：`Time` namespace（`now_*` / `diff_seconds` / `sleep_milliseconds` / `get_cpu_ticks` / 日历字段 / `format` / `from_parts`）与 `Timer`（`make_timer` / `make_timer_once` + `start` / `stop` / `remaining`；无回调，到期走信号）。 |
 | `0.8.0` | 未发布（开发里程碑，未打 tag） | **P4 fs 补全**：路径方法补 10 个；`read_file`/`write_file` → `read`/`write`；新增 `Dir`（`own` 工厂 + 字符串工厂）与 `Stat` 字段镜像；`scan_directory` 流式回调；`resolve_path` 为词法绝对路径。 |

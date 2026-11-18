@@ -449,7 +449,7 @@ main.ct:4:1: error: no method 'sqrt' for type 'double'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.5.0` | 未打 tag、待发布 | 数学只保留方法形态：namespace 入口删除，`Math.m.ct` 物理移除。`Float` 从 5 个方法扩到 34 个，`Real` 扩到 38 个；`isInf` 改名 `is_infinite`，`Float` 也提供 `is_nan` / `is_infinite`；`Real` 新增 `scale_by_power_of_two` / `split_exponent` / `split_fraction`。 |
+| `0.5.0` | 已打 `v0.5.0` | 数学只保留方法形态：namespace 入口删除，`Math.m.ct` 物理移除。`Float` 从 5 个方法扩到 34 个，`Real` 扩到 38 个；`isInf` 改名 `is_infinite`，`Float` 也提供 `is_nan` / `is_infinite`；`Real` 新增 `scale_by_power_of_two` / `split_exponent` / `split_fraction`。 |
 | `0.1.0` | 已发布 | 文档首次成文：此前 `std/math` 只有源码与模块表，没有 README 或教程。 |
 
 编译器下限 `ct >= 0.67.0`。

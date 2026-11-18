@@ -447,8 +447,8 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.11.0` | 待打 `v0.11.0` | 补齐 P1 漏项：`reverse_find_char` / `compare_ignore_case` 与严格解析 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`（出参 + 0/-1，允许前后空白，unsigned 拒绝前导 `-`）。 |
-| `0.5.0` | 待发布 | 新增内存形状 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` 与缓冲式 `split_into`；`copy_to` 移除。 |
+| `0.11.0` | 已打 `v0.11.0` | 补齐 P1 漏项：`reverse_find_char` / `compare_ignore_case` 与严格解析 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`（出参 + 0/-1，允许前后空白，unsigned 拒绝前导 `-`）。 |
+| `0.5.0` | 已打 `v0.5.0` | 新增内存形状 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` 与缓冲式 `split_into`；`copy_to` 移除。 |
 | `0.1.0` | 已打 `v0.1.0` | `lowercase` / `uppercase` 改为 out 缓冲（`s.uppercase(out, cap)`）；移除写接收者的 `copyFrom`，`dst.copyFrom(src, n)` 改成 `src.copy_to(dst, n)`。 |
 
 编译器下限 `ct >= 0.67.0`。本文所有程序都有对应夹具，由 `bash tests/run.sh` 在 ct v0.67.0 上跑过；
