@@ -99,6 +99,16 @@ mkdir -p "$work/fsdir"
 : > "$work/fsdir/b.txt"
 
 echo
+echo "== ctype calls are unsigned-char safe =="
+ctype_calls='(isalpha|isalnum|ispunct|isprint|isgraph|iscntrl|isblank|isxdigit|isdigit|isspace|isupper|islower|toupper|tolower)\('
+ctype_bad="$(grep -nE "(^|[^a-zA-Z_])${ctype_calls}" std/num/Num.shim.h | grep -v '(unsigned char)' || true)"
+if [ -z "$ctype_bad" ]; then
+    ok "every char ctype call casts to unsigned char"
+else
+    bad "ctype signedness" "$ctype_bad"
+fi
+
+echo
 echo "== modules =="
 for dir in tests/*/; do
     name="$(basename "$dir")"

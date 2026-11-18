@@ -3,7 +3,7 @@
 | 项 | 值 |
 | --- | --- |
 | 编号 | 0001 |
-| 状态 | 待处理（本次只登记，不实现） |
+| 状态 | **已解决（0.4.0，trait 改名；单元文件名未改，见 §8）** |
 | 类型 | 破坏性改名（BREAKING，仅 trait 名，方法名不变） |
 | 版本落点 | `0.4.0` + 新 tag `v0.4.0` |
 | 涉及单元 | 现 `std/str/String.m.ct` / `String.shim.h` → 目标 `CStrOps.m.ct` / `CStrOps.shim.h` |
@@ -132,3 +132,16 @@ vtable、不分配、不持有长度。真正拥有内存、带长度的字符�
 - 不动实现、不动 shim 的 C 函数（`std_str_*` 全部保留）。
 - 不 bump 版本、不打 tag、不发布（落点留给 `0.4.0` 的独立改动）。
 - 不处理 `README.md:515-519` 的保留名豁免（`len` / `max` / `min`），与本 issue 无关。
+
+## 8. 处理结果（2026-11-19 复核）
+
+- **trait 名已改**：`std/str/String.m.ct:52` 现为 `pub trait CStrOps`，映射行是
+  `map trait CStrOps for type char *`（`:79`）。0.4.0（P0）落地，方法名与调用形态未变。
+- **单元文件名未改**：仍是 `std/str/String.m.ct` / `String.shim.h`，`import std::str::String`
+  保持不变。§4 设想的 `CStrOps.m.ct` 没有采用：P0 把范围收窄为 trait 改名，避免同时改
+  import 路径与全部夹具；`tests/run.sh` 的 layout 闸门只校验 `.h.ct`，也不会强制它。
+- **影响面核对**：`grep -rn "pub trait String\|map trait String " std/` 为 0 命中；本仓
+  调用点全部通过 `import std::str::String` 使用新 trait 名。
+- **遗留（未做，非阻塞）**：单元文件与 import 路径的 `String` 字样仍在。若负责人要求连
+  unit 一起改成 `CStrOps.m.ct`，需要同步 10 个 fixture 与全部 README 的 import，单独开
+  issue 处理；本 issue 不再跟踪。

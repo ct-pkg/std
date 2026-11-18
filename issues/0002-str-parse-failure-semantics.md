@@ -2,7 +2,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| 状态 | 待排期；不依赖发布/包管理能力 |
+| 状态 | **已解决（0.11.0；契约按设计 D4 改为出参 + 0/-1，见 §12）** |
 | 影响 | 新增 4 个方法；不改现有方法的行为 |
 | 关联 | [设计提案 §2.1](file:///Users/samxx/trae-ws/std/docs/design/std-scope-and-presentation.md) |
 | 验证情况 | **未实现、未运行**；下文所有行为均为设计口径，不是实测结果 |
@@ -106,8 +106,44 @@ libc 的先例）。`tests/run.sh` 全绿是本条完成的唯一判据。
 - 不做进制参数化（`to_base` 只负责输出）；如需要 `parse_base`，另开条目。
 - 不改 `std::num` 的任何方法。
 
-## 11. 状态与阻塞
+## 11. 状态与阻塞（历史；已被 §12 取代）
 
-- 状态：**待排期**。
+- 状态：**待排期**（登记时）。
 - 阻塞：无外部依赖，不依赖发布机制或任何未具备的能力；只等本仓排期。
 - 注意：本条所有语义均未实现、未运行，不得在文档或提交信息中写成「已通过」。
+
+## 12. 处理结果（2026-11-19）
+
+**已实现**（0.11.0，commit `918a9b0`），但契约按设计正文 §2.1 / D4 定为
+**出参 + 状态码**，不是本文 §4 的「返回值 + errno」：
+
+| 方法 | 实际签名 | 成功 | 失败 |
+| --- | --- | --- | --- |
+| `parse_long` | `int s.parse_long(long *out)` | `0`，写 `*out` | `-1`，不写 |
+| `parse_long_long` | `int s.parse_long_long(long long *out)` | 同上 | 同上 |
+| `parse_unsigned_long` | `int s.parse_unsigned_long(unsigned long *out)` | 同上 | 同上 |
+| `parse_real` | `int s.parse_real(double *out)` | 同上 | 同上 |
+
+失败条件：空串/纯空白、`out == NULL`、无可解析前缀、尾随非空白字符、`ERANGE`；unsigned 形式
+额外拒绝前导 `-`。**允许前导与尾随空白**。成功/失败不读写 `errno`（内部清零只用于检测
+`ERANGE`，不作为对外契约）。
+
+与 §4 的差异及理由：
+
+1. **出参 + 0/-1**：设计正文 §2.1 已把 `parse_long(out)` 定为出参形态（D4「失败必须可报；
+   链式返回值无法同时表达」）。它避开「合法 0 与失败 0 不可区分」和 `errno` 全局状态，
+   与本包 `copy` / `read_line` 一类状态码一致。
+2. **方法名取设计名**：`parse_long_long` / `parse_unsigned_long`，不用本文 §4 的
+   `parse_llong` / `parse_ulong`；设计正文 §5.1 的展开名优先。
+3. **unsigned 拒绝 `-`**：与本文 §4 一致（`strtoul` 的补码回绕是坑），已由
+   `tests/str/parse_extra.ct` 钉住。
+4. **不承诺 `errno`**：调用方只看返回值；需要 errno 的调用方应直接用 libc。
+
+**§9 顺带登记也已完成**：`reverse_find_char` 与 `compare_ignore_case` 已在 0.11.0 落地
+（设计名；`tests/str/more.ct`），不是本文写的 `rfind_char`。
+
+**验收**：`tests/str/parse_extra.ct`（21 项）与 `tests/str/more.ct`（9 项）通过；
+`tests/run.sh` 全绿。API 表与「宽松 vs 严格」对照已写入 `std/str/README.md`；
+`README.md` §4.2 的 `char *` 名字表已增 6 行（4 个 parse + 2 个 §9 方法）。
+
+**仍然不做**：不引入 `Result`，不改 `to_int` / `to_double`，不做 `parse_base`。

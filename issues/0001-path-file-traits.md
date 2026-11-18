@@ -2,7 +2,8 @@
 
 | 项 | 值 |
 | --- | --- |
-| 性质 | 只读梳理：**不改代码、不改文档、不动版本** |
+| 性质 | 只读梳理：**不改代码、不改文档、不动版本**（历史记录，结论已被 0.7.0 取代） |
+| 状态 | **已关闭（0.7.0 接口重构后本文结论失效；保留历史）** |
 | 关联 | [issue 0001](0001-str-string-trait-rename.md) §6 的「同类问题」 |
 | 结论 | 两个都是方法层 trait，不是类型；`Path` 挂在 `char *`，`File` 挂在 `IoFile *` |
 | 日期 | 2026-11-15 |
@@ -195,3 +196,19 @@ missing.close-> 0
   import 都要动（10 处以上），代价明显上升。**建议先只改 trait 名，unit 名留给负责人另行决定。**
 - 两项都**不**并入 issue 0001 一起做；是否改名、何时改，等负责人确认后单独开 issue
   （issue 0001 §6 已有同样的范围声明）。
+
+## 7. 处理结果（2026-11-19 复核）
+
+本文的结论「两个都是方法层 trait，`File` 挂 `IoFile *`」在 **0.7.0（P3）** 之后不再成立：
+
+- `std/io/File.m.ct` 已删除；`IoFile` 别名退役。
+- `File` / `FileDesc` 改为 CT struct + `use Drop` + 幂等 `close()`（commit `54660df`），
+  方法用 `->`；`open` 在 0.4.0 已改名 `open_file`，`printf` 已删除。
+- 因此本文 §2 的方法表、§6 的改名建议（`Path` → `PathOps`、`File` → `FileOps`）**不再执行**：
+  `File` 不再是 trait；`Path` 保留现名（0.7.0 的字符串工厂单元是 `Path.m.ct`，返回
+  `File *`，见 `docs/design/decision-resource-ownership.md`）。
+- §6 里「`IoFile` 包装体不回收」的问题随 `IoFile` 退役消失；释放协议改为
+  `defer { delete h; }`（`own` 是可选的自由工厂路径）。
+
+结论：本 issue 的**问题本身已被资源对象重构解决**，不是通过改名解决的；保留本文作为
+0.3.x 接口的历史证据，不再跟踪后续动作。
