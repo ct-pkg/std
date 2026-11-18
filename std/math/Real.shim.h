@@ -14,6 +14,10 @@
 /* The POSIX.1-2008 feature set: shims are the first headers in a generated
    consumer, so defining it here makes mkdir/readlink/telldir/fileno/setenv and
    friends visible under strict -std=c99 on glibc. */
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 700
+#endif
+
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #endif
@@ -37,6 +41,12 @@ static inline void std_math_fmt_double(double v, char *out, int cap)
 static inline char *std_math_double_to_str(double v, char *out, int cap)
 {
     if (out == 0 || cap <= 0) return out;
+    /* libc prints a negative NaN as "-nan" on some targets; the package treats
+       NaN as one value and always spells it "nan". */
+    if (v != v) {
+        snprintf(out, (size_t)cap, "nan");
+        return out;
+    }
     std_math_fmt_double(v, out, cap);
     return out;
 }
