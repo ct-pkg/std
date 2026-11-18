@@ -2,7 +2,7 @@
 
 `math.h` 的一层方法映射：命名空间上的 `std::math::Math.sqrt(x)` / `fabs(x)`，
 以及值上的 `x.abs()` / `x.sqrt()` / `x.floor()` / `x.ceil()` / `x.round()`；
-`double` 另有 `is_nan` / `is_inf` / `to_str` / `to_string`。
+`double` 另有 `is_nan` / `is_inf` / `to_str`。
 
 ## 1. 定位与边界
 
@@ -10,8 +10,8 @@
 - 没有 `pow` / `exp` / `log` / 三角函数；需要时直接调 C 的 `math.h`。
 - `Float`（`float`）保持 `float` 宽度，走 `sqrtf` / `fabsf` / `floorf` / `ceilf` / `roundf`；
   `Real`（`double`）走无后缀版本。
-- **只有 `double` 有 `to_str` / `to_string`**；`float` 没有文本化方法。
-- 不分配：`to_str` 写调用方缓冲区；`to_string` 用静态环形槽（非线程安全）。
+- **只有 `double` 有 `to_str`**；`float` 没有文本化方法。
+- 不分配：`to_str` 写调用方缓冲区，容量不足会静默截断。
 - 链接需要 `-lm`（包 `ldflags` 已带；libm 并入 libc 的平台上是空操作）。
 
 ## 2. 依赖与安装
@@ -22,13 +22,13 @@
 | --- | --- |
 | `Math.m.ct` | `pub trait Math` + `map trait Math for namespace std::math`（`sqrt` / `fabs`） |
 | `Real.m.ct` | `pub trait Float`（`float` 宿主）+ `pub trait Real`（`double` 宿主） |
-| `Real.shim.h` | `std_math_double_to_str` / `std_math_double_to_string` 的 `static inline` 实现 |
+| `Real.shim.h` | `std_math_double_to_str` 的 `static inline` 实现 |
 
 | 宿主 | trait | 调用形态 |
 | --- | --- | --- |
 | namespace `std::math` | `Math` | `std::math::Math.sqrt(x)` |
 | `float` | `Float` | `f.sqrt()` |
-| `double` | `Real` | `d.sqrt()` / `d.to_string()` |
+| `double` | `Real` | `d.sqrt()` / `d.to_str(buf, cap)` |
 
 引入方式：`import std::math::Math;`（命名空间函数）与 `import std::math::Real;`（`Float` /
 `Real` 值方法）。
@@ -45,7 +45,9 @@ ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra" --ldflags "-
 ```ct
 import std::math::Math;
 import std::math::Real;
-import std::io::Io;
+import std::num::Num;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
@@ -56,14 +58,43 @@ int main(void)
     double zero = 0.0;
     double nan = zero / zero;
     double inf = 1.0 / zero;
+    double v;
+    char buf[32];
+    char num[16];
+    char line[64];
 
-    std::io::printf("math sqrt=%g fabs=%g\n",
-                    std::math::Math.sqrt(x), std::math::Math.fabs(-3.5));
-    std::io::printf("float abs=%g floor=%g ceil=%g round=%g\n",
-                    (double)f.abs(), (double)f.floor(),
-                    (double)f26.ceil(), (double)f26.round());
-    std::io::printf("double sqrt=%g round=%g\n", d.sqrt(), d.round());
-    std::io::printf("nan=%d inf=%d\n", nan.is_nan(), inf.is_inf());
+    v = std::math::Math.sqrt(x);
+    "math sqrt=".concat(v.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+
+    v = std::math::Math.fabs(-3.5);
+    "math fabs=".concat(v.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+
+    v = (double)f.abs();
+    "float abs=".concat(v.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+    v = (double)f.floor();
+    "float floor=".concat(v.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+    v = (double)f26.ceil();
+    "float ceil=".concat(v.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+    v = (double)f26.round();
+    "float round=".concat(v.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+
+    v = d.sqrt();
+    "double sqrt=".concat(v.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+    v = d.round();
+    "double round=".concat(v.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+
+    "nan=".concat(nan.is_nan().to_str(num, 16), line, 64);
+    std::io::Stdout.puts(line);
+    "inf=".concat(inf.is_inf().to_str(num, 16), line, 64);
+    std::io::Stdout.puts(line);
     return 0;
 }
 ```
@@ -71,20 +102,26 @@ int main(void)
 `ct build` 实际执行的 `cc` 行（本机实测，路径随检出位置变化）：
 
 ```
-'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/math' '.ctbuild/main.c' '.ctbuild/Io.c' -lm '-o' '/tmp/std-math'
+'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/math' -I '/Users/samxx/vscspace/ct-pkg/std/std/num' -I '/Users/samxx/vscspace/ct-pkg/std/std/str' -I '/Users/samxx/vscspace/ct-pkg/std/std/io' '.ctbuild/main.c' -lm '-o' '/tmp/std-math'
 ```
 
 输出：
 
 ```text
-math sqrt=4 fabs=3.5
-float abs=2.5 floor=-3 ceil=3 round=3
-double sqrt=1.61245 round=3
-nan=1 inf=1
+math sqrt=4
+math fabs=3.5
+float abs=2.5
+float floor=-3
+float ceil=3
+float round=3
+double sqrt=1.61245154965971
+double round=3
+nan=1
+inf=1
 ```
 
-`%g` 只保留 6 位有效数字，所以 `sqrt(2.6)` 显示为 `1.61245`；这不是精度丢失，
-`to_string` 才是可往返的文本（见 5.3）。
+`to_str` 是可往返文本：6 位有效数字不够时自动加长，所以 `sqrt(2.6)` 显示为
+`1.61245154965971`（见 5.3）。
 
 字面量接收者（`(2.5).floor()`）从 **0.20.0** 起可用（本包下限 0.30.0）；v0.19.1 先赋给变量。
 
@@ -109,7 +146,7 @@ nan=1 inf=1
 | `ceil()` | `float ceil()` | `ceilf` |
 | `round()` | `float round()` | `roundf`，四舍五入到最近整数（半值远离 0） |
 
-`Float` 没有 `is_nan` / `is_inf` / `to_str` / `to_string`；需要文本时先转 `double`。
+`Float` 没有 `is_nan` / `is_inf` / `to_str`；需要文本时先转 `double`。
 
 ### 宿主 `double`（trait `Real`）
 
@@ -123,10 +160,9 @@ nan=1 inf=1
 | `is_nan()` | `int is_nan()` | 是 NaN 返回非 0 |
 | `is_inf()` | `int is_inf()` | 是 ±Inf 返回非 0 |
 | `to_str(out, cap)` | `char *to_str(char *out, int cap)` | 可往返文本；缓冲区太小会**静默截断**并失去往返保证 |
-| `to_string()` | `char *to_string()` | 可往返文本；四个静态槽轮转，**非线程安全** |
 
-`to_str` / `to_string` 的文本规则：先用 `%g`（6 位有效数字），如果 `strtod` 读回来不等于原值，
-改用 `%.17g`。所以 `2.6` 输出 `"2.6"`，`1.0/3.0` 输出 `"0.33333333333333331"`，
+`to_str` 的文本规则：先用短格式（6 位有效数字），如果 `strtod` 读回来不等于原值，
+改用完整精度格式。所以 `2.6` 输出 `"2.6"`，`1.0/3.0` 输出 `"0.33333333333333331"`，
 两者都能被 `strtod` 精确还原。
 
 ## 5. 教程
@@ -150,27 +186,31 @@ nan=1 inf=1
 `double d = 2.6;` 的 `d.sqrt()` 走 `Real.sqrt`（`sqrt`），结果是 `double`。
 
 把 `float` 传给 `Real` 的方法不会自动发生；需要 `double` 时显式写 `(double)f`。
-相反，`double` 上的 `is_nan` / `to_string` 在 `float` 上不存在。
+相反，`double` 上的 `is_nan` / `to_str` 在 `float` 上不存在。
 
 ### 5.3 文本化：可往返
 
 ```ct
-#include <stdlib.h>
-
-import std::math::Math;
 import std::math::Real;
-import std::io::Io;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
     char buf[32];
+    char line[64];
     double d = 2.6;
     double third = 1.0 / 3.0;
     double precise = 1.23456789;
 
-    std::io::printf("short=%s long=%s\n", d.to_str(buf, 32), third.to_string());
-    std::io::printf("precise=%s\n", precise.to_string());
-    std::io::printf("roundtrip=%d\n", atof(third.to_string()) == third);
+    "short=".concat(d.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+
+    "third=".concat(third.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+
+    "precise=".concat(precise.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
     return 0;
 }
 ```
@@ -178,17 +218,15 @@ int main(void)
 输出：
 
 ```text
-short=2.6 long=0.33333333333333331
+short=2.6
+third=0.33333333333333331
 precise=1.2345678899999999
-roundtrip=1
 ```
 
-- `2.6` 用 `%g` 就够了，保持短文本；
-- `1.0/3.0` 六位不够，自动切到 `%.17g`；
-- `atof` / `strtod` 读回来与原值逐位相等，所以 `roundtrip=1`；
+- `2.6` 用短格式就够了，保持短文本；
+- `1.0/3.0` 六位不够，自动改用完整精度格式；
+- 文本由 `strtod` 回读校验，读回来与原值逐位相等；
 - `to_str` 的 `cap` 太小会截断，截断后不再保证可往返。
-
-`to_string` 的四个槽与 `std::num` 的整数环是**两个独立的环**，互不覆盖；但同样非线程安全。
 
 ### 5.4 NaN 与 Inf
 
@@ -218,7 +256,8 @@ ct build -I . main.ct -o /tmp/std-math --cflags "-Wall -Wextra" --ldflags "-lm"
 ```ct
 import std::math::Math;
 import std::math::Real;
-import std::io::Io;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
@@ -226,8 +265,18 @@ int main(void)
     double b = 4.0;
     double h = std::math::Math.sqrt(a * a + b * b);
     double pi = 3.14159;
+    double v;
+    char buf[32];
+    char line[32];
 
-    std::io::printf("hypot=%g floor=%g ceil=%g\n", h, pi.floor(), pi.ceil());
+    "hypot=".concat(h.to_str(buf, 32), line, 32);
+    std::io::Stdout.puts(line);
+    v = pi.floor();
+    "floor=".concat(v.to_str(buf, 32), line, 32);
+    std::io::Stdout.puts(line);
+    v = pi.ceil();
+    "ceil=".concat(v.to_str(buf, 32), line, 32);
+    std::io::Stdout.puts(line);
     return 0;
 }
 ```
@@ -235,7 +284,9 @@ int main(void)
 输出：
 
 ```text
-hypot=5 floor=3 ceil=4
+hypot=5
+floor=3
+ceil=4
 ```
 
 ### 其它常用组合
@@ -247,8 +298,8 @@ hypot=5 floor=3 ceil=4
 | 向下 / 向上取整 | `x.floor()` / `x.ceil()` |
 | 四舍五入 | `x.round()` |
 | 判断 NaN / Inf | `x.is_nan()` / `x.is_inf()`（仅 `double`） |
-| 可往返文本 | `x.to_string()` 或 `x.to_str(buf, sizeof buf)` |
-| `float` 转文本 | `((double)f).to_string()` |
+| 可往返文本 | `x.to_str(buf, sizeof buf)` |
+| `float` 转文本 | 先 `double d = (double)f;`，再 `d.to_str(buf, sizeof buf)` |
 
 ## 7. 排错
 
@@ -268,7 +319,7 @@ int main(void)
 main.ct:6:1: error: no method 'is_nan' for type 'float'
 ```
 
-`is_nan` / `is_inf` / `to_str` / `to_string` 只属于 `Real`（`double`）。
+`is_nan` / `is_inf` / `to_str` 只属于 `Real`（`double`）。
 先写 `double d = (double)f;` 再调用。
 
 ### 7.2 忘了 import
@@ -298,12 +349,11 @@ main.ct:4:1: error: no method 'sqrt' for type 'double'
 
 - **函数集很小**：只有 `sqrt` / `fabs` / `floor` / `ceil` / `round` / `is_nan` / `is_inf`；
   没有 `pow` / `exp` / `log` / 三角函数 / `hypot` / `isFinite`。
-- **`float` 没有文本化**：`to_str` / `to_string` 只在 `double` 上。
+- **`float` 没有文本化**：`to_str` 只在 `double` 上。
 - **`Math` 必须带命名空间**：没有裸 `sqrt` 入口。
-- **`to_string` 非线程安全**：四个静态槽，第五个活结果覆盖第一个；与 `std::num` 的环相互独立。
 - **`to_str` 截断会破坏往返**：容量不够时得到短文本，不报错。
-- **`%g` 只有 6 位有效数字**：直接 `printf("%g", ...)` 不等于 `to_string`；要可往返文本用
-  `to_string` / `to_str`。
+- **短格式只有 6 位有效数字**：`to_str` 只在短格式能精确回读时使用它，否则自动加长；
+  自己用固定格式拼接不保证往返。
 - **链接可能需要 `-lm`**：取决于平台。
 - **字面量接收者从 0.20.0 起可用**（本包下限 0.30.0）；0.19.1 只接受变量、元素、调用和字段链。
 - **多给实参不报错**：与其它映射模块相同的编译器行为（SH-56）。

@@ -34,22 +34,33 @@ ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
 ```ct
 import std::utf8::Utf8Ops;
 import std::str::String;
-import std::io::Io;
+import std::num::Num;
+import std::io::Stdout;
 
 int main(void)
 {
     char buf[8];
+    char num[16];
+    char line[32];
     char *s = "é";
     int cp;
     int n;
 
     n = s.decode(&cp);
-    std::io::printf("bytes=%d cp=%d len=%d count=%d\n",
-                    n, cp, s.length(), s.count_codepoints());
+    "bytes=".concat(n.to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+    "cp=".concat(cp.to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+    "length=".concat(s.length().to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+    "count=".concat(s.count_codepoints().to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
 
     n = buf.encode(cp, 8);
     buf[n] = 0;
-    std::io::printf("encoded=%d text=%s\n", n, buf);
+    "encoded=".concat(n.to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+    std::io::Stdout.puts(buf);
     return 0;
 }
 ```
@@ -57,17 +68,21 @@ int main(void)
 `ct build` 实际执行的 `cc` 行（本机实测，路径随检出位置变化）：
 
 ```
-'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/utf8' -I '/Users/samxx/vscspace/ct-pkg/std/std/str' '.ctbuild/main.c' '.ctbuild/Io.c' '-o' '/tmp/std-utf8'
+'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/utf8' -I '/Users/samxx/vscspace/ct-pkg/std/std/str' -I '/Users/samxx/vscspace/ct-pkg/std/std/num' -I '/Users/samxx/vscspace/ct-pkg/std/std/io' '.ctbuild/main.c' '-o' '/tmp/std-utf8'
 ```
 
 输出：
 
 ```text
-bytes=2 cp=233 len=2 count=1
-encoded=2 text=é
+bytes=2
+cp=233
+length=2
+count=1
+encoded=2
+é
 ```
 
-同一个 `"é"`：`len()`（字节）是 2，`count_codepoints()`（码点）是 1。
+同一个 `"é"`：`length()`（字节）是 2，`count_codepoints()`（码点）是 1。
 字面量接收者（`"é".decode(&cp)`）从 **0.20.0** 起可用（本包下限 0.30.0）；v0.19.1 先赋给 `char *`。
 
 ## 4. API 全表
@@ -88,7 +103,7 @@ encoded=2 text=é
 
 ### 5.1 字节 vs 码点
 
-| 文本 | `len()`（`std::str`） | `count_codepoints()`（本模块） |
+| 文本 | `length()`（`std::str`） | `count_codepoints()`（本模块） |
 | --- | --- | --- |
 | `"A"` | 1 | 1 |
 | `"é"` | 2 | 1 |
@@ -103,12 +118,16 @@ encoded=2 text=é
 
 ```ct
 import std::utf8::Utf8Ops;
-import std::io::Io;
+import std::num::Num;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
     char *s = "Aé€";
     char *p;
+    char num[16];
+    char line[32];
     int cp;
     int i = 0;
     int step;
@@ -117,7 +136,10 @@ int main(void)
         p = s + i;
         step = p.decode(&cp);
         if (step < 0) break;
-        std::io::printf("cp=%d bytes=%d\n", cp, step);
+        "cp=".concat(cp.to_str(num, 16), line, 32);
+        std::io::Stdout.puts(line);
+        "bytes=".concat(step.to_str(num, 16), line, 32);
+        std::io::Stdout.puts(line);
         i += step;
     }
     return 0;
@@ -127,9 +149,12 @@ int main(void)
 输出：
 
 ```text
-cp=65 bytes=1
-cp=233 bytes=2
-cp=8364 bytes=3
+cp=65
+bytes=1
+cp=233
+bytes=2
+cp=8364
+bytes=3
 ```
 
 注意接收者是 `p = s + i`，不是 `s`；`decode` 永远只看开头那个码点。
@@ -140,11 +165,14 @@ cp=8364 bytes=3
 ```ct
 import std::utf8::Utf8Ops;
 import std::str::String;
-import std::io::Io;
+import std::num::Num;
+import std::io::Stdout;
 
 int main(void)
 {
     char buf[8];
+    char num[16];
+    char line[32];
     char *s = "héllo";
     char *bad1 = "\xC0\x80";
     char *bad2 = "\x80";
@@ -161,16 +189,27 @@ int main(void)
         i += step;
         n++;
     }
-    std::io::printf("walk cp=%d bytes=%d\n", n, i);
+    "walk cp=".concat(n.to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+    "walk bytes=".concat(i.to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
 
-    std::io::printf("overlong=%d lone=%d count_bad=%d\n",
-                    bad1.decode(&cp), bad2.decode(&cp), bad2.count_codepoints());
+    "overlong=".concat(bad1.decode(&cp).to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+    "lone=".concat(bad2.decode(&cp).to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+    "count_bad=".concat(bad2.count_codepoints().to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
 
     step = buf.encode(8364, 8);
     buf[step] = 0;
-    std::io::printf("euro bytes=%d text=%s\n", step, buf);
-    std::io::printf("surrogate=%d too_big=%d\n",
-                    buf.encode(0xD800, 8), buf.encode(0x110000, 8));
+    "euro bytes=".concat(step.to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+    std::io::Stdout.puts(buf);
+    "surrogate=".concat(buf.encode(0xD800, 8).to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+    "too_big=".concat(buf.encode(0x110000, 8).to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
     return 0;
 }
 ```
@@ -178,10 +217,15 @@ int main(void)
 输出：
 
 ```text
-walk cp=5 bytes=6
-overlong=-1 lone=-1 count_bad=-1
-euro bytes=3 text=€
-surrogate=-1 too_big=-1
+walk cp=5
+walk bytes=6
+overlong=-1
+lone=-1
+count_bad=-1
+euro bytes=3
+€
+surrogate=-1
+too_big=-1
 ```
 
 被拒绝的四类：
@@ -215,12 +259,16 @@ UTF-8；再写 `buf[n] = 0;` 才得到 C 字符串。
 
 ```ct
 import std::utf8::Utf8Ops;
-import std::io::Io;
+import std::num::Num;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
     char *s = "Aé€";
     char *p;
+    char num[16];
+    char line[32];
     int cp;
     int i = 0;
     int step;
@@ -229,7 +277,10 @@ int main(void)
         p = s + i;
         step = p.decode(&cp);
         if (step < 0) break;
-        std::io::printf("cp=%d bytes=%d\n", cp, step);
+        "cp=".concat(cp.to_str(num, 16), line, 32);
+        std::io::Stdout.puts(line);
+        "bytes=".concat(step.to_str(num, 16), line, 32);
+        std::io::Stdout.puts(line);
         i += step;
     }
     return 0;
@@ -239,9 +290,12 @@ int main(void)
 输出：
 
 ```text
-cp=65 bytes=1
-cp=233 bytes=2
-cp=8364 bytes=3
+cp=65
+bytes=1
+cp=233
+bytes=2
+cp=8364
+bytes=3
 ```
 
 （这与 5.2 的程序相同，配方表里单独列出便于复制。）
@@ -339,7 +393,7 @@ main.ct:6:1: error: no method 'encode' for type 'int'
 - **不做规范化 / 字素簇 / 分类**：`"é"` 的两种 Unicode 表示都合法，但本模块不合并。
 - **`count_codepoints` 遇错即停**：非法输入返回 `-1`，不是“合法前缀的码点数”。
 - **`char *` 方法名全局共享**：本模块占用 `decode` / `count_codepoints` / `encode`；
-  `len` / `find` 等属于 [`std::str`](../str/README.md)，`open` 属于
+  `length` / `find` 等属于 [`std::str`](../str/README.md)，`open_file` 属于
   [`std::io`](../io/README.md)，`exists` / `read_file` / `write_file` / `list` 属于
   [`std::fs`](../fs/README.md)。
 - **字面量接收者从 0.20.0 起可用**（本包下限 0.30.0）；0.19.1 只接受变量、元素、调用和字段链。

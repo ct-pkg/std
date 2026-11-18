@@ -5,7 +5,7 @@
 
 ## 1. 定位与边界
 
-- 处理**以 NUL 结尾的字节串**：`len` / `find` / `slice` 的单位都是字节。
+- 处理**以 NUL 结尾的字节串**：`length` / `find` / `slice` 的单位都是字节。
 - 不处理 UTF-8 码点语义；需要按字符处理时用 [`std::utf8`](../utf8/README.md) 的 `count_codepoints` / `decode`。
 - **不分配内存**：所有产出写进调用方提供的 `out + cap`，容量不足返回 `-1`，不静默截断。
 - 不是 `std::string`：没有堆对象、没有析构、没有隐式扩容。
@@ -39,21 +39,36 @@ ct build -I . main.ct -o /tmp/std-str --cflags "-Wall -Wextra"
 
 ```ct
 import std::str::String;
-import std::io::Io;
+import std::num::Num;
+import std::io::Stdout;
 
 int main(void)
 {
     char buf[32];
+    char num[16];
+    char line[32];
     char *s = "Hello, ct";
     int n;
 
-    std::io::printf("len=%d find=%d\n", s.length(), s.find("ct"));
+    s.length().to_str(num, 16);
+    "len=".concat(num, line, 32);
+    std::io::Stdout.puts(line);
+
+    s.find("ct").to_str(num, 16);
+    "find=".concat(num, line, 32);
+    std::io::Stdout.puts(line);
 
     n = s.slice(0, 5, buf, 32);
-    std::io::printf("slice rc=%d value=%s\n", n, buf);
+    n.to_str(num, 16);
+    "slice rc=".concat(num, line, 32);
+    std::io::Stdout.puts(line);
+    std::io::Stdout.puts(buf);
 
     n = s.copy(buf, 32);
-    std::io::printf("copy rc=%d value=%s\n", n, buf);
+    n.to_str(num, 16);
+    "copy rc=".concat(num, line, 32);
+    std::io::Stdout.puts(line);
+    std::io::Stdout.puts(buf);
     return 0;
 }
 ```
@@ -61,15 +76,18 @@ int main(void)
 `ct build` 实际执行的 `cc` 行（本机实测，路径随检出位置变化）：
 
 ```
-'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/str' '.ctbuild/main.c' '.ctbuild/Io.c' '-o' '/tmp/std-str'
+'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/str' -I '/Users/samxx/vscspace/ct-pkg/std/std/num' -I '/Users/samxx/vscspace/ct-pkg/std/std/io' '.ctbuild/main.c' '-o' '/tmp/std-str'
 ```
 
 输出：
 
 ```text
-len=9 find=7
-slice rc=0 value=Hello
-copy rc=0 value=Hello, ct
+len=9
+find=7
+slice rc=0
+Hello
+copy rc=0
+Hello, ct
 ```
 
 注意接收者写成变量 `s`。v0.19.1 及更早版本不接受字面量接收者，`"abc".length()` 会报
@@ -82,7 +100,7 @@ copy rc=0 value=Hello, ct
 
 | 方法 | 签名 | 返回 / 失败 |
 | --- | --- | --- |
-| `len()` | `int len()` | 字节数，不含 NUL；`NULL` 返回 0 |
+| `length()` | `int length()` | 字节数，不含 NUL；`NULL` 返回 0 |
 | `find(needle)` | `int find(const char *needle)` | 首次出现的字节偏移；找不到或入参 `NULL` 返回 `-1` |
 | `find_char(c)` | `int find_char(int c)` | 字符首次出现的字节偏移；找不到返回 `-1` |
 | `starts_with(prefix)` | `int starts_with(const char *prefix)` | 是 1 / 否 0；入参 `NULL` 返回 0 |
@@ -99,24 +117,27 @@ copy rc=0 value=Hello, ct
 
 `cap` 一律包含结尾 NUL 的位置：`"abc"` 需要 `cap >= 4`。
 
-`len()` 返回 `int` 而不是 `size_t`，与 `find` / `slice` 的偏移同型。因为 `std::num` 已有 `Int`
-（`int` 宿主），**调用结果可以直接链式**：
+`length()` 返回 `int` 而不是 `size_t`，与 `find` / `slice` 的偏移同型。因为 `std::num` 已有 `Int`
+（`int` 宿主），**调用结果可以直接作接收者**：
 
 ```ct
 import std::str::String;
 import std::num::Num;
-import std::io::Io;
+import std::io::Stdout;
 
 int main(void)
 {
+    char buf[8];
     char *s = "abc";
-    std::io::printf("len=%s\n", s.length().to_string());
+
+    s.length().to_str(buf, 8);
+    std::io::Stdout.puts(buf);
     return 0;
 }
 ```
 
-输出 `len=3`。这里合法是因为 `s.length()` 是**调用**，属于允许的接收者形态；
-字面量 `(5).to_string()` 仍然需要 0.20.0。
+输出 `3`。这里合法是因为 `s.length()` 是**调用**，属于允许的接收者形态；
+字面量 `"abc".length()` 仍然需要 0.20.0。
 
 ## 5. 教程
 
@@ -124,40 +145,60 @@ int main(void)
 
 ```ct
 import std::str::String;
-import std::io::Io;
+import std::num::Num;
+import std::math::Real;
+import std::io::Stdout;
 
 int main(void)
 {
     char buf[16];
     char word[8];
     char raw[8];
+    char numbuf[16];
+    char line[64];
     char *s = "Hello, ct";
     char *other = "hello";
     char *seed = "Hello";
     char *hw = "hello";
-    char *num = "42";
+    char *digits = "42";
     char *real = "2.5";
     int n;
 
     n = s.copy(buf, 9);
-    std::io::printf("copy cap=9 rc=%d\n", n);
+    n.to_str(numbuf, 16);
+    "copy cap=9 rc=".concat(numbuf, line, 64);
+    std::io::Stdout.puts(line);
 
     n = s.slice(0, 99, buf, 16);
-    std::io::printf("slice past end rc=%d\n", n);
+    n.to_str(numbuf, 16);
+    "slice past end rc=".concat(numbuf, line, 64);
+    std::io::Stdout.puts(line);
 
     n = s.compare(other);
-    std::io::printf("compare rc=%d\n", n < 0 ? -1 : (n > 0 ? 1 : 0));
+    n = n < 0 ? -1 : (n > 0 ? 1 : 0);
+    n.to_str(numbuf, 16);
+    "compare rc=".concat(numbuf, line, 64);
+    std::io::Stdout.puts(line);
 
     seed.lowercase(word, 8);
-    std::io::printf("lower=%s\n", word);
+    "lower=".concat(word, line, 64);
+    std::io::Stdout.puts(line);
     seed.uppercase(word, 8);
-    std::io::printf("upper=%s\n", word);
+    "upper=".concat(word, line, 64);
+    std::io::Stdout.puts(line);
 
     hw.copy_to(raw, 5);
     raw[5] = 0;
-    std::io::printf("copy_to=%s\n", raw);
+    "copy_to=".concat(raw, line, 64);
+    std::io::Stdout.puts(line);
 
-    std::io::printf("to_int=%d to_double=%g\n", num.to_int(), real.to_double());
+    digits.to_int().to_str(numbuf, 16);
+    "to_int=".concat(numbuf, line, 64);
+    std::io::Stdout.puts(line);
+
+    real.to_double().to_str(numbuf, 16);
+    "to_double=".concat(numbuf, line, 64);
+    std::io::Stdout.puts(line);
     return 0;
 }
 ```
@@ -171,7 +212,8 @@ compare rc=-1
 lower=hello
 upper=HELLO
 copy_to=hello
-to_int=42 to_double=2.5
+to_int=42
+to_double=2.5
 ```
 
 ### 5.2 查询：偏移是字节，布尔是 0/1
@@ -243,23 +285,30 @@ char out[8];
 
 ```ct
 import std::str::String;
-import std::io::Io;
+import std::num::Num;
+import std::io::Stdout;
 
 int main(void)
 {
     char key[16];
     char upper[16];
     char val[16];
-    char *line = "count=42";
+    char numbuf[16];
+    char line[64];
+    char *raw = "count=42";
     int pos;
     int n;
 
-    pos = line.find_char('=');
-    line.slice(0, pos, key, 16);
-    line.slice(pos + 1, line.length(), val, 16);
+    pos = raw.find_char('=');
+    raw.slice(0, pos, key, 16);
+    raw.slice(pos + 1, raw.length(), val, 16);
     n = val.to_int();
     key.uppercase(upper, 16);
-    std::io::printf("key=%s value=%d\n", upper, n);
+    "key=".concat(upper, line, 64);
+    std::io::Stdout.puts(line);
+    n.to_str(numbuf, 16);
+    "value=".concat(numbuf, line, 64);
+    std::io::Stdout.puts(line);
     return 0;
 }
 ```
@@ -267,7 +316,8 @@ int main(void)
 输出：
 
 ```text
-key=COUNT value=42
+key=COUNT
+value=42
 ```
 
 ### 其它常用组合
@@ -279,7 +329,7 @@ key=COUNT value=42
 | 拼接 | `a.concat(b, out, cap)` |
 | 转大写 | `s.uppercase(out, cap)` |
 | 找子串位置 | `int pos = s.find("needle"); if (pos >= 0) { ... }` |
-| 得到长度的十进制文本 | `s.length().to_string()`（`int` 宿主，0.19.1 可用） |
+| 得到长度的十进制文本 | `s.length().to_str(buf, cap)`（`int` 宿主） |
 
 ## 7. 排错
 
@@ -314,7 +364,7 @@ int main(void)
 ```
 
 ```text
-main.ct:4:1: error: no method 'len' for type 'char *'
+main.ct:4:1: error: no method 'length' for type 'char *'
 ```
 
 报错不会提示“你可能忘了 import”；`char *` 上本来就没有这个方法，只有 import 之后才存在。
@@ -360,13 +410,13 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 ## 8. 限制与未支持
 
 - **不分配、无动态字符串**：没有 `append` / `format` / `replace`；产出永远走 `out + cap`。
-- **字节单位**：`len` / `find` / `slice` 都是字节；没有码点索引。
+- **字节单位**：`length` / `find` / `slice` 都是字节；没有码点索引。
 - **没有写接收者的方法**：`lowercase` / `uppercase` 与 `copy` 一样把结果写进 `out + cap`，
   字面量接收者因此永远安全。
 - **大小写只覆盖 ASCII**：`lowercase` / `uppercase` 按 `A-Z` / `a-z` 逐字节转换，不做 locale。
 - **`char *` 上的方法名全局共享**：同一接收者上两个可见 trait 声明同名方法，调用点报
   `ambiguous type-host map for method 'x' on type 'char *'`。本模块占用
-  `len` / `find` / `find_char` / `starts_with` / `ends_with` / `copy` / `copy_to` /
+  `length` / `find` / `find_char` / `starts_with` / `ends_with` / `copy` / `copy_to` /
   `slice` / `concat` / `lowercase` / `uppercase` / `compare` / `to_int` / `to_double`；
   新增 `char *` trait 前先 grep。
 - **字面量接收者从 0.20.0 起可用**（本包下限 0.30.0）；0.19.1 只接受变量、元素、调用和字段链。

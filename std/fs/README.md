@@ -36,17 +36,25 @@ ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
 
 ```ct
 import std::fs::Fs;
-import std::io::Io;
+import std::num::Num;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
     char buf[64];
+    char num[16];
+    char line[96];
     char *path = "/tmp/std-fs-demo.txt";
     int n;
 
     path.write_file("hello");
     n = path.read_file(buf, 64);
-    std::io::printf("exists=%d bytes=%d data=%s\n", path.exists(), n, buf);
+    "exists=".concat(path.exists().to_str(num, 16), line, 96);
+    std::io::Stdout.puts(line);
+    "bytes=".concat(n.to_str(num, 16), line, 96);
+    std::io::Stdout.puts(line);
+    std::io::Stdout.puts(buf);
     return 0;
 }
 ```
@@ -54,13 +62,15 @@ int main(void)
 `ct build` 实际执行的 `cc` 行（本机实测，路径随检出位置变化）：
 
 ```
-'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/fs' '.ctbuild/main.c' '.ctbuild/Io.c' '-o' '/tmp/std-fs'
+'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/fs' -I '/Users/samxx/vscspace/ct-pkg/std/std/num' -I '/Users/samxx/vscspace/ct-pkg/std/std/str' -I '/Users/samxx/vscspace/ct-pkg/std/std/io' '.ctbuild/main.c' '-o' '/tmp/std-fs'
 ```
 
 输出：
 
 ```text
-exists=1 bytes=5 data=hello
+exists=1
+bytes=5
+hello
 ```
 
 字面量接收者（`"/tmp/x".exists()`）从 **0.20.0** 起可用（本包下限 0.30.0）；v0.19.1 先赋给 `char *` 变量。
@@ -104,7 +114,6 @@ int std::fs::FsEnv.get_last_error();
 
 限制：缓存是 `Fs.shim.h` 里的 `static int`，**每个消费单元一份**——非线程安全、不跨翻译单元
 共享，也不跨 `import`。多线程或多单元程序请自己在调用点保存返回值，不要依赖它做错误分支。
-与 `std::num` 的静态槽同性质。
 
 ## 5. 教程
 
@@ -112,16 +121,23 @@ int std::fs::FsEnv.get_last_error();
 
 ```ct
 import std::fs::Fs;
-import std::io::Io;
+import std::num::Num;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
     char buf[64];
+    char num[16];
+    char line[32];
     char *path = "/tmp/std-fs-demo.txt";
+    int n;
 
     path.write_file("hello");
-    int n = path.read_file(buf, 64);
-    std::io::printf("bytes=%d data=%s\n", n, buf);
+    n = path.read_file(buf, 64);
+    "bytes=".concat(n.to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+    std::io::Stdout.puts(buf);
     return 0;
 }
 ```
@@ -129,7 +145,8 @@ int main(void)
 输出：
 
 ```text
-bytes=5 data=hello
+bytes=5
+hello
 ```
 
 `write_file` 只写 `strlen(data)` 个字节，所以 `"hello"` 的 5 个字节全部落盘，没有额外内容。
@@ -138,16 +155,17 @@ bytes=5 data=hello
 ### 5.2 失败路径与容量
 
 ```ct
-#include <sys/stat.h>
-
 import std::fs::Fs;
 import std::str::String;
-import std::io::Io;
+import std::num::Num;
+import std::io::Stdout;
 
 int main(void)
 {
     char buf[32];
     char listing[128];
+    char num[16];
+    char line[128];
     char *dir = "/tmp/std-fs-demo-dir";
     char *pa = "/tmp/std-fs-demo-dir/a.txt";
     char *pb = "/tmp/std-fs-demo-dir/b.txt";
@@ -156,23 +174,35 @@ int main(void)
     int has_a;
     int has_b;
 
-    mkdir(dir, 0755);
+    dir.mkdir(0755);
     pa.write_file("A");
     pb.write_file("B");
 
     n = dir.list(listing, 128);
     has_a = listing.find("a.txt") >= 0;
     has_b = listing.find("b.txt") >= 0;
-    std::io::printf("list count=%d has_a=%d has_b=%d\n", n, has_a, has_b);
+    "list count=".concat(n.to_str(num, 16), line, 128);
+    std::io::Stdout.puts(line);
+    "has_a=".concat(has_a.to_str(num, 16), line, 128);
+    std::io::Stdout.puts(line);
+    "has_b=".concat(has_b.to_str(num, 16), line, 128);
+    std::io::Stdout.puts(line);
 
     n = pa.read_file(buf, 32);
-    std::io::printf("read bytes=%d data=%s\n", n, buf);
-    std::io::printf("tiny rc=%d missing rc=%d\n",
-                    pa.read_file(buf, 1), missing.read_file(buf, 32));
+    "read bytes=".concat(n.to_str(num, 16), line, 128);
+    std::io::Stdout.puts(line);
+    std::io::Stdout.puts(buf);
+
+    "tiny rc=".concat(pa.read_file(buf, 1).to_str(num, 16), line, 128);
+    std::io::Stdout.puts(line);
+    "missing rc=".concat(missing.read_file(buf, 32).to_str(num, 16), line, 128);
+    std::io::Stdout.puts(line);
 
     pa.write_file("oo");
     n = pa.read_file(buf, 32);
-    std::io::printf("rewrite bytes=%d data=%s\n", n, buf);
+    "rewrite bytes=".concat(n.to_str(num, 16), line, 128);
+    std::io::Stdout.puts(line);
+    std::io::Stdout.puts(buf);
     return 0;
 }
 ```
@@ -180,21 +210,27 @@ int main(void)
 输出：
 
 ```text
-list count=2 has_a=1 has_b=1
-read bytes=1 data=A
-tiny rc=-1 missing rc=-1
-rewrite bytes=2 data=oo
+list count=2
+has_a=1
+has_b=1
+read bytes=1
+A
+tiny rc=-1
+missing rc=-1
+rewrite bytes=2
+oo
 ```
 
 要点：
 
 1. `read_file` 的 `cap` 必须容得下文件内容 **加 NUL**；`cap = 1` 连 1 字节的文件都读不了。
-2. 文件不存在、**路径是目录**、权限不足都统一返回 `-1`，没有 errno 出口。目录以前会「成功」
-   返回 0 字节（POSIX 能只读打开目录、随后立即 EOF），`0.3.0` 起按失败处理。
+2. 文件不存在、**路径是目录**、权限不足都统一返回 `-1`；具体原因用
+   `std::fs::FsEnv.get_last_error()` 查看。目录以前会「成功」返回 0 字节（POSIX 能只读打开目录、
+   随后立即 EOF），`0.3.0` 起按失败处理。
 3. `list` 放不下时返回 `-1`，不返回部分列表；要么完整，要么失败。
 4. 再写一次是**替换**，不是追加：`"oo"` 覆盖了原来的 `"A"`。
 
-这里的 `mkdir` 来自 C 的 `<sys/stat.h>`，不是本模块的 API；列目录需要目录先存在。
+`dir.mkdir(0755)` 是本模块的 `FsOps.mkdir`；`mode` 必须显式给，映射不支持重载。
 
 ### 5.3 `list` 的输出格式
 
@@ -216,12 +252,15 @@ a.txt\nb.txt
 ```ct
 import std::fs::Fs;
 import std::str::String;
-import std::io::Io;
+import std::num::Num;
+import std::io::Stdout;
 
 int main(void)
 {
     char buf[64];
     char next[64];
+    char num[16];
+    char line[32];
     char *path = "/tmp/std-fs-append.txt";
     int n;
 
@@ -230,7 +269,9 @@ int main(void)
     buf.concat("two", next, 64);
     path.write_file(next);
     n = path.read_file(buf, 64);
-    std::io::printf("bytes=%d data=%s\n", n, buf);
+    "bytes=".concat(n.to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+    std::io::Stdout.puts(buf);
     return 0;
 }
 ```
@@ -238,7 +279,8 @@ int main(void)
 输出：
 
 ```text
-bytes=6 data=onetwo
+bytes=6
+onetwo
 ```
 
 本模块没有 append 模式；追加必须整读、拼接、整写，因此文件不能超过 `cap`。
@@ -315,9 +357,11 @@ main.ct:5:1: error: method receiver must be a variable, an element, a call or a 
 - **`write_file` 按 `strlen` 写**：内容里有 `'\0'` 时后面的字节不会落盘；二进制数据用
   `std::io` 的 `File.write(buf, n)`。
 - **`list` 不排序、不递归、不给类型**：只输出名字，顺序来自 `readdir`。
-- **没有 errno / 错误码**：所有失败都是 `-1`（`exists` 是 0），无法区分原因。
-- **`char *` 方法名全局共享**：本模块占用 `exists` / `read_file` / `write_file` / `list`；
-  `len` / `find` 等属于 [`std::str`](../str/README.md)，`open` 属于
+- **错误码只是快照**：所有失败返回 `-1`（`exists` 是 0），原因要另查
+  `std::fs::FsEnv.get_last_error()`，且缓存每个翻译单元一份。
+- **`char *` 方法名全局共享**：本模块占用 `exists` / `read_file` / `write_file` / `list` /
+  `mkdir` / `remove` / `rename`；
+  `length` / `find` 等属于 [`std::str`](../str/README.md)，`open_file` 属于
   [`std::io`](../io/README.md)，`decode` / `count_codepoints` / `encode` 属于
   [`std::utf8`](../utf8/README.md)。
 - **字面量接收者需要 0.20.0**。

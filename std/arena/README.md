@@ -248,13 +248,17 @@ int main(void)
 
 ```ct
 import std::arena::Arena;
-import std::io::Io;
+import std::num::Num;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
     Arena a;
     Arena *ap = &a;
     char *buf;
+    char num[16];
+    char line[32];
     int i;
 
     ap->init(64);
@@ -262,7 +266,10 @@ int main(void)
         buf = (char *)ap->alloc(8);
         buf[0] = (char)('a' + i);
         buf[1] = 0;
-        std::io::printf("round %d: %s\n", i, buf);
+        "round ".concat(i.to_str(num, 16), line, 32);
+        line.concat(": ", num, 16);
+        num.concat(buf, line, 32);
+        std::io::Stdout.puts(line);
     }
     ap->reset();
     ap->free_all();
@@ -312,14 +319,21 @@ main.ct:8:1: error: no method 'nope' for type 'struct std_arena_Arena *'
 
 ```ct
 import std::arena::Arena;
-import std::io::Io;
+import std::num::Num;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
     Arena a;
     Arena *ap = &a;
+    char num[16];
+    char line[32];
+    int is_null;
 
-    std::io::printf("alloc(8) is null: %d\n", ap->alloc(8) == 0);
+    is_null = ap->alloc(8) == 0;
+    "alloc(8) is null: ".concat(is_null.to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
     return 0;
 }
 ```

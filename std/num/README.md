@@ -1,16 +1,16 @@
 # `std::num` — 整数与字符宿主（`Int` / `Long` / `LLong` / `Char`）
 
-给 C 的数值与字符类型挂方法：`n.to_string()` / `n.to_base(16, buf, cap)` / `n.clamp(lo, hi)` /
+给 C 的数值与字符类型挂方法：`n.to_str(buf, cap)` / `n.to_base(16, buf, cap)` / `n.clamp(lo, hi)` /
 `c.is_digit()` / `c.uppercase()`。四个宿主各映射一次，同名方法跨宿主允许，同一宿主内唯一。
 
 ## 1. 定位与边界
 
 - 覆盖四种宿主：`int`（`Int`）、`long`（`Long`）、`long long`（`LLong`）、`char`（`Char`）。
-- 数值宿主提供：`abs` / `clamp` / `max` / `min` / `to_str` / `to_string` / `to_base`。
+- 数值宿主提供：`abs` / `clamp` / `max` / `min` / `to_str` / `to_base`。
 - `char` 宿主提供 ctype 表面：`is_digit` / `is_alpha` / `is_space` / `is_upper` / `is_lower` /
   `uppercase` / `lowercase`；`char` 不会提升成 `int`，所以两套方法互不干扰。
-- **不分配**：`to_str` / `to_base` 写调用方缓冲区；`to_string` 用静态环形槽（非线程安全）。
-- 不做格式化宽度、精度、千分位；需要时用 C 的 `printf`。
+- **不分配**：`to_str` / `to_base` 写调用方缓冲区，容量不足的规则见第 4 节。
+- 不做格式化宽度、精度、千分位；需要拼接时先用 `to_str` 得到文本，再用 `std::str` 的 `concat`。
 
 ## 2. 依赖与安装
 
@@ -41,19 +41,40 @@ ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
 
 ```ct
 import std::num::Num;
-import std::io::Io;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
     char buf[32];
+    char num[16];
+    char line[32];
+    char up[2];
     int n = 65;
     int lo = 5;
     char digit = '7';
     char letter = 'a';
 
-    std::io::printf("%s %s %d\n", n.to_string(), n.to_base(16, buf, 32), lo.clamp(0, 3));
-    std::io::printf("digit=%d alpha=%d upper=%c\n",
-                    digit.is_digit(), letter.is_alpha(), (char)letter.uppercase());
+    n.to_str(buf, 32);
+    "int=".concat(buf, line, 32);
+    std::io::Stdout.puts(line);
+
+    "base16=".concat(n.to_base(16, buf, 32), line, 32);
+    std::io::Stdout.puts(line);
+
+    "clamp=".concat(lo.clamp(0, 3).to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+
+    "digit=".concat(digit.is_digit().to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+
+    "alpha=".concat(letter.is_alpha().to_str(num, 16), line, 32);
+    std::io::Stdout.puts(line);
+
+    up[0] = (char)letter.uppercase();
+    up[1] = 0;
+    "upper=".concat(up, line, 32);
+    std::io::Stdout.puts(line);
     return 0;
 }
 ```
@@ -61,18 +82,23 @@ int main(void)
 `ct build` 实际执行的 `cc` 行（本机实测，路径随检出位置变化）：
 
 ```
-'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/num' '.ctbuild/main.c' '.ctbuild/Io.c' '-o' '/tmp/std-num'
+'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/num' -I '/Users/samxx/vscspace/ct-pkg/std/std/str' -I '/Users/samxx/vscspace/ct-pkg/std/std/io' '.ctbuild/main.c' '-o' '/tmp/std-num'
 ```
 
 输出：
 
 ```text
-65 41 3
-digit=1 alpha=1 upper=A
+int=65
+base16=41
+clamp=3
+digit=1
+alpha=1
+upper=A
 ```
 
-`int` 宿主是后加的：在此之前只有 `Long` / `LLong` / `Char`，`(5).to_string()` 这类写法没有落点。
-字面量接收者本身从 **0.20.0** 起可用（本包下限 0.30.0）；v0.19.1 先写 `int n = 5;`，再用 `n.to_string()`。
+`int` 宿主是后加的：在此之前只有 `Long` / `LLong` / `Char`，`int` 值没有自己的文本化落点。
+字面量接收者本身从 **0.20.0** 起可用（本包下限 0.30.0）；v0.19.1 先写 `int n = 5;`，再调
+`n.to_str(buf, cap)`。
 
 ## 4. API 全表
 
@@ -87,12 +113,11 @@ digit=1 alpha=1 upper=A
 | `max(other)` | `int max(int other)` | `long max(long other)` | `long long max(long long other)` | 较大者 |
 | `min(other)` | `int min(int other)` | `long min(long other)` | `long long min(long long other)` | 较小者 |
 | `to_str(out, cap)` | `char *to_str(char *out, int cap)` | 同左 | 同左 | 写入十进制文本；**静默截断**到 `cap - 1`；`out == NULL` 或 `cap <= 0` 原样返回 `out` |
-| `to_string()` | `char *to_string()` | 同左 | 同左 | 十进制文本；四个静态槽轮转，**非线程安全** |
 | `to_base(base, out, cap)` | `char *to_base(int base, char *out, int cap)` | 同左 | 同左 | 2..36 进制、小写字母；放不下返回 `NULL` 且不写内容；非法 base 返回空串 |
 
 `to_base` 与 `to_str` 的失败语义不同：
 
-- `to_str`：`snprintf` 截断，永远返回 `out`；
+- `to_str`：按容量静默截断，永远返回 `out`；
 - `to_base`：**绝不截断**，符号与所有数字放不下时返回 `NULL`；`base < 2 || base > 36` 时写入空串并返回 `out`。
 
 ### `char`（`Char`）
@@ -115,32 +140,40 @@ digit=1 alpha=1 upper=A
 
 ```ct
 import std::num::Num;
-import std::io::Io;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
     char buf[32];
-    char small[2];
+    char num[16];
+    char line[64];
     long lv = 65;
     long long ll = -88;
     int n = -77;
     int a = 5;
     int b = 9;
-    char digit = '7';
-    char letter = 'a';
-    char *r1;
-    char *r2;
+    int is_null;
+    char small[2];
 
-    std::io::printf("int %s %s %d %d\n",
-                    n.to_string(), n.to_base(16, buf, 32), a.clamp(0, 3), a.max(b));
-    std::io::printf("long %s longlong %s\n", lv.to_string(), ll.to_base(2, buf, 32));
+    n.to_str(buf, 32);
+    "int=".concat(buf, line, 64);
+    std::io::Stdout.puts(line);
+    "int base16=".concat(n.to_base(16, buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+    "clamp=".concat(a.clamp(0, 3).to_str(num, 16), line, 64);
+    std::io::Stdout.puts(line);
+    "max=".concat(a.max(b).to_str(num, 16), line, 64);
+    std::io::Stdout.puts(line);
 
-    r1 = a.to_string();
-    r2 = b.to_string();
-    std::io::printf("ring %s %s\n", r1, r2);
-    std::io::printf("base small null=%d\n", n.to_base(16, small, 2) == 0);
-    std::io::printf("char digit=%d alpha=%d upper=%c\n",
-                    digit.is_digit(), letter.is_alpha(), (char)letter.uppercase());
+    "long=".concat(lv.to_str(buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+    "longlong base2=".concat(ll.to_base(2, buf, 32), line, 64);
+    std::io::Stdout.puts(line);
+
+    is_null = n.to_base(16, small, 2) == 0;
+    "base small null=".concat(is_null.to_str(num, 16), line, 64);
+    std::io::Stdout.puts(line);
     return 0;
 }
 ```
@@ -148,11 +181,13 @@ int main(void)
 输出：
 
 ```text
-int -77 -4d 3 9
-long 65 longlong -1011000
-ring 5 9
+int=-77
+int base16=-4d
+clamp=3
+max=9
+long=65
+longlong base2=-1011000
 base small null=1
-char digit=1 alpha=1 upper=A
 ```
 
 要点：
@@ -163,16 +198,11 @@ char digit=1 alpha=1 upper=A
 4. `to_base(16, small, 2)` 放不下 `-4d\0`，返回 `NULL`。
 5. `Char` 只挂在 `char` 上；把 `char` 传给 `int` 宿主不会自动发生。
 
-### 5.2 `to_string` 的四个槽
+### 5.2 `to_str` 的返回值与 `NULL` 处理
 
-`to_string()` 不分配，返回指向静态 `char[4][32]` 的指针，四次调用轮转：
-
-- `char *r1 = a.to_string();` 拿槽 0，`char *r2 = b.to_string();` 拿槽 1；
-- `r1` 仍然有效；第五个活结果会覆盖槽 0；
-- 同一表达式里两次调用拿两个不同槽，所以 `printf("%s %s", a.to_string(), b.to_string())` 安全；
-- 超过四个同时存活的结果，最早的那个被覆盖；
-- **非线程安全**：多线程各自调用会踩同一组槽；
-- 需要明确生命周期或线程安全时用 `to_str(buf, cap)`。
+`to_str` 不分配，永远把文本写进调用方缓冲区：成功与截断都返回 `out` 本身，方便直接传给
+`concat` 或 `Stdout.puts`。`out == NULL` 或 `cap <= 0` 时原样返回 `out`（可能是 `NULL`），
+不写任何字节；需要区分「放不下」时要靠调用方自己检查缓冲区，而不是看返回值。
 
 ### 5.3 `to_str` 截断，`to_base` 不截断
 
@@ -203,21 +233,25 @@ char digit=1 alpha=1 upper=A
 
 ```ct
 import std::num::Num;
-import std::io::Io;
+import std::str::String;
+import std::io::Stdout;
 
 int main(void)
 {
     char b16[32];
     char b2[32];
     char bneg[32];
+    char line[32];
     int a = 255;
     int b = 10;
     int c = -1;
 
-    std::io::printf("%s %s %s\n",
-                    a.to_base(16, b16, 32),
-                    b.to_base(2, b2, 32),
-                    c.to_base(2, bneg, 32));
+    "hex=".concat(a.to_base(16, b16, 32), line, 32);
+    std::io::Stdout.puts(line);
+    "bin=".concat(b.to_base(2, b2, 32), line, 32);
+    std::io::Stdout.puts(line);
+    "neg=".concat(c.to_base(2, bneg, 32), line, 32);
+    std::io::Stdout.puts(line);
     return 0;
 }
 ```
@@ -225,16 +259,18 @@ int main(void)
 输出：
 
 ```text
-ff 1010 -1
+hex=ff
+bin=1010
+neg=-1
 ```
 
-每个 `to_base` 用独立缓冲区：如果三个调用共用同一块 `buf`，三个返回值都指向它，打印结果会互相覆盖。
+每个 `to_base` 用独立缓冲区：如果一个调用还没打印就被下一个覆盖，三个结果会互相踩。
 
 ### 其它常用组合
 
 | 任务 | 写法 |
 | --- | --- |
-| 十进制文本 | `n.to_string()` 或 `n.to_str(buf, sizeof buf)` |
+| 十进制文本 | `n.to_str(buf, sizeof buf)` |
 | 十六进制 | `n.to_base(16, buf, sizeof buf)` |
 | 夹取范围 | `n.clamp(0, 100)` |
 | 两数较大 / 较小 | `a.max(b)` / `a.min(b)` |
@@ -251,16 +287,17 @@ import std::num::Num;
 
 int main(void)
 {
-    char *s = (5).to_string();
+    char buf[8];
+    char *s = (5).to_str(buf, 8);
     return s != 0;
 }
 ```
 
 ```text
-main.ct:5:1: error: method receiver must be a variable, an element, a call or a field chain
+main.ct:6:1: error: method receiver must be a variable, an element, a call or a field chain
 ```
 
-先写 `int n = 5; char *s = n.to_string();`。字面量接收者需要 0.20.0。
+先写 `int n = 5; n.to_str(buf, 8);`。字面量接收者需要 0.20.0。
 
 ### 7.2 在 `char` 上调用整数方法
 
@@ -286,12 +323,13 @@ main.ct:6:1: error: no method 'clamp' for type 'char'
 int main(void)
 {
     int n = 5;
-    return n.to_string() != 0;
+    char buf[8];
+    return n.to_str(buf, 8) == 0;
 }
 ```
 
 ```text
-main.ct:4:1: error: no method 'to_string' for type 'int'
+main.ct:5:1: error: no method 'to_str' for type 'int'
 ```
 
 `int` 宿主来自 `std::num::Int`，必须 `import std::num::Num;`。
@@ -300,7 +338,6 @@ main.ct:4:1: error: no method 'to_string' for type 'int'
 
 - **没有 `unsigned` 宿主**：`unsigned int` / `unsigned long` / `size_t` 都不匹配这四个 trait。
 - **没有浮点宿主**：`float` / `double` 的数值方法在 [`std::math`](../math/README.md)。
-- **`to_string` 非线程安全**：四个静态槽，第五个活结果覆盖第一个。
 - **`to_str` 静默截断**：容量不够时得到短文本，不报错；需要完整结果用 `to_base` 或更大缓冲区。
 - **`to_base` 只支持 2..36**：非法 base 返回空串。
 - **`abs` 不防溢出**：`INT_MIN` / `LONG_MIN` 是 C 的未定义行为。
