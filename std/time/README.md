@@ -102,6 +102,7 @@ int main(void)
 | `start` | `int t->start()` | 武装；周期自动重装 | `-1` |
 | `stop` | `int t->stop()` | 解除；幂等 | `-1` |
 | `remaining` | `int t->remaining()` | 距下次到期毫秒；停止为 0 | `-1` |
+| `close` | `int t->close()` | 停止并删除本地定时器，幂等 | `-1` |
 
 `ms <= 0` 或 `sig <= 0` 的工厂返回 `0`。
 
