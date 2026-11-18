@@ -1,55 +1,175 @@
-#ifndef STD_IO_FILE_SHIM_H
-#define STD_IO_FILE_SHIM_H
+/*
+ * File.shim.h - the stdio surface behind std::io::File.
+ *
+ * The CT struct stores the `FILE *` as `void *`; that is the only reason this
+ * header exists. Every function accepts NULL and reports the module's failure
+ * value, so a method on a NULL handle is safe without a C-side branch.
+ *
+ * `read_line` reads byte by byte instead of calling `fgets`: `fgets` truncates
+ * a long line without saying so, and the contract here is -1 (no partial
+ * result). The bytes already consumed stay consumed, which the README states.
+ *
+ * `close_stream` is idempotent at the CT level (the field is nulled); here a
+ * NULL pointer is a no-op success.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+#ifndef CT_STD_IO_FILE_SHIM_H
+#define CT_STD_IO_FILE_SHIM_H
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-/* The handle is opaque to CT: callers only ever hold an `IoFile *`, and
-   File.m.ct declares `pub type IoFile = struct ct_io_file;`. `ct_io_file`
-   wraps `FILE *` instead of exposing it and stays private to this shim, so no
-   cast appears at the call site and no `-Wincompatible-pointer-types` warning
-   is raised.
-
-   The C tag and every `std_io_*` symbol stay as they are. */
-typedef struct ct_io_file ct_io_file;
-
-struct ct_io_file {
+static inline void *std_io_open_stream(const char *path, const char *mode)
+{
     FILE *fp;
-};
 
-static inline ct_io_file *std_io_open(const char *path, const char *mode) {
-    ct_io_file *f;
     if (!path || !mode) return NULL;
-    f = (ct_io_file *)malloc(sizeof *f);
-    if (!f) return NULL;
-    f->fp = fopen(path, mode);
-    if (!f->fp) {
-        free(f);
-        return NULL;
+    fp = fopen(path, mode);
+    return (void *)fp;
+}
+
+static inline int std_io_close_stream(void *handle)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp) return 0;
+    return fclose(fp) == 0 ? 0 : -1;
+}
+
+static inline int std_io_stream_read(void *handle, char *buf, int n)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp || !buf || n < 0) return -1;
+    if (n == 0) return 0;
+    return (int)fread(buf, 1, (size_t)n, fp);
+}
+
+static inline int std_io_stream_write(void *handle, const char *buf, int n)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp || n < 0 || (!buf && n > 0)) return -1;
+    if (n == 0) return 0;
+    return (int)fwrite(buf, 1, (size_t)n, fp);
+}
+
+static inline int std_io_stream_seek(void *handle, long offset, int origin)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp) return -1;
+    return fseek(fp, offset, origin) == 0 ? 0 : -1;
+}
+
+static inline long std_io_stream_tell(void *handle)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp) return -1;
+    return ftell(fp);
+}
+
+static inline int std_io_stream_at_end(void *handle)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp) return 0;
+    return feof(fp) ? 1 : 0;
+}
+
+static inline int std_io_stream_has_error(void *handle)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp) return 1;
+    return ferror(fp) ? 1 : 0;
+}
+
+static inline void std_io_stream_clear_error(void *handle)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp) return;
+    clearerr(fp);
+}
+
+static inline int std_io_stream_read_char(void *handle)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp) return -1;
+    return fgetc(fp);
+}
+
+static inline int std_io_stream_write_char(void *handle, int c)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp) return -1;
+    return fputc(c, fp);
+}
+
+static inline int std_io_stream_unread_char(void *handle, int c)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp) return -1;
+    return ungetc(c, fp);
+}
+
+static inline int std_io_stream_read_line(void *handle, char *out, int cap)
+{
+    FILE *fp = (FILE *)handle;
+    int i;
+    int c;
+
+    if (!fp || !out || cap <= 0) return -1;
+    i = 0;
+    for (;;) {
+        c = fgetc(fp);
+        if (c == EOF) {
+            out[i] = 0;
+            return i == 0 ? 0 : i;
+        }
+        if (c == '\n') {
+            out[i] = 0;
+            return i;
+        }
+        if (i + 1 >= cap) {
+            out[i] = 0;
+            return -1;
+        }
+        out[i] = (char)c;
+        i++;
     }
-    return f;
 }
 
-static inline int std_io_read(ct_io_file *f, char *buf, int n) {
-    if (!f || !f->fp || !buf || n < 0) return -1;
-    return (int)fread(buf, 1, (size_t)n, f->fp);
+static inline int std_io_stream_write_line(void *handle, const char *text)
+{
+    FILE *fp = (FILE *)handle;
+    size_t len;
+
+    if (!fp || !text) return -1;
+    len = strlen(text);
+    if (fwrite(text, 1, len, fp) != len) return -1;
+    if (fputc('\n', fp) == EOF) return -1;
+    return 0;
 }
 
-static inline int std_io_write(ct_io_file *f, const char *buf, int n) {
-    if (!f || !f->fp || n < 0 || (!buf && n > 0)) return -1;
-    return (int)fwrite(buf, 1, (size_t)n, f->fp);
+static inline int std_io_stream_flush(void *handle)
+{
+    FILE *fp = (FILE *)handle;
+
+    if (!fp) return -1;
+    return fflush(fp) == 0 ? 0 : -1;
 }
 
-/* Idempotent by design: a NULL or already-closed handle is a no-op success.
-   The wrapper itself is deliberately not freed, so the second call never
-   touches released memory. See README.md, "内存与所有权". */
-static inline int std_io_close(ct_io_file *f) {
-    int rc;
-    if (!f) return 0;
-    if (!f->fp) return 0;
-    rc = fclose(f->fp);
-    f->fp = NULL;
-    return rc == 0 ? 0 : -1;
-}
+static inline int std_io_origin_start(void) { return SEEK_SET; }
+static inline int std_io_origin_current(void) { return SEEK_CUR; }
+static inline int std_io_origin_end(void) { return SEEK_END; }
 
 #endif

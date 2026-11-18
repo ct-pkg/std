@@ -7,6 +7,8 @@ pub trait Stdout {
     int putchar(int c);
     int getchar();
     int fflush();
+    int write(const char *s);
+    int write_line(const char *s);
 }
 
 map trait Stdout for namespace std::io {
@@ -14,4 +16,6 @@ map trait Stdout for namespace std::io {
     putchar(c) -> putchar(c);
     getchar() -> getchar();
     fflush() -> std_io_flush();
+    write(s) -> std_io_write(s);
+    write_line(s) -> std_io_write_line(s);
 }

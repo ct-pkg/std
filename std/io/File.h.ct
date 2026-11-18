@@ -1,0 +1,199 @@
+/*
+ * File.h.ct - the owned stdio stream behind std::io.
+ *
+ * A `File` wraps a `FILE *` in an opaque `void *` field (a `.h.ct` unit cannot
+ * include <stdio.h>, so it does not name the C type) and uses `Drop` to close
+ * it. Two factories, one type:
+ *
+ *   own File *f = std::io::open_file(path, mode);   // automatic close
+ *   File *g = path.open_file(mode);                 // same type, delete/close
+ *
+ * The second spelling lives in Path.m.ct. A method call cannot initialise `own`
+ * (ct 0.65.1 rejects it), so automatic release is only available through the
+ * free factory; the README states the difference once.
+ *
+ * `close()` is idempotent: it closes the stream once and nulls the field, and a
+ * later `close()` or `Drop` is a no-op success. A NULL handle is accepted by
+ * every method (the old `IoFile` contract) and reports the documented failure.
+ *
+ * The `FILE *` is not exposed: `stdout` / `stderr` stay `std::io::Stdout`
+ * namespace calls, never a `File`.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+import std::io::Path;
+
+namespace std::io;
+
+pub struct File {
+    void *fp;
+} use Drop;
+
+impl Drop for File {
+    void drop()
+    {
+        std_io_close_stream(self->fp);
+        self->fp = 0;
+    }
+}
+
+/* The own-able factory: NULL on failure. The mode string is the C `fopen`
+   mode, unchanged. */
+pub struct File *open_file(const char *path, const char *mode)
+{
+    struct File *f;
+
+    f = malloc(sizeof(struct File));
+    if (!f) return 0;
+    f->fp = std_io_open_stream(path, mode);
+    if (!f->fp) {
+        free(f);
+        return 0;
+    }
+    return f;
+}
+
+/* Adopt an already open `FILE *` (the inverse of `drop`): the caller gives up
+   ownership, `close`/`Drop` will close it. NULL is returned for NULL. */
+pub struct File *adopt_file(void *fp)
+{
+    struct File *f;
+
+    if (!fp) return 0;
+    f = malloc(sizeof(struct File));
+    if (!f) return 0;
+    f->fp = fp;
+    return f;
+}
+
+/* Seek origins. Free functions because there is no receiver to hang them on. */
+pub int seek_start()
+{
+    return std_io_origin_start();
+}
+
+pub int seek_current()
+{
+    return std_io_origin_current();
+}
+
+pub int seek_end()
+{
+    return std_io_origin_end();
+}
+
+impl File {
+    /* Bytes read, 0 at EOF, -1 on error or a closed/NULL handle. */
+    pub int read(char *buf, int n)
+    {
+        if (!self) return -1;
+        return std_io_stream_read(self->fp, buf, n);
+    }
+
+    /* Bytes written, -1 on error or a closed/NULL handle. */
+    pub int write(const char *buf, int n)
+    {
+        if (!self) return -1;
+        return std_io_stream_write(self->fp, buf, n);
+    }
+
+    /* Idempotent: 0 when the handle is already closed or NULL. */
+    pub int close()
+    {
+        int rc;
+
+        if (!self) return 0;
+        if (!self->fp) return 0;
+        rc = std_io_close_stream(self->fp);
+        self->fp = 0;
+        return rc;
+    }
+
+    /* fseek: 0 on success, -1 on failure. `offset` is long so large files do
+       not silently truncate; use one of seek_start/seek_current/seek_end. */
+    pub int seek(long offset, int origin)
+    {
+        if (!self) return -1;
+        return std_io_stream_seek(self->fp, offset, origin);
+    }
+
+    /* ftell, or -1 on failure. */
+    pub long tell()
+    {
+        if (!self) return -1;
+        return std_io_stream_tell(self->fp);
+    }
+
+    /* fseek(0, SEEK_SET): 0 on success. */
+    pub int rewind_start()
+    {
+        if (!self) return -1;
+        return std_io_stream_seek(self->fp, 0, std_io_origin_start());
+    }
+
+    /* feof: 1 at end of file, 0 otherwise (also for a NULL handle). */
+    pub int at_end_of_file()
+    {
+        if (!self) return 0;
+        return std_io_stream_at_end(self->fp);
+    }
+
+    /* ferror: 1 when the error indicator is set. */
+    pub int has_error()
+    {
+        if (!self) return 0;
+        return std_io_stream_has_error(self->fp);
+    }
+
+    /* clearerr. A NULL handle is a no-op. */
+    pub void clear_error()
+    {
+        if (!self) return;
+        std_io_stream_clear_error(self->fp);
+    }
+
+    /* fgetc: the byte, or -1 at EOF and on error (the two are not separable). */
+    pub int read_char()
+    {
+        if (!self) return -1;
+        return std_io_stream_read_char(self->fp);
+    }
+
+    /* fputc: the byte written, or -1. */
+    pub int write_char(int c)
+    {
+        if (!self) return -1;
+        return std_io_stream_write_char(self->fp, c);
+    }
+
+    /* ungetc: the byte pushed back, or -1. */
+    pub int unread_char(int c)
+    {
+        if (!self) return -1;
+        return std_io_stream_unread_char(self->fp, c);
+    }
+
+    /* Read one line into `out` (NUL terminated). Returns the byte count, 0 at
+       EOF, -1 on error or when the line does not fit `cap` (the rest of the
+       line stays in the stream). */
+    pub int read_line(char *out, int cap)
+    {
+        if (!self) return -1;
+        return std_io_stream_read_line(self->fp, out, cap);
+    }
+
+    /* Write `text` followed by '\n'. 0 on success, -1 on failure. */
+    pub int write_line(const char *text)
+    {
+        if (!self) return -1;
+        return std_io_stream_write_line(self->fp, text);
+    }
+
+    /* fflush: 0 on success, -1 on failure. */
+    pub int flush()
+    {
+        if (!self) return -1;
+        return std_io_stream_flush(self->fp);
+    }
+}

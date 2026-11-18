@@ -1,21 +1,22 @@
 /*
  * tests/io/main.ct - std::io regression matrix.
  *
- * Covers the parts with observable semantics: the failure return values (NULL
- * from open, -1 from read/write after close), the byte counts, the idempotent
- * close, and one real roundtrip through the filesystem.
+ * Covers the observable stream contract: the failure values (NULL factory, -1
+ * on a closed handle), byte counts, the idempotent close, the seek/tell pair,
+ * character and line IO, and the two factory spellings (free function for
+ * `own`, string method for expression use).
  */
-import std::io::Stdout;
 import std::io::File;
+import std::io::Stdout;
 import std::test::Test;
 
 int main(int argc, char **argv)
 {
     Test t;
     Test *tp;
-    IoFile *f;
-    IoFile *missing;
-    char buf[16];
+    File *f;
+    File *missing;
+    char buf[32];
     char *path;
     int n;
 
@@ -26,26 +27,81 @@ int main(int argc, char **argv)
        next to the current directory instead. */
     path = (argc > 1) ? argv[1] : "std-io-test.txt";
 
+    /* ---- the NULL handle contract -------------------------------------- */
     missing = "/nonexistent-dir/ct-std-io".open_file("r");
     tp->check_true(missing == 0, "open of a missing path returns NULL");
-    tp->check_eq_int(missing.close(), 0, "close(NULL) is a no-op success");
-    tp->check_eq_int(missing.read(buf, 1), -1, "read on a NULL handle returns -1");
+    tp->check_eq_int(missing->close(), 0, "close(NULL) is a no-op success");
+    tp->check_eq_int(missing->read(buf, 1), -1, "read on a NULL handle returns -1");
+    tp->check_eq_int(missing->write("x", 1), -1, "write on a NULL handle returns -1");
 
+    /* ---- the string factory: write, close, idempotent close ------------ */
     f = path.open_file("w");
     tp->check_true(f != 0, "open for write");
-    tp->check_eq_int(f.write("hello", 5), 5, "write returns the byte count");
-    tp->check_eq_int(f.close(), 0, "close succeeds");
-    tp->check_eq_int(f.close(), 0, "second close is idempotent");
-    tp->check_eq_int(f.write("x", 1), -1, "write after close returns -1");
+    tp->check_eq_int(f->write("hello", 5), 5, "write returns the byte count");
+    tp->check_eq_int(f->close(), 0, "close succeeds");
+    tp->check_eq_int(f->close(), 0, "second close is idempotent");
+    tp->check_eq_int(f->write("x", 1), -1, "write after close returns -1");
+    tp->check_eq_int(f->read(buf, 1), -1, "read after close returns -1");
 
-    f = path.open_file("r");
-    tp->check_true(f != 0, "open for read");
-    n = f.read(buf, 5);
+    /* ---- seek / tell / rewind / character IO --------------------------- */
+    f = path.open_file("r+");
+    tp->check_true(f != 0, "open for update");
+    tp->check_eq_int((int)f->tell(), 0, "tell on a fresh handle is 0");
+    tp->check_eq_int(f->seek(1, std::io::seek_start()), 0, "seek from the start");
+    tp->check_eq_int((int)f->tell(), 1, "tell follows seek");
+    tp->check_eq_int(f->read_char(), 'e', "read_char at offset 1");
+    tp->check_eq_int(f->unread_char('e'), 'e', "unread_char pushes it back");
+    tp->check_eq_int(f->read_char(), 'e', "read_char sees it again");
+    tp->check_eq_int(f->read_char(), 'l', "the stream advances");
+    tp->check_eq_int(f->rewind_start(), 0, "rewind_start");
+    tp->check_eq_int((int)f->tell(), 0, "rewind resets tell");
+    n = f->read(buf, 5);
     tp->check_eq_int(n, 5, "read returns the byte count");
     buf[n] = 0;
     tp->check_eq_str(buf, "hello", "roundtrip content");
-    tp->check_eq_int(f.read(buf, 1), 0, "read at EOF returns 0");
-    tp->check_eq_int(f.close(), 0, "close of the read handle");
+    tp->check_true(f->at_end_of_file() == 0, "not at EOF after five bytes");
+    tp->check_eq_int(f->read(buf, 1), 0, "read at EOF returns 0");
+    tp->check_eq_int(f->at_end_of_file(), 1, "at_end_of_file after the EOF read");
+    tp->check_eq_int(f->has_error(), 0, "EOF is not an error");
+    f->clear_error();
+    tp->check_eq_int(f->flush(), 0, "flush on a readable handle succeeds");
+    tp->check_eq_int(f->close(), 0, "close of the update handle");
+
+    /* ---- line IO ------------------------------------------------------- */
+    f = path.open_file("w");
+    tp->check_eq_int(f->write_line("first"), 0, "write_line writes and terminates");
+    tp->check_eq_int(f->write_line("second"), 0, "write_line a second line");
+    tp->check_eq_int(f->close(), 0, "close after write_line");
+
+    f = path.open_file("r");
+    n = f->read_line(buf, 32);
+    tp->check_eq_int(n, 5, "read_line strips the newline and reports 5");
+    tp->check_eq_str(buf, "first", "the first line");
+    n = f->read_line(buf, 32);
+    tp->check_eq_int(n, 6, "the second line is six bytes");
+    tp->check_eq_str(buf, "second", "the second line");
+    tp->check_eq_int(f->read_line(buf, 32), 0, "read_line at EOF is 0");
+    tp->check_eq_int(f->close(), 0, "close after reading lines");
+
+    /* A line that does not fit is -1 and writes no partial result. */
+    f = path.open_file("w");
+    f->write_line("a-very-long-line");
+    f->close();
+    f = path.open_file("r");
+    tp->check_eq_int(f->read_line(buf, 4), -1, "read_line refuses a short buffer");
+    f->close();
+
+    /* ---- the own form closes on scope exit ----------------------------- */
+    {
+        own File *auto_file = std::io::open_file(path, "w");
+        tp->check_true(auto_file != 0, "the free factory returns a handle");
+        tp->check_eq_int(auto_file->write("owned", 5), 5, "the own handle writes");
+    }
+    f = path.open_file("r");
+    n = f->read(buf, 32);
+    buf[n] = 0;
+    tp->check_eq_str(buf, "owned", "the own handle flushed on Drop");
+    f->close();
 
     std::io::Stdout.putchar('\n');
 

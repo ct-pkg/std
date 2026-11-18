@@ -1,375 +1,150 @@
-# `std::io` — 标准输出与文件（`Stdout` / `File`）
+# `std::io` — stdio 流与文件描述符
 
-`stdio.h` 的一层薄映射：命名空间上的 `puts` / `putchar` / `getchar` / `fflush`，以及
-`"path".open_file(mode)` 拿到的 `IoFile *` 与 `read` / `write` / `close`。
-全是静态映射，调用点直接展开成 C 调用。
+`File` 拥有一个 `FILE *`，`FileDesc` 拥有一个 fd；两者都是 CT struct + `use Drop`。
+`"path".open_file(mode)` / `"path".open_as_file_desc(flags)` 是表达式工厂，
+`std::io::open_file(path, mode)` / `std::io::open_as_file_desc(path, flags)` 是 `own` 工厂。
 
 ## 1. 定位与边界
 
-- 只包装 C 标准库的 `stdio`：不做缓冲管理、不做路径拼接、不做编码转换。
-- `File` 不是堆对象：`open_file` 返回不透明句柄 `IoFile *`，`close` 关闭它。
-- `read` / `write` 按字节工作，**不补 NUL**。
-- 没有变参格式化函数：需要拼接的输出先用 `std::num` 的 `to_str` 得到文本，
-  再用 `std::str` 的 `concat` 拼好，最后交给 `Stdout.puts`。
-- 不提供目录操作、删除、重命名；这些用 [`std::fs`](../fs/README.md) 或直接 C API。
+- **两个资源对象**：`File`（`FILE *`）与 `FileDesc`（fd）。两者独立，不互相包装；
+  `raw_file_desc()` 把 fd 交给未包装的 POSIX 接口。
+- **两个工厂，一个类型**：
+  - 自由函数 `std::io::open_file(path, mode)` 返回 `File *`，可写
+    `own File *f = ...`，出口自动 `Drop`；
+  - 字符串工厂 `path.open_file(mode)` 返回同一个 `File *`，但方法调用不能初始化 `own`
+    （ct 0.65.1 限制），必须 `delete f;`（或 `close()` 后再 `delete f;`）。
+  `FileDesc` 同理：`std::io::open_as_file_desc(path, flags)` 与
+  `path.open_as_file_desc(flags)`。
+- **方法用 `->`**：`File` / `FileDesc` 是 CT struct 指针，方法调用写成 `f->read(...)`，
+  不是旧 `IoFile *` 时代的 `f.read(...)`。
+- **`close()` 幂等**：关闭后把内部句柄置空/`-1`，再次 `close`、`Drop`、或方法调用都安全。
+  NULL 句柄同样被方法接受：`close` 返回 0，其它方法返回 `-1`。
+- **`stdout` / `stderr` / `stdin` 不包**：它们不是本包拥有的句柄，输出走
+  `std::io::Stdout` 的 namespace 方法（`puts` / `write` / `write_line` / `putchar` /
+  `fflush`），输入用 `File` 打开文件或直接调 C。
+- **变参不包**：`printf` / `fprintf` / `scanf` / `sprintf` 族在 0.4.0 已删除，替代是
+  `to_str` / `concat` 拼接后 `write`，解析用 `std::str` 的 `parse_*`。
+- **不分配文本**：`read_line` 写调用方缓冲；行太长返回 `-1`，不返回半行。
 
 ## 2. 依赖与安装
 
-依赖 C 标准库的 `<stdio.h>`；`ct.pkg` 的约束是 `requires ct >= 0.30.0`。
+依赖 C 的 `<stdio.h>` / `<fcntl.h>` / `<unistd.h>` / `<sys/socket.h>`；
+`requires ct >= 0.30.0`。
 
 | 文件 | 内容 |
 | --- | --- |
-| `Stdout.m.ct` + `Stdout.shim.h` | `pub trait Stdout` + `map trait Stdout for namespace std::io` |
-| `File.m.ct` + `File.shim.h` | `pub type IoFile`、`pub trait Path`（宿主 `char *`）+ `pub trait File`（宿主 `IoFile *`） |
-| `File.shim.h` | C tag `ct_io_file` 与 `std_io_*` 实现（`ct_io_file` 只在本文件内可见） |
+| `File.h.ct` | `pub struct File { void *fp; } use Drop`、自由工厂 `open_file` / `adopt_file`、`impl File` 的全部流方法 |
+| `Path.m.ct` | `char *` 宿主上的 `open_file(mode)`（返回同一个 `File *`） |
+| `FileDesc.h.ct` | `pub struct FileDesc { int fd; } use Drop`、自由工厂 `open_as_file_desc` / `adopt_file_desc`、flag 常量、`impl FileDesc` |
+| `FileDescFactory.m.ct` | `char *` 宿主上的 `open_as_file_desc(flags)` |
+| `Stdout.m.ct` | `std::io::Stdout` 的 namespace 方法（`puts` / `putchar` / `getchar` / `fflush` / `write` / `write_line`） |
+| `*.shim.h` | 各自的 `static inline` C 实现 |
 
-引入方式（按需）：
-
-- `import std::io::Stdout;` → `puts` / `putchar` / `getchar` / `fflush`；
-- `import std::io::File;` → `open_file` / `read` / `write` / `close`。
-
-包安装后（详见[包根 README](../../README.md#安装)）：
-
-```sh
-ct get std@^0.2.0
-ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
-```
+引入：`import std::io::File;` 带入 `File`、`Path` 与 `Stdout` 的文件方法；
+`import std::io::FileDesc;` 带入 `FileDesc` 与它的字符串工厂。
 
 ## 3. 快速开始
 
 ```ct
-import std::io::Stdout;
 import std::io::File;
-import std::num::Num;
-import std::str::String;
 
 int main(void)
 {
-    IoFile *f;
-    char buf[16];
-    char num[16];
-    char line[32];
-    char *path = "/tmp/std-io-demo.txt";
-    int n;
+    char buf[32];
+    File *f = "/tmp/std-io-demo.txt".open_file("w+");
 
-    std::io::Stdout.puts("hello, ct");
-    std::io::Stdout.puts("second line");
-
-    f = path.open_file("w");
-    if (f == 0) return 1;
-    f.write("hello", 5);
-    f.close();
-
-    f = path.open_file("r");
-    if (f == 0) return 1;
-    n = f.read(buf, 15);
-    buf[n] = 0;
-    f.close();
-
-    n.to_str(num, 16);
-    "read bytes=".concat(num, line, 32);
-    std::io::Stdout.puts(line);
-    std::io::Stdout.puts(buf);
+    f->write("hello\n", 6);
+    f->rewind_start();
+    f->read_line(buf, 32);     /* "hello" */
+    f->close();
+    delete f;                  /* the struct itself; close was already done */
     return 0;
 }
 ```
 
-`ct build` 实际执行的 `cc` 行（本机实测，路径随检出位置变化）：
+自动释放（`own` 只能用自由函数初始化）：
 
+```ct
+own File *f = std::io::open_file("/tmp/std-io-demo.txt", "w");
+f->write_line("owned");
 ```
-'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/io' -I '/Users/samxx/vscspace/ct-pkg/std/std/num' -I '/Users/samxx/vscspace/ct-pkg/std/std/str' '.ctbuild/main.c' '-o' '/tmp/std-io'
-```
-
-输出：
-
-```text
-hello, ct
-second line
-read bytes=5
-hello
-```
-
-CT 侧的句柄类型是 `IoFile *`：`File.m.ct` 用 `pub type IoFile = struct ct_io_file;`
-给 C 侧的不透明句柄起了一个 CT 私名。C tag 仍是 `struct ct_io_file`，helper 符号
-仍是 `std_io_*`，一个字没改。这个别名需要 **0.20.3**；字面量接收者
-（`"/tmp/x".open_file("r")`）从 **0.20.0** 起可用（本包下限 0.30.0），v0.19.1 请先赋给 `char *` 变量。
 
 ## 4. API 全表
 
-### 命名空间宿主 `std::io`（trait `Stdout`）
+### 4.1 工厂
 
-调用形态是 `std::io::Stdout.method(...)`。
+| 入口 | 签名 | 语义 | 层 | 失败 |
+| --- | --- | --- | --- | --- |
+| `std::io::open_file` | `File *open_file(const char *path, const char *mode)` | `fopen`，`own` 可用 | ② | `0` |
+| `path.open_file` | `File *path.open_file(const char *mode)` | 同上，字符串工厂；需 `delete` | ② | `0` |
+| `std::io::adopt_file` | `File *adopt_file(void *fp)` | 接管已打开的 `FILE *` | ② | `0` |
+| `std::io::open_as_file_desc` | `FileDesc *open_as_file_desc(const char *path, int flags)` | `open(2)`，`own` 可用 | ② | `0` |
+| `path.open_as_file_desc` | `FileDesc *path.open_as_file_desc(int flags)` | 同上，字符串工厂；需 `delete` | ② | `0` |
+| `std::io::adopt_file_desc` | `FileDesc *adopt_file_desc(int fd)` | 接管已有 fd | ② | `0` |
+| `seek_start` / `seek_current` / `seek_end` | `int` | `File` 的 `fseek` origin | ① | — |
+| `desc_seek_start` / `desc_seek_current` / `desc_seek_end` | `int` | `FileDesc` 的 `lseek` origin | ① | — |
 
-| 方法 | 签名 | 返回 / 失败 |
-| --- | --- | --- |
-| `puts(s)` | `int puts(const char *s)` | 非负成功；失败返回 `EOF` |
-| `putchar(c)` | `int putchar(int c)` | 写出的字节；失败返回 `EOF` |
-| `getchar()` | `int getchar()` | `0..255`；EOF 返回 `-1` |
-| `fflush()` | `int fflush()` | 成功 0；失败 `EOF` |
+`FileDesc` flag 常量：`open_read` / `open_write` / `open_read_write` / `open_append` /
+`open_create` / `open_update`（`O_RDWR|O_CREAT|O_TRUNC`）/ `open_exclusive`。
 
-`fflush()` 固定刷新 `stdout`，没有参数。
+### 4.2 `File`（`impl File`）
 
-### 宿主 `char *`（trait `Path`）
+| 方法 | 签名 | 语义 | 失败 |
+| --- | --- | --- | --- |
+| `read` | `int f->read(char *buf, int n)` | `fread` | `-1`；EOF `0` |
+| `write` | `int f->write(const char *buf, int n)` | `fwrite` | `-1` |
+| `close` | `int f->close()` | `fclose`，幂等 | `-1` |
+| `seek` | `int f->seek(long offset, int origin)` | `fseek` | `-1` |
+| `tell` | `long f->tell()` | `ftell` | `-1` |
+| `rewind_start` | `int f->rewind_start()` | `fseek(0, SEEK_SET)` | `-1` |
+| `at_end_of_file` | `int f->at_end_of_file()` | `feof` | 0/1 |
+| `has_error` | `int f->has_error()` | `ferror` | 0/1 |
+| `clear_error` | `void f->clear_error()` | `clearerr` | — |
+| `read_char` | `int f->read_char()` | `fgetc` | `-1`（EOF 与错误不可分） |
+| `write_char` | `int f->write_char(int c)` | `fputc` | `-1` |
+| `unread_char` | `int f->unread_char(int c)` | `ungetc` | `-1` |
+| `read_line` | `int f->read_line(char *out, int cap)` | 读一行，去掉 `\n` | `-1`（含放不下） |
+| `write_line` | `int f->write_line(const char *text)` | 写文本 + `\n` | `-1` |
+| `flush` | `int f->flush()` | `fflush` | `-1` |
 
-| 方法 | 签名 | 返回 / 失败 |
-| --- | --- | --- |
-| `open_file(mode)` | `IoFile *open_file(const char *mode)` | 成功返回句柄；失败返回 `NULL`（`0`） |
+### 4.3 `FileDesc`（`impl FileDesc`）
 
-`mode` 就是 `fopen` 的 mode：`"r"` / `"w"` / `"a"` / `"rb"` / `"wb"` …
+| 方法 | 签名 | 语义 | 失败 |
+| --- | --- | --- | --- |
+| `read` | `int d->read(char *buf, int cap)` | `read(2)` | `-1`；EOF `0` |
+| `write` | `int d->write(const char *data, int n)` | `write(2)`，可能短写 | `-1` |
+| `seek` | `long d->seek(long offset, int origin)` | `lseek(2)`，返回新偏移 | `-1` |
+| `tell` | `long d->tell()` | `lseek(fd, 0, SEEK_CUR)` | `-1` |
+| `close` | `int d->close()` | `close(2)`，幂等 | `-1` |
+| `raw_file_desc` | `int d->raw_file_desc()` | 裸 fd，供 `poll` / `select` 等 | 关闭后 `-1` |
+| `send` | `FileDesc *d->send(const char *data, int n)` | `send(2)`，返回接收者 | 链式；错误留给 `errno` |
+| `receive` | `FileDesc *d->receive(char *buf, int cap, int *count)` | `recv(2)`，字节数出参 | `count = -1` |
 
-### 宿主 `IoFile *`（trait `File`）
+## 5. 与相邻模块的关系
 
-| 方法 | 签名 | 返回 / 失败 |
-| --- | --- | --- |
-| `read(buf, n)` | `int read(char *buf, int n)` | 实际读到的字节数；EOF 返回 0；句柄/缓冲区为空或 `n < 0` 返回 `-1` |
-| `write(buf, n)` | `int write(const char *buf, int n)` | 实际写出的字节数；失败或句柄已关闭返回 `-1` |
-| `close()` | `int close()` | 成功或已关闭返回 0；`fclose` 失败返回 `-1` |
+- 错误码：失败后用 `std::errno::Errno.get_last()` 读；本模块不缓存错误。
+- 信号 / 管道：`std::process` 的 `pipe_open` 返回 `void *`（`FILE *`），不是 `File`，
+  只能 `pipe_close`。
+- 网络：`std::net::Socket` 是 `FileDesc` 的同义别名（P6/P7），`send` / `receive` 直接复用。
+- 文本：`read_line` 只拷贝，不做 UTF-8 校验；需要码点时接 `std::utf8`。
 
-`close()` 是幂等的：`NULL` 句柄和已关闭句柄都返回 0。
+## 6. 限制与未支持
 
-## 5. 教程
+- **`own` 只认自由函数**：`own File *f = path.open_file(mode)` 编译不过（ct 0.65.1），
+  用 `delete` 或自由工厂。
+- **不要值拷贝句柄**：`File g = *f;` 会产生两个所有者；只传指针。
+- **`read_line` 行太长会消费到超限处**：返回 `-1` 时该行剩余字节仍在流里，下一次读会接着读。
+- **EOF 与错误不可分**：`read_char` 返回 `-1` 时用 `at_end_of_file()` / `has_error()` 区分。
+- **`FileDesc` 的 `send` / `receive` 对普通文件失败**：`ENOTSOCK`，错误从 `errno` 读。
+- **不提供 `fileno` / `fdopen`**：`File` 不暴露底层 fd；需要 fd 时用 `FileDesc` 打开，
+  或 `adopt_file` 接管 C 侧已有的流。
+- **不提供变参格式化**：`printf` / `fprintf` / `scanf` 永久不做。
 
-### 5.1 两个 import 各管什么
-
-- `std::io::Stdout` → `puts` / `putchar` / `getchar` / `fflush`；
-- `std::io::File` → `char *` 上的 `open_file` 与 `IoFile *` 上的 `read` / `write` / `close`。
-
-只 import 不调用不会产生任何代码。
-
-### 5.2 文件生命周期与失败路径
-
-```ct
-import std::io::Stdout;
-import std::io::File;
-import std::num::Num;
-import std::str::String;
-
-int main(void)
-{
-    IoFile *f;
-    IoFile *missing;
-    char buf[16];
-    char num[16];
-    char line[48];
-    char *path = "/tmp/std-io-tutorial.txt";
-    char *bad = "/no/such/file";
-    int n;
-    int rc;
-
-    missing = bad.open_file("r");
-    rc = missing == 0;
-    "missing null=".concat(rc.to_str(num, 16), line, 48);
-    std::io::Stdout.puts(line);
-    "close(NULL)=".concat(missing.close().to_str(num, 16), line, 48);
-    std::io::Stdout.puts(line);
-
-    f = path.open_file("w");
-    "write=".concat(f.write("hello", 5).to_str(num, 16), line, 48);
-    std::io::Stdout.puts(line);
-    "close1=".concat(f.close().to_str(num, 16), line, 48);
-    std::io::Stdout.puts(line);
-    "close2=".concat(f.close().to_str(num, 16), line, 48);
-    std::io::Stdout.puts(line);
-    "write-after-close=".concat(f.write("x", 1).to_str(num, 16), line, 48);
-    std::io::Stdout.puts(line);
-
-    f = path.open_file("r");
-    n = f.read(buf, 15);
-    buf[n] = 0;
-    "read=".concat(n.to_str(num, 16), line, 48);
-    std::io::Stdout.puts(line);
-    std::io::Stdout.puts(buf);
-    "eof=".concat(f.read(buf, 1).to_str(num, 16), line, 48);
-    std::io::Stdout.puts(line);
-    f.close();
-    return 0;
-}
-```
-
-输出：
-
-```text
-missing null=1
-close(NULL)=0
-write=5
-close1=0
-close2=0
-write-after-close=-1
-read=5
-hello
-eof=0
-```
-
-要点：
-
-1. `open_file` 失败返回 `NULL`，不是错误码；必须 `if (f == 0)`。
-2. `read` 返回字节数，**不补 NUL**；`buf[n] = 0;` 由调用方写。
-3. 读到文件末尾返回 0，不是 `-1`。
-4. `close` 幂等；关闭后再 `write` 返回 `-1`，不会写进文件。
-5. `write` / `read` / `close` 的返回值都是 `int`，可以直接 `to_str` 打印；`puts` 只接受现成字符串。
-
-### 5.3 需要格式化输出时
-
-本模块没有变参函数，格式化分两步：
-
-1. 数值先用 `std::num` 的 `to_str(buf, cap)`（或 `std::math` 的 `to_str`）变成文本；
-2. 用 `std::str` 的 `concat` 把前缀、文本、后缀拼进一个缓冲区，再 `std::io::Stdout.puts(...)`。
-
-`.ct` 文件不允许 `#include`，所以不能借 C 的格式化函数；拼接必须走上面两条既有 API。
-
-### 5.4 句柄的所有权
-
-`open_file` 分配一个包装体（一个 `FILE *` + 关闭状态），`close` 只 `fclose` 并把内部指针置空，
-**不释放包装体**。这是为了 `close` 幂等：第二次 `close` 读到的仍是合法内存。
-
-代价是每次 `open_file` 约 16 字节不回收。长期运行且反复开关文件的程序应改成“一个句柄用到底”，
-而不是把 `open_file` / `close` 放进热循环。
-
-## 6. 常见配方
-
-### 复制一个文件
-
-```ct
-import std::io::File;
-import std::io::Stdout;
-import std::num::Num;
-import std::str::String;
-
-int main(void)
-{
-    IoFile *in;
-    IoFile *out;
-    char buf[64];
-    char num[16];
-    char line[32];
-    char *src = "/tmp/std-io-src.txt";
-    char *dst = "/tmp/std-io-dst.txt";
-    int n;
-
-    in = src.open_file("w");
-    in.write("copy me", 7);
-    in.close();
-
-    in = src.open_file("r");
-    out = dst.open_file("w");
-    n = in.read(buf, 64);
-    out.write(buf, n);
-    in.close();
-    out.close();
-
-    in = dst.open_file("r");
-    n = in.read(buf, 64);
-    buf[n] = 0;
-    in.close();
-
-    "copied=".concat(n.to_str(num, 16), line, 32);
-    std::io::Stdout.puts(line);
-    std::io::Stdout.puts(buf);
-    return 0;
-}
-```
-
-输出：
-
-```text
-copied=7
-copy me
-```
-
-真实文件通常大于一个缓冲区，把上面的单次 `read` / `write` 换成循环：
-每次 `n = in.read(buf, 64)` 后执行 `out.write(buf, n)`，直到 `read` 返回 0（EOF）或负数（错误）。
-`read` 返回 0 是正常结束，不要当失败。
-
-### 其它常用组合
-
-| 任务 | 写法 |
-| --- | --- |
-| 输出一行 | `std::io::Stdout.puts("done")` |
-| 输出单个字符 | `std::io::Stdout.putchar('x')` |
-| 逐字节读取 | `int c = std::io::Stdout.getchar();` |
-| 追加写 | `f = path.open_file("a");` |
-| 二进制读 | `f = path.open_file("rb");` |
-| 读满一个缓冲区 | `n = f.read(buf, sizeof buf);` |
-
-## 7. 排错
-
-### 7.1 少给参数
-
-```ct
-import std::io::File;
-
-int main(void)
-{
-    IoFile *f;
-    char buf[8];
-    char *p = "/tmp/x";
-    f = p.open_file("r");
-    return f.read(buf);
-}
-```
-
-```text
-main.ct:9:1: error: a map call has fewer arguments than its binding
-```
-
-`read` 需要 `buf` 和 `n` 两个实参。
-
-### 7.2 忘了 import
-
-```ct
-int main(void)
-{
-    char *p = "/tmp/x";
-    IoFile *f = p.open_file("r");
-    return f == 0;
-}
-```
-
-```text
-main.ct:4:1: error: no method 'open_file' for type 'char *'
-```
-
-`open_file` 属于 `std::io::File`，必须 `import std::io::File;` 之后才存在于 `char *` 上。
-
-### 7.3 字面量接收者（0.19.1）
-
-```ct
-import std::io::File;
-
-int main(void)
-{
-    IoFile *f = "/tmp/x".open_file("r");
-    return f == 0;
-}
-```
-
-```text
-main.ct:5:1: error: method receiver must be a variable, an element, a call or a field chain
-```
-
-先写 `char *p = "/tmp/x"; f = p.open_file("r");`。字面量接收者需要 0.20.0。
-
-## 8. 限制与未支持
-
-- **没有目录 / 删除 / 重命名**：本模块只做 `stdio`。
-- **`open_file` 的包装体不释放**：`close` 只关文件，约 16 字节/次不回收。
-- **`read` 不补 NUL**：必须自己写 `buf[n] = 0;`，且 `n` 可能为 `-1`。
-- **`write` / `read` 不检查缓冲区容量**：`n` 给大了就是越界。
-- **没有格式化函数**：拼接文本要先用 `to_str` 再 `concat`；写错参数个数由编译器按映射检查。
-- **`char *` 方法名全局共享**：本模块占用 `open_file`；`length` / `find` 等属于
-  [`std::str`](../str/README.md)，`exists` / `read_file` / `write_file` / `list` 属于
-  [`std::fs`](../fs/README.md)，`decode` / `count_codepoints` / `encode` 属于
-  [`std::utf8`](../utf8/README.md)。
-- **`IoFile *` 是唯一句柄类型**：不要用 `void *` 当句柄宿主——`void *` 无法限定调用
-  范围，任何 `void *` 变量都会凭空获得 `read` / `write` / `close`，别的包一旦也挂
-  `void *` 宿主就会歧义。
-- **字面量接收者需要 0.20.0**。
-- **多给实参不报错**：与 `std::str` 相同的编译器行为（SH-56）。
-
-## 9. 版本与变更记录
+## 7. 版本与变更记录
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写，教程并入本 README，删除 `docs/tutorial.md`。句柄在 CT 侧为 `IoFile *`（`pub type IoFile = struct ct_io_file;`；C tag 仍 `struct ct_io_file`）。 |
+| `0.7.0` | 本轮变更 | `IoFile` 不透明句柄退役：`File` 改为 CT struct + `use Drop` + 自由工厂；新增 `seek` / `tell` / `rewind_start` / `at_end_of_file` / `has_error` / `clear_error` / `read_char` / `write_char` / `unread_char` / `read_line` / `write_line` / `flush`；新增 `FileDesc`、`adopt_file` / `adopt_file_desc` 与 flag 常量；`Stdout` 增加 `write` / `write_line`。 |
+| `0.4.0` | 已发布 | 变参 `printf` 删除。 |
 
 编译器下限 `ct >= 0.30.0`。

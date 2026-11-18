@@ -1,0 +1,21 @@
+/*
+ * FileDescFactory.shim.h - the mapping unit's shim.
+ *
+ * It includes FileDesc.h so the CT factory prototype and the struct definition
+ * are visible, then forwards to it. The separate name (`std_io_open_desc_path`)
+ * avoids colliding with the CT factory's own C symbol.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+#ifndef CT_STD_IO_FILEDESCFACTORY_SHIM_H
+#define CT_STD_IO_FILEDESCFACTORY_SHIM_H
+
+#include "FileDesc.h"
+
+static inline struct std_io_FileDesc *std_io_open_desc_path(const char *path, int flags)
+{
+    return std_io_open_as_file_desc(path, flags);
+}
+
+#endif

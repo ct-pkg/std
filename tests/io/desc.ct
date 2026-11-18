@@ -1,0 +1,62 @@
+/* std::io::FileDesc - the fd-backed handle: open/read/write/seek/close, the
+ * own form, adoption and the socket-only pair on a regular file. */
+import std::io::FileDesc;
+import std::test::Test;
+
+int main(int argc, char **argv)
+{
+    Test t;
+    Test *tp = &t;
+    FileDesc *d;
+    FileDesc *missing;
+    FileDesc *excl;
+    char buf[16];
+    char *path;
+    int n;
+
+    tp->init();
+    path = (argc > 1) ? argv[1] : "std-io-desc.txt";
+
+    missing = "/nonexistent-dir/ct-std-desc".open_as_file_desc(std::io::open_read());
+    tp->check_true(missing == 0, "open of a missing path returns NULL");
+    tp->check_eq_int(missing->close(), 0, "close(NULL) is a no-op success");
+    tp->check_eq_int(missing->read(buf, 1), -1, "read on a NULL handle is -1");
+
+    d = path.open_as_file_desc(std::io::open_update());
+    tp->check_true(d != 0, "the method factory creates the file");
+    tp->check_true(d->raw_file_desc() >= 0, "raw_file_desc is a real fd");
+    tp->check_eq_int(d->write("hello", 5), 5, "write returns the byte count");
+    tp->check_eq_int(d->seek(0, std::io::desc_seek_start()), 0,
+                     "seek back to the start");
+    tp->check_eq_int((int)d->tell(), 0, "tell follows seek");
+    n = d->read(buf, 5);
+    tp->check_eq_int(n, 5, "read returns the byte count");
+    buf[n] = 0;
+    tp->check_eq_str(buf, "hello", "the fd round trip");
+    tp->check_eq_int(d->read(buf, 1), 0, "read at EOF is 0");
+
+    /* The socket pair on a regular file reports failure through the out-param. */
+    n = 99;
+    d->receive(buf, 1, &n);
+    tp->check_eq_int(n, -1, "receive on a regular file fails");
+    d->send("x", 1);
+    tp->check_true(1, "send returns the receiver and is usable on any fd");
+
+    tp->check_eq_int(d->close(), 0, "close succeeds");
+    tp->check_eq_int(d->close(), 0, "second close is idempotent");
+    tp->check_eq_int(d->raw_file_desc(), -1, "a closed handle has fd -1");
+    tp->check_eq_int(d->write("x", 1), -1, "write after close fails");
+
+    /* Own release: the scope exit closes the fd. */
+    {
+        own FileDesc *auto_desc = std::io::open_as_file_desc(path, std::io::open_read());
+        tp->check_true(auto_desc != 0, "the free factory returns a handle");
+        tp->check_eq_int(auto_desc->read(buf, 1), 1, "the own handle reads");
+    }
+
+    /* Exclusive create fails when the path already exists. */
+    excl = path.open_as_file_desc(std::io::open_exclusive());
+    tp->check_true(excl == 0, "exclusive create refuses an existing file");
+
+    return tp->report();
+}

@@ -9,4 +9,15 @@ static inline int std_io_flush(void) {
     return fflush(stdout);
 }
 
+/* fputs without a newline; `write_line` is `puts`, which appends one. */
+static inline int std_io_write(const char *s) {
+    if (!s) return -1;
+    return fputs(s, stdout) < 0 ? -1 : 0;
+}
+
+static inline int std_io_write_line(const char *s) {
+    if (!s) return -1;
+    return puts(s) < 0 ? -1 : 0;
+}
+
 #endif

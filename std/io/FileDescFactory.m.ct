@@ -1,0 +1,26 @@
+/*
+ * FileDescFactory.m.ct - the string-start factory for std::io::FileDesc.
+ *
+ * `"x.bin".open_as_file_desc(flags)` returns the `FileDesc` type declared in
+ * FileDesc.h.ct; the alias names that unit's C tag because a mapping unit
+ * cannot import a `.h.ct` unit. The wrapper in FileDescFactory.shim.h calls the
+ * CT free factory in FileDesc.h.ct.
+ *
+ * The `own` rule is the same as File: only a free-function call can initialise
+ * `own`, so `own FileDesc *d = std::io::open_as_file_desc(path, flags);` is the
+ * automatic-release spelling and the method form needs `delete d;`.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+namespace std::io;
+
+pub type FileDescHandle = struct std_io_FileDesc;
+
+pub trait PathFileDesc {
+    FileDescHandle *open_as_file_desc(int flags);
+}
+
+map trait PathFileDesc for type char * {
+    open_as_file_desc(path, flags) -> std_io_open_desc_path(path, flags);
+}

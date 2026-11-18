@@ -1,0 +1,28 @@
+/*
+ * Path.m.ct - the string-start factory for std::io::File.
+ *
+ * `"x.txt".open_file("r")` returns the same `File` type declared in File.h.ct.
+ * The alias names the C tag that unit emits; a mapping unit cannot import a
+ * `.h.ct` unit, so the tag is the only bridge. The helper in Path.shim.h calls
+ * the CT free factory (`std_io_open_file`) once File.h has been included, which
+ * is guaranteed for a consumer importing File.h.ct.
+ *
+ * A method call cannot initialise `own` (ct 0.65.1: `'own' requires a malloc,
+ * calloc or factory call`), so automatic release uses the free factory:
+ * `own File *f = std::io::open_file(path, mode);`. The method form returns the
+ * same type and must be released with `delete f;` (or `close()` plus `delete`).
+ *
+ * License: MIT (see LICENSE).
+ */
+
+namespace std::io;
+
+pub type FileHandle = struct std_io_File;
+
+pub trait Path {
+    FileHandle *open_file(const char *mode);
+}
+
+map trait Path for type char * {
+    open_file(path, mode) -> std_io_open_path(path, mode);
+}

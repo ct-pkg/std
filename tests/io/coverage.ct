@@ -1,17 +1,17 @@
 /* std::io - the error paths (a missing file, a directory, a bad mode), the
- * read/write direction rules, n == 0 / n < 0 / NULL buffers, append, the
- * idempotent close. */
-import std::io::Stdout;
+ * read/write direction rules, n == 0 / n < 0 / NULL buffers, append, and the
+ * Stdout namespace. */
 import std::io::File;
+import std::io::Stdout;
 import std::test::Test;
 
 int main(int argc, char **argv)
 {
     Test t;
     Test *tp = &t;
-    IoFile *f;
-    IoFile *missing;
-    IoFile *dir;
+    File *f;
+    File *missing;
+    File *dir;
     char buf[32];
     char *path;
     char *nullbuf = 0;
@@ -22,59 +22,72 @@ int main(int argc, char **argv)
 
     /* ---- open failures ------------------------------------------------- */
     missing = "/nonexistent-dir/ct-std-io-coverage".open_file("r");
-    tp->check_true(missing == 0, "Path.open: missing path returns NULL");
-    tp->check_eq_int(missing.close(), 0, "File.close: NULL handle is success");
+    tp->check_true(missing == 0, "Path.open_file: missing path returns NULL");
+    tp->check_eq_int(missing->close(), 0, "File.close: NULL handle is success");
     missing = path.open_file("q");
-    tp->check_true(missing == 0, "Path.open: an invalid mode returns NULL");
+    tp->check_true(missing == 0, "Path.open_file: an invalid mode returns NULL");
     dir = dot.open_file("w");
-    tp->check_true(dir == 0, "Path.open: a directory cannot be opened for writing");
+    tp->check_true(dir == 0, "Path.open_file: a directory cannot be opened for writing");
 
     /* ---- write side ---------------------------------------------------- */
     f = path.open_file("w");
-    tp->check_true(f != 0, "Path.open: create for writing");
-    tp->check_eq_int(f.write("hello", 5), 5, "File.write: returns the byte count");
-    tp->check_eq_int(f.write("", 0), 0, "File.write: n == 0 writes nothing");
-    tp->check_eq_int(f.write(nullbuf, 0), 0, "File.write: NULL buffer with n == 0 is allowed");
-    tp->check_eq_int(f.write(nullbuf, 1), -1, "File.write: NULL buffer with n > 0 fails");
-    tp->check_eq_int(f.write("x", -1), -1, "File.write: a negative count fails");
-    tp->check_eq_int(f.read(buf, 1), 0, "File.read: a write-only handle reads 0 bytes");
-    tp->check_eq_int(f.close(), 0, "File.close: succeeds");
-    tp->check_eq_int(f.close(), 0, "File.close: second close is idempotent");
-    tp->check_eq_int(f.close(), 0, "File.close: third close is idempotent");
-    tp->check_eq_int(f.write("x", 1), -1, "File.write: after close fails");
-    tp->check_eq_int(f.read(buf, 1), -1, "File.read: after close fails");
+    tp->check_true(f != 0, "Path.open_file: create for writing");
+    tp->check_eq_int(f->write("hello", 5), 5, "File.write: returns the byte count");
+    tp->check_eq_int(f->write("", 0), 0, "File.write: n == 0 writes nothing");
+    tp->check_eq_int(f->write(nullbuf, 0), 0, "File.write: NULL buffer with n == 0 is allowed");
+    tp->check_eq_int(f->write(nullbuf, 1), -1, "File.write: NULL buffer with n > 0 fails");
+    tp->check_eq_int(f->write("x", -1), -1, "File.write: a negative count fails");
+    tp->check_eq_int(f->read(buf, 1), 0, "File.read: a write-only handle reads 0 bytes");
+    tp->check_eq_int(f->close(), 0, "File.close: succeeds");
+    tp->check_eq_int(f->close(), 0, "File.close: second close is idempotent");
+    tp->check_eq_int(f->close(), 0, "File.close: third close is idempotent");
+    tp->check_eq_int(f->write("x", 1), -1, "File.write: after close fails");
+    tp->check_eq_int(f->read(buf, 1), -1, "File.read: after close fails");
+    tp->check_eq_int(f->seek(0, std::io::seek_start()), -1, "File.seek: after close fails");
+    tp->check_eq_int((int)f->tell(), -1, "File.tell: after close fails");
+    tp->check_eq_int(f->flush(), -1, "File.flush: after close fails");
 
     /* ---- read side ----------------------------------------------------- */
     f = path.open_file("r");
-    tp->check_true(f != 0, "Path.open: open for reading");
-    tp->check_eq_int(f.read(buf, 0), 0, "File.read: n == 0 reads nothing");
-    tp->check_eq_int(f.read(buf, -1), -1, "File.read: a negative count fails");
-    tp->check_eq_int(f.read(nullbuf, 1), -1, "File.read: NULL buffer fails");
-    tp->check_eq_int(f.write("x", 1), 0, "File.write: a read-only handle writes 0 bytes");
-    tp->check_eq_int(f.read(buf, 5), 5, "File.read: returns the byte count");
+    tp->check_true(f != 0, "Path.open_file: open for reading");
+    tp->check_eq_int(f->read(buf, 0), 0, "File.read: n == 0 reads nothing");
+    tp->check_eq_int(f->read(buf, -1), -1, "File.read: a negative count fails");
+    tp->check_eq_int(f->read(nullbuf, 1), -1, "File.read: NULL buffer fails");
+    tp->check_eq_int(f->write("x", 1), 0, "File.write: a read-only handle writes 0 bytes");
+    tp->check_eq_int(f->read(buf, 5), 5, "File.read: returns the byte count");
     buf[5] = 0;
     tp->check_eq_str(buf, "hello", "File.read: content");
-    tp->check_eq_int(f.read(buf, 1), 0, "File.read: EOF returns 0");
-    tp->check_eq_int(f.close(), 0, "File.close: the read handle closes");
+    tp->check_eq_int(f->read(buf, 1), 0, "File.read: EOF returns 0");
+    tp->check_eq_int(f->close(), 0, "File.close: the read handle closes");
 
     /* ---- append -------------------------------------------------------- */
     f = path.open_file("a");
-    tp->check_true(f != 0, "Path.open: append mode");
-    tp->check_eq_int(f.write("cd", 2), 2, "File.write: append");
-    tp->check_eq_int(f.close(), 0, "File.close: the append handle closes");
+    tp->check_true(f != 0, "Path.open_file: append mode");
+    tp->check_eq_int(f->write("cd", 2), 2, "File.write: append");
+    tp->check_eq_int(f->close(), 0, "File.close: the append handle closes");
     f = path.open_file("r");
-    tp->check_eq_int(f.read(buf, 7), 7, "File.read: appended length");
+    tp->check_eq_int(f->read(buf, 7), 7, "File.read: appended length");
     buf[7] = 0;
     tp->check_eq_str(buf, "hellocd", "File.read: appended content");
-    tp->check_eq_int(f.close(), 0, "File.close: appended file closes");
+    tp->check_eq_int(f->close(), 0, "File.close: appended file closes");
+
+    /* ---- adopt_file ---------------------------------------------------- */
+    {
+        FILE *raw = fopen(path, "r");
+        own File *adopted = std::io::adopt_file(raw);
+        tp->check_true(adopted != 0, "adopt_file wraps an existing FILE *");
+        tp->check_eq_int(adopted->read_char(), 'h', "the adopted stream reads");
+    }
+    /* No raw close here: the own handle closed it. */
 
     std::io::Stdout.putchar('\n');
 
     /* ---- Stdout -------------------------------------------------------- */
     tp->check_eq_int(std::io::Stdout.putchar('x'), 'x', "Stdout.putchar: returns the char");
     tp->check_eq_int(std::io::Stdout.fflush(), 0, "Stdout.fflush: succeeds");
-    tp->check_true(std::io::Stdout.puts("") >= 0, "Stdout.puts: succeeds");
-    tp->check_eq_int(std::io::Stdout.fflush(), 0, "Stdout.fflush: after puts");
+    tp->check_eq_int(std::io::Stdout.write(""), 0, "Stdout.write: succeeds");
+    tp->check_eq_int(std::io::Stdout.write_line(""), 0, "Stdout.write_line: succeeds");
+    tp->check_eq_int(std::io::Stdout.fflush(), 0, "Stdout.fflush: after writes");
 
     return tp->report();
 }

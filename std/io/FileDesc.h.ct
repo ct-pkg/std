@@ -1,0 +1,191 @@
+/*
+ * FileDesc.h.ct - the owned file descriptor behind std::io.
+ *
+ * A `FileDesc` wraps an `int` fd in a CT struct with `use Drop`; `close()` is
+ * idempotent and sets the fd to -1. Two factories, one type, same rule as
+ * `File`: the free `std::io::open_as_file_desc(path, flags)` is the `own`-able
+ * one, while `path.open_as_file_desc(flags)` returns the same type for
+ * expression use and must be released with `delete`.
+ *
+ * `send` / `receive` are the socket-capable half. They are on `FileDesc`
+ * because a socket fd and a file fd are the same POSIX object; calling them on
+ * a regular file fails with ENOTSOCK. `receive` returns the receiver and writes
+ * the byte count through the out parameter, which keeps the chain alive:
+ *
+ *   int n = 0;
+ *   conn->receive(buf, cap, &n)->send("ok", 2);
+ *
+ * `raw_file_desc()` exposes the fd for interfaces this package does not wrap
+ * (`poll`, `select`, `mmap`); it is the documented escape hatch, not a second
+ * ownership path.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+import std::io::FileDescFactory;
+
+namespace std::io;
+
+pub struct FileDesc {
+    int fd;
+} use Drop;
+
+impl Drop for FileDesc {
+    void drop()
+    {
+        std_io_desc_close(self->fd);
+        self->fd = -1;
+    }
+}
+
+/* `open(2)` with mode 0644 when the flags create the file. NULL on failure. */
+pub struct FileDesc *open_as_file_desc(const char *path, int flags)
+{
+    struct FileDesc *d;
+    int fd;
+
+    fd = std_io_desc_open(path, flags);
+    if (fd < 0) return 0;
+    d = malloc(sizeof(struct FileDesc));
+    if (!d) {
+        std_io_desc_close(fd);
+        return 0;
+    }
+    d->fd = fd;
+    return d;
+}
+
+/* Adopt an existing fd (a socket, a pipe end, a file opened elsewhere). The
+   caller gives up ownership; close/Drop will close it. */
+pub struct FileDesc *adopt_file_desc(int fd)
+{
+    struct FileDesc *d;
+
+    if (fd < 0) return 0;
+    d = malloc(sizeof(struct FileDesc));
+    if (!d) return 0;
+    d->fd = fd;
+    return d;
+}
+
+/* Flags for `open_as_file_desc`. */
+pub int open_read()
+{
+    return std_io_desc_flag_read();
+}
+
+pub int open_write()
+{
+    return std_io_desc_flag_write();
+}
+
+pub int open_read_write()
+{
+    return std_io_desc_flag_read_write();
+}
+
+pub int open_append()
+{
+    return std_io_desc_flag_append();
+}
+
+pub int open_create()
+{
+    return std_io_desc_flag_create();
+}
+
+/* Create or truncate for both reading and writing (O_RDWR | O_CREAT | O_TRUNC). */
+pub int open_update()
+{
+    return std_io_desc_flag_update();
+}
+
+pub int open_exclusive()
+{
+    return std_io_desc_flag_exclusive();
+}
+
+/* Seek origins for FileDesc (File has the stdio spelling of the same three). */
+pub int desc_seek_start()
+{
+    return std_io_desc_origin_start();
+}
+
+pub int desc_seek_current()
+{
+    return std_io_desc_origin_current();
+}
+
+pub int desc_seek_end()
+{
+    return std_io_desc_origin_end();
+}
+
+impl FileDesc {
+    /* read(2): bytes read, 0 at EOF, -1 on error or a closed/NULL handle. */
+    pub int read(char *buf, int cap)
+    {
+        if (!self) return -1;
+        return std_io_desc_read(self->fd, buf, cap);
+    }
+
+    /* write(2): bytes written (a short count is possible), -1 on error. */
+    pub int write(const char *data, int n)
+    {
+        if (!self) return -1;
+        return std_io_desc_write(self->fd, data, n);
+    }
+
+    /* lseek(2): the new offset, or -1. */
+    pub long seek(long offset, int origin)
+    {
+        if (!self) return -1;
+        return std_io_desc_seek(self->fd, offset, origin);
+    }
+
+    /* The current offset, or -1. */
+    pub long tell()
+    {
+        if (!self) return -1;
+        return std_io_desc_seek(self->fd, 0, std_io_desc_origin_current());
+    }
+
+    /* Idempotent: 0 when already closed or NULL. */
+    pub int close()
+    {
+        int rc;
+
+        if (!self) return 0;
+        if (self->fd < 0) return 0;
+        rc = std_io_desc_close(self->fd);
+        self->fd = -1;
+        return rc;
+    }
+
+    /* The raw fd, or -1. Valid only until `close`/`Drop`. */
+    pub int raw_file_desc()
+    {
+        if (!self) return -1;
+        return self->fd;
+    }
+
+    /* send(2): returns the receiver so the chain continues; a failure leaves
+       the caller to check `std::errno`. */
+    pub FileDesc *send(const char *data, int n)
+    {
+        if (self) std_io_desc_send(self->fd, data, n);
+        return self;
+    }
+
+    /* recv(2): returns the receiver; the byte count goes through `count`
+       (-1 on failure). */
+    pub FileDesc *receive(char *buf, int cap, int *count)
+    {
+        if (!self) {
+            if (count) *count = -1;
+            return self;
+        }
+        if (count) *count = std_io_desc_receive(self->fd, buf, cap);
+        return self;
+    }
+}
