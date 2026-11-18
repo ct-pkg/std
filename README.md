@@ -25,7 +25,7 @@
 name = std
 publisher = std
 ns-root = .
-version = 0.4.0
+version = 0.5.0
 licence = MIT
 requires = ct >= 0.30.0
 ldflags = -lm
@@ -72,10 +72,13 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 
 ### 当前发布状态
 
-`0.4.0` 是当前版本，已打 `v0.4.0`。`0.4.0` 是破坏性改名与删除批（P0）：`String` trait 改为
-`CStrOps`，`len` 改为 `length`，`open` 改为 `open_file`，大小写转换改为 `uppercase` / `lowercase`，
-删除 `to_string` 与 `std::io` 的变参 `printf`（改用 `to_str` / `concat` + `std::io::Stdout`）。
-`0.3.2` 只统一了包身份与许可，`publisher` 改为 `std`，API 无变化。
+`0.5.0` 是当前版本，待打 `v0.5.0`。`0.5.0`（P1）补全 `char` 的 7 个 ctype 谓词、`char *` 的
+`copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` /
+`split_into`，以及 `Float` / `Real` 的完整方法族；数学改为只提供方法形态，
+`is_inf` 改名 `is_infinite`，新增 `std::search`（`qsort` / `bsearch`）。
+`0.4.0`（P0）是破坏性改名与删除批：`String` trait 改为 `CStrOps`，`len` 改为 `length`，
+`open` 改为 `open_file`，大小写转换改为 `uppercase` / `lowercase`，删除 `to_string` 与
+`std::io` 的变参 `printf`。`0.3.2` 只统一了包身份与许可，`publisher` 改为 `std`，API 无变化。
 `v0.1.0` 仍指向旧接口（大小写转换方法原地改写、
 `copyFrom` 仍在、`requires` 为 0.20.0），不要拿它配本 README。
 索引只收录每个仓库最高的 `v*` tag，不保留历史版本，所以老编译器无法从索引取到与它兼容的旧版 std；
@@ -388,7 +391,8 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.4.0` | 当前版本，已打 `v0.4.0` | **破坏性改名与删除**（P0）：`String` → `CStrOps`；`len` → `length`；`open` → `open_file`；`to_upper` / `to_lower` → `uppercase` / `lowercase`；删除 `to_string`（只剩 `to_str(out, cap)`）与 `std::io` 的变参 `printf`（`Io.h.ct` 移除，输出改用 `std::io::Stdout`）。 |
+| `0.5.0` | 当前版本，待打 `v0.5.0` | **P1 补齐**：`Char` 新增 7 个谓词；`CStrOps` 新增 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into`（`copy_to` 移除）；`Float` / `Real` 扩到完整 libm 方法族，七个生僻名改全称，`is_inf` → `is_infinite`，数学只保留方法形态；新增 `std::search`。 |
+| `0.4.0` | 已打 `v0.4.0` | **破坏性改名与删除**（P0）：`String` → `CStrOps`；`len` → `length`；`open` → `open_file`；`to_upper` / `to_lower` → `uppercase` / `lowercase`；删除 `to_string`（只剩 `to_str(out, cap)`）与 `std::io` 的变参 `printf`（`Io.h.ct` 移除，输出改用 `std::io::Stdout`）。 |
 | `0.3.2` | 已打 `v0.3.2` | 包身份与许可统一：`publisher` 改为 `std`，许可改为 MIT（`LICENSE`、README 与各单元头部表述一并更新）；`ns-root` 与 API 无变化。 |
 | `0.3.1` | 已打 `v0.3.1` | 文档修正：`0.3.0` 打 tag 后仍写着「未打 tag」，本版订正该状态并同步 `ct.pkg` 版本号；API 无变化（包摘要因文档与版本号变动而更新）。 |
 | `0.3.0` | 已打 `v0.3.0` | **三处破坏性变更 + 四个新接口**（见 §10.1）：删除 `std::vec` / `std::map`（`Vec` / `Map` 已是编译器内置类型，重名会让消费者撞 `'Vec' is a built-in type and cannot be redeclared`）；全量改名到 `snake_case`（`char *` 宿主 25 个方法及其他宿主的同名方法）；`fs.read_file` 对目录返回 `-1`；新增 `mkdir` / `remove` / `rename` 与 `FsEnv.get_last_error`；`requires` 抬到 `ct >= 0.30.0`。 |

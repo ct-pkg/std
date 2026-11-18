@@ -361,6 +361,7 @@ main.ct:5:1: error: no method 'to_str' for type 'int'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.1.0` | 未打 tag、未发布 | 当前版本。新增 `Int`（`int`）宿主，补上最常用的整数类型；此前只有 `Long` / `LLong` / `Char`。文档重写：教程并入本 README，删除 `docs/tutorial.md`。 |
+| `0.5.0` | 待发布 | `Char` 新增 7 个谓词：`is_alnum` / `is_punct` / `is_print` / `is_graph` / `is_cntrl` / `is_blank` / `is_xdigit`；契约写明按无符号字节解释。 |
+| `0.1.0` | 已打 `v0.1.0` | 新增 `Int`（`int`）宿主，补上最常用的整数类型；此前只有 `Long` / `LLong` / `Char`。文档重写：教程并入本 README，删除 `docs/tutorial.md`。 |
 
 编译器下限 `ct >= 0.30.0`。
