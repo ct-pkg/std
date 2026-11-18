@@ -1,0 +1,124 @@
+/* std::net - TCP loopback: bind/listen/accept/connect, send/receive, shutdown.
+ *
+ * The port is ephemeral (bind_to(0) + local_port), so the fixture never fights
+ * another process for a fixed number. */
+import std::net::Socket;
+import std::num::Num;
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    Socket *server;
+    Socket *client;
+    Socket *conn;
+    Socket *conn2;
+    char addr[64];
+    char port_text[16];
+    char buf[32];
+    char ip[32];
+    int port;
+    int n;
+    int rc;
+
+    tp->init();
+
+    server = std::net::open_stream();
+    tp->check_true(server != 0, "open_stream");
+    if (!server) return tp->report();
+    defer { delete server; }
+    tp->check_eq_int(server->set_reuse_address(), 0, "SO_REUSEADDR");
+    tp->check_eq_int(server->bind_to(0), 0, "bind an ephemeral port");
+    port = server->local_port();
+    tp->check_true(port > 0, "local_port returns the bound port");
+    tp->check_eq_int(server->listen_backlog(4), 0, "listen");
+
+    port.to_str(port_text, 16);
+    "127.0.0.1:".concat(port_text, addr, 64);
+
+    client = addr.connect();
+    tp->check_true(client != 0, "the string factory connects");
+    if (!client) return tp->report();
+    defer { delete client; }
+
+    conn = server->accept();
+    tp->check_true(conn != 0, "accept returns a connection");
+    if (!conn) return tp->report();
+    defer { delete conn; }
+
+    client->send("ping", 4);
+    n = 0;
+    conn->receive(buf, 32, &n);
+    tp->check_eq_int(n, 4, "server receive count");
+    buf[n] = 0;
+    tp->check_eq_str(buf, "ping", "server receives ping");
+
+    conn->send("pong", 4);
+    n = 0;
+    client->receive(buf, 32, &n);
+    tp->check_eq_int(n, 4, "client receive count");
+    buf[n] = 0;
+    tp->check_eq_str(buf, "pong", "client receives pong");
+
+    /* ---- iovec messages on a connected socket -------------------------- */
+    {
+        struct iovec out[2];
+        struct iovec in[2];
+        char part1[8];
+        char part2[8];
+        int bytes;
+
+        part1[0] = 0;
+        part2[0] = 0;
+        out[0].iov_base = (void *)"ab";
+        out[0].iov_len = 2;
+        out[1].iov_base = (void *)"cd";
+        out[1].iov_len = 2;
+        client->send_message(out, 2);
+
+        in[0].iov_base = part1;
+        in[0].iov_len = 2;
+        in[1].iov_base = part2;
+        in[1].iov_len = 2;
+        bytes = 0;
+        conn->receive_message(in, 2, &bytes);
+        tp->check_eq_int(bytes, 4, "receive_message returns four bytes");
+        tp->check_true(part1[0] == 'a' && part1[1] == 'b', "the first iovec slice");
+        tp->check_true(part2[0] == 'c' && part2[1] == 'd', "the second iovec slice");
+    }
+
+    /* The free factory is the own-able spelling and returns the same type. */
+    conn2 = std::net::connect(addr);
+    tp->check_true(conn2 != 0, "the free factory connects");
+    if (conn2) {
+        defer { delete conn2; }
+        {
+            Socket *accepted = server->accept();
+            defer { delete accepted; }
+            tp->check_true(accepted != 0, "the second connection is accepted");
+            conn2->send("x", 1);
+            n = 0;
+            accepted->receive(buf, 32, &n);
+            tp->check_eq_int(n, 1, "the second connection talks to the same server");
+        }
+    }
+
+    tp->check_eq_int(client->shutdown_both(), 0, "shutdown_both");
+    tp->check_eq_int(conn->shutdown_write(), 0, "shutdown_write");
+
+    /* Address helpers. */
+    tp->check_eq_int(std::net::Net.resolve_host("127.0.0.1", ip, 32), 0,
+                     "resolve_host of a literal");
+    tp->check_eq_str(ip, "127.0.0.1", "the resolved address");
+    tp->check_eq_int("127.0.0.1".parse_ip(ip), 0, "parse_ip accepts a literal");
+    tp->check_eq_str(ip, "127.0.0.1", "parse_ip normalises the text");
+    tp->check_eq_int("999.1.1.1".parse_ip(ip), -1, "parse_ip rejects garbage");
+
+    rc = server->local_address(ip, 32, &port);
+    tp->check_eq_int(rc, 0, "local_address succeeds");
+    tp->check_eq_int(ip[0] != 0, 1, "local_address writes text");
+
+    return tp->report();
+}

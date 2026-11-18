@@ -1,0 +1,73 @@
+/* std::net - UDP loopback: send_to / receive_from, timeouts, iovec messages. */
+import std::net::Socket;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    Socket *a;
+    Socket *b;
+    char buf[32];
+    char ip[32];
+    int port_a;
+    int port_b;
+    int n;
+    int peer;
+    int rc;
+
+    tp->init();
+
+    a = std::net::open_datagram();
+    b = std::net::open_datagram();
+    tp->check_true(a != 0, "open_datagram a");
+    tp->check_true(b != 0, "open_datagram b");
+    if (!a || !b) return tp->report();
+    defer { delete a; }
+    defer { delete b; }
+
+    tp->check_eq_int(a->bind_to(0), 0, "bind a");
+    tp->check_eq_int(b->bind_to(0), 0, "bind b");
+    port_a = a->local_port();
+    port_b = b->local_port();
+    tp->check_true(port_a > 0, "port a");
+    tp->check_true(port_b > 0, "port b");
+    tp->check_true(port_a != port_b, "the two sockets have different ports");
+
+    /* ---- send_to / receive_from ---------------------------------------- */
+    tp->check_eq_int(b->send_to("udp", 3, "127.0.0.1", port_a), 3, "send_to");
+    n = 0;
+    peer = 0;
+    ip[0] = 0;
+    a->receive_from(buf, 32, ip, 32, &peer, &n);
+    tp->check_eq_int(n, 3, "receive_from count");
+    buf[n] = 0;
+    tp->check_eq_str(buf, "udp", "receive_from data");
+    tp->check_eq_int(peer, port_b, "the source port is b");
+    tp->check_eq_str(ip, "127.0.0.1", "the source address");
+
+    /* ---- receive timeout ----------------------------------------------- */
+    tp->check_eq_int(a->set_receive_timeout(20), 0, "set_receive_timeout");
+    n = 0;
+    a->receive_from(buf, 32, ip, 32, &peer, &n);
+    tp->check_eq_int(n, -1, "a timed-out receive_from reports -1");
+    tp->check_eq_int(a->set_receive_timeout(0), 0, "clear the receive timeout");
+
+    /* iovec messages need a connected socket; the TCP fixture covers them. */
+
+    /* SO_SNDTIMEO is accepted even when no send is blocked. */
+    tp->check_eq_int(b->set_send_timeout(20), 0, "set_send_timeout");
+    tp->check_eq_int(b->set_send_timeout(0), 0, "clear the send timeout");
+
+    /* A failing send_to (bad address text) reports -1. */
+    tp->check_eq_int(b->send_to("x", 1, "999.1.1.1", port_a), -1,
+                     "send_to rejects an invalid address");
+
+    rc = a->close();
+    tp->check_eq_int(rc, 0, "close a");
+    tp->check_eq_int(a->close(), 0, "close a is idempotent");
+    tp->check_eq_int(a->send_to("x", 1, "127.0.0.1", port_a), -1,
+                     "send_to after close fails");
+
+    return tp->report();
+}

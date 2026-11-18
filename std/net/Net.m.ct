@@ -1,0 +1,101 @@
+/*
+ * Net.m.ct - the socket methods and the string/numeric entry points of
+ * std::net.
+ *
+ * The type is `std::net::Socket`, which is `std::io::FileDesc`; a mapping unit
+ * cannot import a `.h.ct` unit, so the alias below names the C tag that
+ * FileDesc.h.ct emits. Every method here is a thin wrapper over the C core in
+ * Socket.shim.h.
+ *
+ * Method values:
+ *   - `send` / `receive` stay on FileDesc (already chainable, count out-param);
+ *   - `send_to` returns the byte count, `receive_from` returns the receiver
+ *     and reports source address + count through out-params;
+ *   - `send_message` / `receive_message` take a caller-built `struct iovec *`
+ *     as `void *`: CT cannot build the array, so the caller owns it and its
+ *     buffers for the duration of the call.
+ *
+ * All sockets are blocking; SO_RCVTIMEO / SO_SNDTIMEO make the blocking calls
+ * return -1 with EAGAIN on timeout.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+namespace std::net;
+
+pub type SocketHandle = struct std_io_FileDesc;
+
+/* Namespace entry points (no receiver worth naming). */
+pub trait Net {
+    int resolve_host(const char *host, char *out, int cap);
+}
+
+map trait Net for namespace std::net {
+    resolve_host(host, out, cap) -> std_net_resolve_host(host, out, cap);
+}
+
+/* `"host:port".connect()` and `"1.2.3.4".parse_ip(out)`. */
+pub trait ConnectText {
+    SocketHandle *connect();
+}
+
+map trait ConnectText for type char * {
+    connect(host_port) -> std_net_connect_path(host_port);
+}
+
+pub trait IpText {
+    int parse_ip(char *out);
+}
+
+map trait IpText for type char * {
+    parse_ip(text, out) -> std_net_parse_ip(text, out);
+}
+
+/* Socket methods. `send` / `receive` come from FileDesc and are not repeated
+   here. */
+pub trait SocketOps {
+    int bind_to(int port);
+    int bind_to_address(const char *ip, int port);
+    int listen_backlog(int backlog);
+    SocketHandle *accept();
+    int local_address(char *out, int cap, int *port);
+    int local_port();
+
+    int shutdown_both();
+    int shutdown_read();
+    int shutdown_write();
+
+    int set_option(int level, int name, void *value, int length);
+    int set_reuse_address();
+    int set_receive_timeout(int milliseconds);
+    int set_send_timeout(int milliseconds);
+
+    int send_to(const char *data, int n, const char *ip, int port);
+    SocketHandle *receive_from(char *buf, int cap, char *ip_out, int ip_cap,
+                               int *port, int *count);
+    SocketHandle *send_message(void *iov, int count);
+    SocketHandle *receive_message(void *iov, int count, int *bytes);
+}
+
+map trait SocketOps for type SocketHandle * {
+    bind_to(sock, port) -> std_net_bind_any(sock, port);
+    bind_to_address(sock, ip, port) -> std_net_bind_address(sock, ip, port);
+    listen_backlog(sock, backlog) -> std_net_listen(sock, backlog);
+    accept(sock) -> std_net_accept_socket(sock);
+    local_address(sock, out, cap, port) -> std_net_local_address(sock, out, cap, port);
+    local_port(sock) -> std_net_local_port(sock);
+
+    shutdown_both(sock) -> std_net_shutdown(sock, 2);
+    shutdown_read(sock) -> std_net_shutdown(sock, 0);
+    shutdown_write(sock) -> std_net_shutdown(sock, 1);
+
+    set_option(sock, level, name, value, length) -> std_net_set_option(sock, level, name, value, length);
+    set_reuse_address(sock) -> std_net_set_reuse_address(sock);
+    set_receive_timeout(sock, milliseconds) -> std_net_set_receive_timeout(sock, milliseconds);
+    set_send_timeout(sock, milliseconds) -> std_net_set_send_timeout(sock, milliseconds);
+
+    send_to(sock, data, n, ip, port) -> std_net_send_to(sock, data, n, ip, port);
+    receive_from(sock, buf, cap, ip_out, ip_cap, port, count) -> std_net_receive_from_socket(sock, buf, cap, ip_out, ip_cap, port, count);
+    send_message(sock, iov, count) -> std_net_send_message_socket(sock, iov, count);
+    receive_message(sock, iov, count, bytes) -> std_net_receive_message_socket(sock, iov, count, bytes);
+}

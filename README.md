@@ -5,8 +5,8 @@
 
 ## 1. 定位与边界
 
-- 十五个模块：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` / `arena` / `test` /
-  `env` / `process` / `errno` / `locale` / `wchar` / `time`。
+- 十六个模块：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` / `arena` / `test` /
+  `env` / `process` / `errno` / `locale` / `wchar` / `time` / `net`。
 - 两种实现形态，机制不同，不要互相套用：
   - **C 宿主映射**（`.m.ct` + 同名 `.shim.h`）：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` /
     `env` / `process` / `errno` / `wchar`。
@@ -15,7 +15,7 @@
     `impl`；`Arena` / `Test` 走 trait + vptr，资源句柄用固有方法 + `use Drop`（无 vptr）。
 - 容器不在本包：`Vec<T>` / `Map<K,V>` 自 ct 0.30.0 起是编译器的内置层（`lib/std/Vec.h.ct`，
   自动加载，不需要 import、不需要 `-I`）。`0.3.0` 删掉了与内置名冲突的 `std::vec` / `std::map`。
-- 不提供：堆字符串类型、Unicode 规范化 / 字素簇、网络（P7 前）、正则。
+- 不提供：堆字符串类型、Unicode 规范化 / 字素簇、正则。
 - 不分配内存的模块（`str` / `fs` / `utf8` / `num` / `math` 的文本化）一律写调用方缓冲区，
   容量不足返回 `-1`。
 
@@ -27,7 +27,7 @@
 name = std
 publisher = std
 ns-root = .
-version = 0.9.0
+version = 0.11.0
 licence = MIT
 requires = ct >= 0.49.0
 ldflags = -lm
@@ -74,7 +74,12 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 
 ### 当前发布状态
 
-`0.9.0` 是当前版本，待打 `v0.9.0`。`0.9.0`（P5）新增 `std::time`：`Time` namespace 的时钟、日历、
+`0.11.0` 是当前版本，待打 `v0.11.0`。`0.11.0`（P7）补全 `std::net`：TCP/UDP 工厂、`bind_to` /
+`listen_backlog` / `accept`、`send_to` / `receive_from`、`send_message` / `receive_message`、
+`resolve_host` / `parse_ip`、超时与 `set_option`；`Socket` 仍是 `FileDesc` 别名。至此
+`docs/roadmap.md` 的 P0–P7 全部完成。`0.10.0`（P6）收口四个资源对象的 `Drop` 模板（统一经幂等
+`close()`），新增 `Timer.close()`，并把 `std::net::Socket` 声明为 `std::io::FileDesc` 的同义
+别名。`0.9.0`（P5）新增 `std::time`：`Time` namespace 的时钟、日历、
 格式化与 `from_parts`，以及 `Timer`（周期/一次性、`SIGEV_SIGNAL` 或 `setitimer` 回退、
 `defer { delete }` 释放）。`0.8.0`（P4）补全 `std::fs`：`access` / `read_link` / `resize` /
 `set_mode` / `size` / `mode` / `modification_time` / `is_readable` / `is_writable` / `resolve_path`、
@@ -166,10 +171,11 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | `std::arena` | `std::arena::Arena` | `Arena *` | 4 | [arena/README.md](std/arena/README.md) |
 | `std::test` | `std::test::Test` | `Test *` | 5 | [test/README.md](std/test/README.md) |
 | `std::time` | `std::time::Time` / `Timer` | namespace、`int`、`Timer *` | 14 + 2 + 3 | [time/README.md](std/time/README.md) |
+| `std::net` | `std::net::Socket` | `FileDesc *`（别名）、`char *` | 17 + 2 + 1 | [net/README.md](std/net/README.md) |
 
 `Vec<T>` / `Map<K,V>` 不在表里，因为它们是编译器内置层，不属于本包（见 §1、§5.4）。
 
-### 4.2 `char *` 宿主（43 个方法，名字全局共享）
+### 4.2 `char *` 宿主（45 个方法，名字全局共享）
 
 同一接收者类型上，**方法名不能重复**：任意两个可见 trait 声明同名方法，调用点就报
 `ambiguous type-host map for method 'x' on type 'char *'`。按名字判定，不看参数个数。
@@ -180,11 +186,13 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | `CStrOps` | `length` `find` `find_char` `starts_with` `ends_with` `copy` `slice` `concat` `lowercase` `uppercase` `compare` `copy_from` `move_from` `fill` `compare_with` `find_byte` `compare_prefix` `split_into` `to_int` `to_double` |
 | `FsOps` | `exists` `read` `write` `list` `mkdir` `remove` `rename` `access` `read_link` `resize` `set_mode` `size` `mode` `modification_time` `is_readable` `is_writable` `resolve_path` |
 | `PathDir`（`std::fs`） | `open_dir` |
+| `ConnectText`（`std::net`） | `connect` |
+| `IpText`（`std::net`） | `parse_ip` |
 | `Utf8Ops` | `decode` `count_codepoints` `encode` |
 | `Path`（`std::io`） | `open_file` |
 | `PathFileDesc`（`std::io`） | `open_as_file_desc` |
 
-合计 20 + 17 + 3 + 1 + 1 + 1 = **43**（`split_into` 是便利层，不是 libc 映射）。`errno` 访问器不在 `char *` 上：它是每翻译单元一份的全局值，
+合计 20 + 17 + 3 + 1 + 1 + 1 + 1 + 1 = **45**（`split_into` 是便利层，不是 libc 映射）。`errno` 访问器不在 `char *` 上：它是每翻译单元一份的全局值，
 挂在 namespace 宿主（`std::fs::FsEnv.get_last_error()`，见 §4.3）。`const char *` 也匹配同一宿主：
 类型键丢掉顶层 `const`，但 `CStrOps` 里已没有任何写接收者的方法，字面量接收者不会踩到只读内存。
 
@@ -200,7 +208,9 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | `FileDesc *` | `impl FileDesc`（CT struct + `Drop`） | `read` `write` `seek` `tell` `close` `raw_file_desc` `send` `receive` |
 | `Dir *` | `impl Dir`（CT struct + `Drop`） | `next` `rewind` `close` `tell` `seek` `path` `enter` |
 | `Stat *` | `impl Stat`（纯值） | `is_regular` `is_directory` `is_symlink` `is_other` |
-| `Timer *` | `impl Timer`（CT struct + `Drop`） | `start` `stop` `remaining` |
+| `Timer *` | `impl Timer`（CT struct + `Drop`） | `start` `stop` `remaining` `close` |
+| `Socket *` | `pub type Socket = FileDesc;` | 与 `FileDesc *` 同一套方法，另加 `bind_to` `bind_to_address` `listen_backlog` `accept` `local_address` `local_port` `shutdown_*` `set_option` `set_reuse_address` `set_*_timeout` `send_to` `receive_from` `send_message` `receive_message` |
+| namespace `std::net` | `Net` | `resolve_host` |
 | `int` | `Int` | `abs` `clamp` `max` `min` `to_str` `to_base` |
 | `long` | `Long` | 同上 6 个 |
 | `long long` | `LLong` | 同上 6 个 |
@@ -416,7 +426,9 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.9.0` | 当前版本，待打 `v0.9.0` | **P5 time**：`Time` namespace（`now_*` / `diff_seconds` / `sleep_milliseconds` / `get_cpu_ticks` / 日历字段 / `format` / `from_parts`）与 `Timer`（`make_timer` / `make_timer_once` + `start` / `stop` / `remaining`；无回调，到期走信号）。 |
+| `0.11.0` | 当前版本，待打 `v0.11.0` | **P7 net**：TCP/UDP 工厂与 `bind_to` / `listen_backlog` / `accept` / `local_address` / `local_port`；`send_to` / `receive_from` / `send_message` / `receive_message`；`shutdown_*`、`set_option` / `set_reuse_address` / `set_*_timeout`；`resolve_host` / `parse_ip`。`Socket` 保持 `FileDesc` 别名。 |
+| `0.10.0` | 待打 `v0.10.0` | **P6 资源模板收口**：`File` / `FileDesc` / `Dir` / `Timer` 的 `Drop` 统一调用幂等 `close()`；`Timer` 新增 `close`；`std::net::Socket` 声明为 `FileDesc` 别名（无新类型）。 |
+| `0.9.0` | 待打 `v0.9.0` | **P5 time**：`Time` namespace（`now_*` / `diff_seconds` / `sleep_milliseconds` / `get_cpu_ticks` / 日历字段 / `format` / `from_parts`）与 `Timer`（`make_timer` / `make_timer_once` + `start` / `stop` / `remaining`；无回调，到期走信号）。 |
 | `0.8.0` | 待打 `v0.8.0` | **P4 fs 补全**：路径方法补 10 个；`read_file`/`write_file` → `read`/`write`；新增 `Dir`（`own` 工厂 + 字符串工厂）与 `Stat` 字段镜像；`scan_directory` 流式回调；`resolve_path` 为词法绝对路径。 |
 | `0.7.0` | 待打 `v0.7.0` | **P3 stdio 资源化**：`IoFile` 退役，`File` / `FileDesc` 改为 CT struct + `use Drop`；补全 seek/tell/EOF/错误位/字符与行 IO/flush/adopt；方法调用改 `->`；`own` 只认自由工厂。 |
 | `0.6.0` | 待打 `v0.6.0` | **P2 五个新模块**：`std::env` / `std::process` / `std::errno` / `std::locale` / `std::wchar`；`LocaleHandle` 用 `own` + `Drop`，`apply` 明确为进程全局副作用。 |

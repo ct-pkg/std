@@ -41,7 +41,7 @@
 name = std
 publisher = std
 ns-root = .
-version = 0.9.0
+version = 0.11.0
 licence = MIT
 requires = ct >= 0.49.0
 ldflags = -lm
