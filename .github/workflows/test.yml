@@ -21,11 +21,9 @@ permissions:
 
 env:
   CT_REPO: samxxu/ct-lang
-  # Track main while the OO std is being landed in ct-lang. Once the compiler
-  # release that ships it is tagged, pin this to that tag (expected v0.20.0)
-  # so pull requests test against a stable compiler, and leave compiler-head
-  # on main.
-  CT_REF: main
+  # The host matrix runs against the compiler release this package is verified
+  # with; compiler-head below still tracks ct-lang main for early warning.
+  CT_REF: v0.67.0
 
 jobs:
   host:
@@ -59,6 +57,7 @@ jobs:
         run: |
           bash tools/bootstrap-ct.sh .ct-src "$RUNNER_TEMP/ct"
           echo "$RUNNER_TEMP/ct" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/ct/ct" --version
 
       # Optional while std/ still lives in ct-lang: proves this package is a
       # byte-for-byte copy of the source tree. Remove this step once ct-lang
@@ -97,6 +96,7 @@ jobs:
         run: |
           bash tools/bootstrap-ct.sh .ct-src "$RUNNER_TEMP/ct"
           echo "$RUNNER_TEMP/ct" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/ct/ct" --version
 
       - name: gate
         env:
