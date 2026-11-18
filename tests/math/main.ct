@@ -11,12 +11,13 @@ int main(void)
     double x = 16.0;
     double neg = -3.5;
     double d = 2.6;
-    double third = 1.0 / 3.0;
     double precise = 1.23456789;
     double zero = 0.0;
+    double three = 3.0;
     double nan = zero / zero;
     double inf = 1.0 / zero;
     float f = -2.5f;
+    float f3 = 3.0f;
     float f26 = 2.6f;
     int expo;
     double frac;
@@ -28,6 +29,8 @@ int main(void)
     tp->check_eq_int((int)x.sqrt(), 4, "double sqrt");
     tp->check_eq_int((int)neg.abs(), 3, "double abs");
     tp->check_eq_int((int)d.pow(2.0), 6, "double pow");
+    tp->check_true(three.exp2() == 8.0, "double exp2");
+    tp->check_true(f3.exp2() == 8.0f, "float exp2");
 
     tp->check_eq_int((int)f.abs(), 2, "float abs");
     tp->check_eq_int((int)f.floor(), -3, "float floor");

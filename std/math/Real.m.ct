@@ -33,6 +33,7 @@ pub trait Float {
     float truncate();
     float pow(float y);
     float exp();
+    float exp2();
     float exponential_minus_one();
     float log();
     float log2();
@@ -70,6 +71,7 @@ map trait Float for type float {
     truncate(v) -> truncf(v);
     pow(v, y) -> powf(v, y);
     exp(v) -> expf(v);
+    exp2(v) -> exp2f(v);
     exponential_minus_one(v) -> expm1f(v);
     log(v) -> logf(v);
     log2(v) -> log2f(v);
@@ -107,6 +109,7 @@ pub trait Real {
     double  truncate();
     double  pow(double y);
     double  exp();
+    double  exp2();
     double  exponential_minus_one();
     double  log();
     double  log2();
@@ -148,6 +151,7 @@ map trait Real for type double {
     truncate(v) -> trunc(v);
     pow(v, y) -> pow(v, y);
     exp(v) -> exp(v);
+    exp2(v) -> exp2(v);
     exponential_minus_one(v) -> expm1(v);
     log(v) -> log(v);
     log2(v) -> log2(v);

@@ -1,13 +1,13 @@
 # `std::math` — 浮点数值方法（`Float` / `Real`）
 
-`math.h` 的一层方法映射，**只有方法形态**：`float` 宿主是 `Float`（34 个方法），`double`
-宿主是 `Real`（38 个方法），调用一律写成 `x.sqrt()` / `x.pow(2.0)` 这样的值方法。
+`math.h` 的一层方法映射，**只有方法形态**：`float` 宿主是 `Float`（35 个方法），`double`
+宿主是 `Real`（39 个方法），调用一律写成 `x.sqrt()` / `x.pow(2.0)` 这样的值方法。
 namespace 入口已删除，`math/Math.m.ct` 已物理移除。
 
 ## 1. 定位与边界
 
 - 数学函数只提供方法形态，接收者决定宽度：`float` 走 `Float`，`double` 走 `Real`。
-- `Float` 有 34 个方法，`Real` 有 38 个：同名方法语义相同，`Real` 另有
+- `Float` 有 35 个方法，`Real` 有 39 个：同名方法语义相同，`Real` 另有
   `scale_by_power_of_two` / `split_exponent` / `split_fraction` / `to_str` 四个。
 - `Float`（`float`）保持 `float` 宽度，走 `sqrtf` / `fabsf` / `powf` 等带 `f` 后缀的入口；
   `Real`（`double`）走无后缀版本。
@@ -25,13 +25,13 @@ namespace 入口已删除，`math/Math.m.ct` 已物理移除。
 
 | 文件 | 内容 |
 | --- | --- |
-| `Real.m.ct` | `pub trait Float`（`float` 宿主，34 个方法）+ `pub trait Real`（`double` 宿主，38 个方法） |
+| `Real.m.ct` | `pub trait Float`（`float` 宿主，35 个方法）+ `pub trait Real`（`double` 宿主，39 个方法） |
 | `Real.shim.h` | `std_math_double_to_str` 的 `static inline` 实现 |
 
 | 宿主 | trait | 方法数 | 调用形态 |
 | --- | --- | --- | --- |
-| `float` | `Float` | 34 | `f.sqrt()` / `f.pow(y)` |
-| `double` | `Real` | 38 | `d.sqrt()` / `d.pow(y)` / `d.to_str(buf, cap)` |
+| `float` | `Float` | 35 | `f.sqrt()` / `f.pow(y)` |
+| `double` | `Real` | 39 | `d.sqrt()` / `d.pow(y)` / `d.to_str(buf, cap)` |
 
 引入方式：`import std::math::Real;`（一次带入 `Float` 与 `Real` 两个值方法 trait）。
 namespace 入口的 import 不再是文档写法。
@@ -136,7 +136,7 @@ inf=1
 
 ## 4. API 全表
 
-### 4.1 宿主 `float`（trait `Float`，34 个方法）
+### 4.1 宿主 `float`（trait `Float`，35 个方法）
 
 | 方法 | 签名 | 语义 |
 | --- | --- | --- |
@@ -148,6 +148,7 @@ inf=1
 | `truncate()` | `float truncate()` | `truncf`，向 0 取整 |
 | `pow(y)` | `float pow(float y)` | `powf`，`x` 的 `y` 次幂；定义域外得 NaN |
 | `exp()` | `float exp()` | `expf`，`e^x` |
+| `exp2()` | `float exp2()` | `exp2f`，`2^x` |
 | `exponential_minus_one()` | `float exponential_minus_one()` | `expm1f`，`e^x - 1`，小 `x` 时比先减 1 精确 |
 | `log()` | `float log()` | `logf`，自然对数；`x < 0` 得 NaN，`x == 0` 得 -Inf |
 | `log2()` | `float log2()` | `log2f`，以 2 为底 |
@@ -175,9 +176,9 @@ inf=1
 | `is_nan()` | `int is_nan()` | `isnan`，是 NaN 返回非 0 |
 | `is_infinite()` | `int is_infinite()` | `isinf`，是 ±Inf 返回非 0 |
 
-### 4.2 宿主 `double`（trait `Real`，38 个方法）
+### 4.2 宿主 `double`（trait `Real`，39 个方法）
 
-前 34 个与 `Float` 同名同义，只是签名改为 `double`；标 **Real 独有** 的四个只在 `double` 上存在。
+前 35 个与 `Float` 同名同义，只是签名改为 `double`；标 **Real 独有** 的四个只在 `double` 上存在。
 
 | 方法 | 签名 | 语义 |
 | --- | --- | --- |
@@ -189,6 +190,7 @@ inf=1
 | `truncate()` | `double truncate()` | `trunc`，向 0 取整 |
 | `pow(y)` | `double pow(double y)` | `pow`，`x` 的 `y` 次幂；定义域外得 NaN |
 | `exp()` | `double exp()` | `exp`，`e^x` |
+| `exp2()` | `double exp2()` | `exp2`，`2^x` |
 | `exponential_minus_one()` | `double exponential_minus_one()` | `expm1`，`e^x - 1`，小 `x` 时比先减 1 精确 |
 | `log()` | `double log()` | `log`，自然对数；`x < 0` 得 NaN，`x == 0` 得 -Inf |
 | `log2()` | `double log2()` | `log2`，以 2 为底 |

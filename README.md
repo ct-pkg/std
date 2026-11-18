@@ -169,7 +169,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | `std::fs` | `std::fs::Fs` / `Dir` / `Stat` | `char *`、`Dir *`、`Stat *` | 17 + 7 + 4 | [fs/README.md](std/fs/README.md) |
 | `std::utf8` | `std::utf8::Utf8Ops` | `char *` | 3 | [utf8/README.md](std/utf8/README.md) |
 | `std::num` | `std::num::Num` | `int` / `long` / `long long` / `char` | 6 × 3 + 14 | [num/README.md](std/num/README.md) |
-| `std::math` | `std::math::Real`（`Float` / `Real`） | `float` / `double` | 34 + 38 | [math/README.md](std/math/README.md) |
+| `std::math` | `std::math::Real`（`Float` / `Real`） | `float` / `double` | 35 + 39 | [math/README.md](std/math/README.md) |
 | `std::search` | `std::search::Search` | `char *` + 元素大小 | 2 | — |
 | `std::arena` | `std::arena::Arena` | `Arena *` | 4 | [arena/README.md](std/arena/README.md) |
 | `std::test` | `std::test::Test` | `Test *` | 5 | [test/README.md](std/test/README.md) |
@@ -219,8 +219,8 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | `long long` | `LLong` | 同上 6 个 |
 | `char` | `Char` | `is_digit` `is_alpha` `is_space` `is_upper` `is_lower` `is_alnum` `is_punct` `is_print` `is_graph` `is_cntrl` `is_blank` `is_xdigit` `uppercase` `lowercase` |
 | namespace `std::search` | `Search` | `sort` `binary_search`（接收 `char *` + 元素大小；比较器是 C 的 `int cmp(const void *, const void *)`） |
-| `float` | `Float` | 34 个（`abs` … `is_nan` `is_infinite`，全表见 [math/README.md](std/math/README.md#4-api-全表)） |
-| `double` | `Real` | 与 `Float` 相同的 34 个，另有 `scale_by_power_of_two` `split_exponent` `split_fraction` `to_str`（共 38 个） |
+| `float` | `Float` | 35 个（`abs` … `is_nan` `is_infinite`，全表见 [math/README.md](std/math/README.md#4-api-全表)） |
+| `double` | `Real` | 与 `Float` 相同的 35 个，另有 `scale_by_power_of_two` `split_exponent` `split_fraction` `to_str`（共 39 个） |
 
 `int` / `long` / `long long` 与 `char` 是四个独立宿主，同名方法跨宿主允许（`n.to_str(buf, cap)` 与
 `c.is_digit()` 互不冲突）；`char` 不会提升成 `int`。
