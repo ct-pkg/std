@@ -438,7 +438,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 | `0.8.0` | 待打 `v0.8.0` | **P4 fs 补全**：路径方法补 10 个；`read_file`/`write_file` → `read`/`write`；新增 `Dir`（`own` 工厂 + 字符串工厂）与 `Stat` 字段镜像；`scan_directory` 流式回调；`resolve_path` 为词法绝对路径。 |
 | `0.7.0` | 待打 `v0.7.0` | **P3 stdio 资源化**：`IoFile` 退役，`File` / `FileDesc` 改为 CT struct + `use Drop`；补全 seek/tell/EOF/错误位/字符与行 IO/flush/adopt；方法调用改 `->`；`own` 只认自由工厂。 |
 | `0.6.0` | 待打 `v0.6.0` | **P2 五个新模块**：`std::env` / `std::process` / `std::errno` / `std::locale` / `std::wchar`；`LocaleHandle` 用 `own` + `Drop`，`apply` 明确为进程全局副作用。 |
-| `0.5.0` | 待打 `v0.5.0` | **P1 补齐**：`Char` 新增 7 个谓词；`CStrOps` 新增 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into`（`copy_to` 移除）；`Float` / `Real` 扩到完整 libm 方法族，七个生僻名改全称，`is_inf` → `is_infinite`，数学只保留方法形态；新增 `std::search`。 |
+| `0.5.0` | 已打 `v0.5.0` | **P1 补齐**：`Char` 新增 7 个谓词；`CStrOps` 新增 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into`（`copy_to` 移除）；`Float` / `Real` 扩到完整 libm 方法族，七个生僻名改全称，`is_inf` → `is_infinite`，数学只保留方法形态；新增 `std::search`。 |
 | `0.4.0` | 已打 `v0.4.0` | **破坏性改名与删除**（P0）：`String` → `CStrOps`；`len` → `length`；`open` → `open_file`；`to_upper` / `to_lower` → `uppercase` / `lowercase`；删除 `to_string`（只剩 `to_str(out, cap)`）与 `std::io` 的变参 `printf`（`Io.h.ct` 移除，输出改用 `std::io::Stdout`）。 |
 | `0.3.2` | 已打 `v0.3.2` | 包身份与许可统一：`publisher` 改为 `std`，许可改为 MIT（`LICENSE`、README 与各单元头部表述一并更新）；`ns-root` 与 API 无变化。 |
 | `0.3.1` | 已打 `v0.3.1` | 文档修正：`0.3.0` 打 tag 后仍写着「未打 tag」，本版订正该状态并同步 `ct.pkg` 版本号；API 无变化（包摘要因文档与版本号变动而更新）。 |
