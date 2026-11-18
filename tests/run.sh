@@ -45,6 +45,11 @@ work="${work%/}/ct-std-pkg.$$"
 rm -rf "$work"
 mkdir -p "$work" || exit 1
 
+# The driver writes generated C and exported headers into ./.ctbuild. A stale
+# exported header can shadow a system header by name (e.g. a removed Locale.h
+# against <locale.h>), so each gate run starts from an empty outdir.
+rm -rf "$root/.ctbuild"
+
 pass=0
 fail=0
 ok()  { pass=$((pass + 1)); printf '  ok    %s\n' "$1"; }
@@ -56,14 +61,14 @@ echo
 
 echo "== layout (the package must not be empty) =="
 layout_bad=""
-for mod in str io fs utf8 arena test num math search; do
+for mod in str io fs utf8 arena test num math search env process errno locale wchar; do
     [ -d "std/$mod" ] || layout_bad="$layout_bad std/$mod(missing)"
 done
 if [ -z "$(find tests -mindepth 2 -name '*.ct' 2>/dev/null | head -1)" ]; then
     layout_bad="$layout_bad tests/*/*.ct(no fixtures)"
 fi
 if [ -z "$layout_bad" ]; then
-    ok "nine modules and at least one fixture per package"
+    ok "fourteen modules and at least one fixture per package"
 else
     bad "layout" "$layout_bad"
 fi

@@ -1,0 +1,112 @@
+/*
+ * Process.m.ct - process identity, control and signals behind std::process.
+ *
+ * Nothing in this module owns a resource, so every entry point hangs off the
+ * namespace (`std::process::Process.get_pid()`). `fork` returns 0 in the child,
+ * the child pid in the parent and -1 on failure; every `execute*` entry point
+ * replaces the process image and therefore only returns on failure (-1).
+ *
+ * `pipe_open` returns an opaque `void *` (a `FILE *` behind the scenes) because
+ * a mapping unit cannot name a type declared in another unit; `pipe_close`
+ * takes it back. The pair is the one borrowed handle in this module and the
+ * README spells out that it must not be mixed with `std::io::File`.
+ *
+ * Callbacks: `signal` takes a plain C handler through a `void *` parameter,
+ * the same channel `std::search` uses for `qsort`. CT has no closures across
+ * the C boundary, so the handler is a top-level `int handler(int)` function
+ * name; it runs with the usual signal-safety restrictions.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+namespace std::process;
+
+pub trait Process {
+    int get_pid();
+    int get_parent_pid();
+    int get_uid();
+    int get_effective_uid();
+    int get_gid();
+    int get_effective_gid();
+
+    int fork();
+    int execute(const char *path, char **argv);
+    int execute_search(const char *file, char **argv);
+    int execute_with_environment(const char *path, char **argv, char **envp);
+    int system(const char *command);
+    void exit_process(int code);
+    void abort_process();
+
+    void *pipe_open(const char *command, const char *mode);
+    int pipe_close(void *pipe);
+
+    int wait_pid(int pid, int *status, int options);
+    int wait_any(int *status);
+    int wait_no_hang();
+    int is_exited(int status);
+    int is_signaled(int status);
+    int exit_status_code(int status);
+    int termination_signal(int status);
+
+    int signal(int signum, void *handler);
+    int raise_signal(int signum);
+    int kill(int pid, int signum);
+    int alarm(int seconds);
+    int pause();
+
+    int sigint();
+    int sigterm();
+    int sigkill();
+    int sigalrm();
+    int sigchld();
+    int sighup();
+    int sigusr1();
+    int sigusr2();
+    int sigrtmin();
+    int sigrtmax();
+}
+
+map trait Process for namespace std::process {
+    get_pid() -> std_process_get_pid();
+    get_parent_pid() -> std_process_get_parent_pid();
+    get_uid() -> std_process_get_uid();
+    get_effective_uid() -> std_process_get_effective_uid();
+    get_gid() -> std_process_get_gid();
+    get_effective_gid() -> std_process_get_effective_gid();
+
+    fork() -> std_process_fork();
+    execute(path, argv) -> std_process_execute(path, argv);
+    execute_search(file, argv) -> std_process_execute_search(file, argv);
+    execute_with_environment(path, argv, envp) -> std_process_execute_environment(path, argv, envp);
+    system(command) -> std_process_system(command);
+    exit_process(code) -> std_process_exit(code);
+    abort_process() -> std_process_abort();
+
+    pipe_open(command, mode) -> std_process_pipe_open(command, mode);
+    pipe_close(pipe) -> std_process_pipe_close(pipe);
+
+    wait_pid(pid, status, options) -> std_process_wait_pid(pid, status, options);
+    wait_any(status) -> std_process_wait_any(status);
+    wait_no_hang() -> std_process_wait_no_hang();
+    is_exited(status) -> std_process_is_exited(status);
+    is_signaled(status) -> std_process_is_signaled(status);
+    exit_status_code(status) -> std_process_exit_status_code(status);
+    termination_signal(status) -> std_process_termination_signal(status);
+
+    signal(signum, handler) -> std_process_signal(signum, handler);
+    raise_signal(signum) -> std_process_raise_signal(signum);
+    kill(pid, signum) -> std_process_kill(pid, signum);
+    alarm(seconds) -> std_process_alarm(seconds);
+    pause() -> std_process_pause();
+
+    sigint() -> std_process_sigint();
+    sigterm() -> std_process_sigterm();
+    sigkill() -> std_process_sigkill();
+    sigalrm() -> std_process_sigalrm();
+    sigchld() -> std_process_sigchld();
+    sighup() -> std_process_sighup();
+    sigusr1() -> std_process_sigusr1();
+    sigusr2() -> std_process_sigusr2();
+    sigrtmin() -> std_process_sigrtmin();
+    sigrtmax() -> std_process_sigrtmax();
+}

@@ -1,0 +1,65 @@
+/* std::locale - naming, applying and the conventions copy-out.
+ *
+ * The process-wide locale is changed in this fixture, so the "C" locale is
+ * restored before the report. The assertions avoid exact name strings: macOS
+ * normalises "C" to "C" but other platforms may append codesets. */
+import std::locale::LocaleHandle;
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char dp[8];
+    char ts[8];
+    char name[64];
+    LocaleHandle *l;
+    LocaleHandle *bad;
+
+    tp->init();
+
+    l = "C".make_locale();
+    tp->check_true(l != 0, "the string factory returns a handle");
+    tp->check_eq_int(l->name_to_str(name, 64), 1, "the saved name is one byte");
+    tp->check_eq_str(name, "C", "the saved name is C");
+
+    /* apply changes the process locale and reports success. */
+    tp->check_eq_int(l->apply(std::locale::lc_all()), 0, "apply(C, LC_ALL)");
+    tp->check_true(std::locale::current_locale(name, 64) >= 1,
+                   "current_locale reads a name back");
+    tp->check_eq_int(name[0], 'C', "the current locale starts with C");
+
+    /* conventions copies the numeric separators; the C locale uses '.' and "". */
+    tp->check_eq_int(l->conventions(dp, 8, ts, 8), 0, "conventions succeeds");
+    tp->check_eq_str(dp, ".", "the C locale decimal point is .");
+    tp->check_eq_str(ts, "", "the C locale has no thousands separator");
+
+    /* Too small is a refusal for both buffers. */
+    tp->check_eq_int(l->conventions(dp, 1, ts, 8), -1,
+                     "a one-byte decimal buffer is refused");
+    tp->check_true(dp[0] == 0, "the refused decimal buffer is cleared");
+
+    /* A name the platform does not provide can be saved but not applied. */
+    bad = std::locale::make_locale("ct_NO_SUCH_LOCALE.UTF-8");
+    tp->check_true(bad != 0, "an unknown name still yields a handle");
+    tp->check_eq_int(bad->apply(std::locale::lc_ctype()), -1,
+                     "apply of an unknown name fails");
+    delete bad;
+
+    /* The own form releases the handle and its copied name automatically. */
+    {
+        own LocaleHandle *auto_locale = std::locale::make_locale("C");
+        tp->check_true(auto_locale != 0, "the free factory returns a handle");
+        tp->check_eq_int(auto_locale->name_to_str(name, 64), 1,
+                         "the own handle is usable");
+    }
+
+    tp->check_true(std::locale::make_locale("") == 0,
+                   "an empty name is refused by the factory");
+
+    /* Restore the default so the rest of the run is unaffected. */
+    tp->check_eq_int(l->apply(std::locale::lc_all()), 0, "restore the C locale");
+    delete l;
+    return tp->report();
+}

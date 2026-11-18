@@ -1,0 +1,53 @@
+/* std::errno - the errno accessors and the copied strerror text.
+ *
+ * The message itself is locale- and platform-dependent, so the assertions check
+ * its presence, its copying contract and the buffer-too-small path, not the
+ * exact wording. */
+import std::errno::Errno;
+import std::str::String;
+import std::test::Test;
+
+/* ENOENT is 2 on Linux and macOS. A `.ct` file cannot include <errno.h>. */
+#define ENOENT_VALUE 2
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char msg[128];
+    char small[2];
+    int n;
+    int code;
+
+    tp->init();
+
+    std::errno::Errno.set_last(ENOENT_VALUE);
+    tp->check_eq_int(std::errno::Errno.get_last(), ENOENT_VALUE,
+                     "get_last reads the value set_last wrote");
+
+    std::errno::Errno.set_last(0);
+    tp->check_eq_int(std::errno::Errno.get_last(), 0, "zero round-trips");
+
+    code = ENOENT_VALUE;
+    n = std::errno::Errno.error_message(ENOENT_VALUE, msg, 128);
+    tp->check_true(n > 0, "error_message returns the length");
+    tp->check_eq_int(msg.length(), n, "the length matches the copied text");
+
+    /* The int receiver is the chainable spelling of the same helper. */
+    tp->check_eq_int(code.error_message(msg, 128), n,
+                     "code.error_message agrees with the namespace form");
+
+    /* Too small is a refusal, not a truncation: the buffer is cleared. */
+    small[0] = 'x';
+    small[1] = 'y';
+    tp->check_eq_int(code.error_message(small, 2), -1,
+                     "a two-byte buffer cannot hold a message");
+    tp->check_true(small[0] == 0, "the refused buffer is cleared");
+
+    tp->check_eq_int(code.error_message(msg, 0), -1,
+                     "a zero capacity is refused");
+    tp->check_eq_int(code.error_message(0, 128), -1,
+                     "a null buffer is refused");
+
+    return tp->report();
+}

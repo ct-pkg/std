@@ -1,0 +1,41 @@
+/*
+ * Errno.m.ct - errno and strerror behind std::errno.
+ *
+ * `errno` is a macro, not a variable, so it cannot be a receiver: `get_last()`
+ * hangs off the namespace (`std::errno::Errno.get_last()`) and reads the
+ * `errno` of the caller's translation unit. The shim is injected into that
+ * translation unit, so the read is in the same TU as the failing C call --
+ * unlike a cached error slot kept inside the package.
+ *
+ * `error_message(code, out, cap)` copies `strerror(code)` into the caller's
+ * buffer: the libc return value is a borrowed pointer into a static buffer that
+ * the next `strerror` may overwrite, so the package never hands it out. The
+ * same helper is also available on an `int` receiver
+ * (`code.error_message(out, cap)`), which is the chainable spelling.
+ *
+ * Allocation: none. Buffer too small is -1; nothing is truncated.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+namespace std::errno;
+
+pub trait Errno {
+    int get_last();
+    int set_last(int code);
+    int error_message(int code, char *out, int cap);
+}
+
+map trait Errno for namespace std::errno {
+    get_last() -> std_errno_get_last();
+    set_last(code) -> std_errno_set_last(code);
+    error_message(code, out, cap) -> std_errno_message(code, out, cap);
+}
+
+pub trait ErrnoCode {
+    int error_message(char *out, int cap);
+}
+
+map trait ErrnoCode for type int {
+    error_message(code, out, cap) -> std_errno_message(code, out, cap);
+}

@@ -1,0 +1,53 @@
+/* std::env - set / unset / get, with the copy-out contract.
+ *
+ * The variable name starts with `CT_STD_` so it cannot collide with the
+ * runner's environment. */
+import std::env::Env;
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char *name = "CT_STD_ENV_TEST";
+    char value[64];
+    char small[3];
+    int n;
+
+    tp->init();
+
+    /* Remove any inherited value so the first assertion is deterministic. */
+    std::env::Env.unset(name);
+    tp->check_eq_int(name.get_env(value, 64), -1, "an unset name is -1");
+    tp->check_true(value[0] == 0, "a miss clears the buffer");
+
+    tp->check_eq_int(std::env::Env.set(name, "hello"), 0, "set succeeds");
+    n = name.get_env(value, 64);
+    tp->check_eq_int(n, 5, "get_env returns the byte count");
+    tp->check_eq_str(value, "hello", "get_env copies the value");
+
+    tp->check_eq_int(std::env::Env.set(name, "replaced"), 0,
+                     "set overwrites an existing name");
+    tp->check_eq_int(name.get_env(value, 64), 8, "the new value wins");
+    tp->check_eq_str(value, "replaced", "the overwritten value is gone");
+
+    /* An empty value is a successful read of zero bytes, not a miss. */
+    tp->check_eq_int(std::env::Env.set(name, ""), 0, "set an empty value");
+    tp->check_eq_int(name.get_env(value, 64), 0, "an empty value is 0");
+    tp->check_true(value[0] == 0, "the empty value is a NUL");
+
+    /* Too small includes the terminator in the calculation. */
+    std::env::Env.set(name, "replaced");
+    tp->check_eq_int(name.get_env(small, 3), -1,
+                     "a three-byte buffer cannot hold 'replaced'");
+    tp->check_true(small[0] == 0, "the refused buffer is cleared");
+
+    tp->check_eq_int(std::env::Env.unset(name), 0, "unset succeeds");
+    tp->check_eq_int(name.get_env(value, 64), -1, "the name is gone");
+
+    tp->check_eq_int(std::env::Env.set("", "x"), -1, "an empty name is refused");
+    tp->check_eq_int(std::env::Env.unset(""), -1, "unset refuses an empty name");
+
+    return tp->report();
+}

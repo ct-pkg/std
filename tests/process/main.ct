@@ -1,0 +1,93 @@
+/* std::process - identity, fork/wait, system, signals and the pipe handle.
+ *
+ * fork's child calls exit_process immediately: it received a copy of the
+ * parent's Test state and must not report twice. */
+import std::process::Process;
+import std::test::Test;
+
+int g_alarmed = 0;
+
+void on_alarm(int signum)
+{
+    g_alarmed = signum;
+}
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    int status;
+    int pid;
+    int sig;
+    void *pipe;
+
+    tp->init();
+
+    tp->check_true(std::process::Process.get_pid() > 0, "get_pid is positive");
+    tp->check_true(std::process::Process.get_parent_pid() > 0,
+                   "get_parent_pid is positive");
+    tp->check_true(std::process::Process.get_uid() >= 0, "get_uid");
+    tp->check_true(std::process::Process.get_effective_uid() >= 0,
+                   "get_effective_uid");
+    tp->check_true(std::process::Process.get_gid() >= 0, "get_gid");
+    tp->check_true(std::process::Process.get_effective_gid() >= 0,
+                   "get_effective_gid");
+
+    /* The signal numbers are platform values, so the checks are relational. */
+    tp->check_true(std::process::Process.sigint() > 0, "SIGINT is positive");
+    tp->check_true(std::process::Process.sigterm() > 0, "SIGTERM is positive");
+    tp->check_true(std::process::Process.sigrtmin() > 0, "SIGRTMIN is positive");
+    tp->check_true(std::process::Process.sigrtmin() <= std::process::Process.sigrtmax(),
+                   "SIGRTMIN <= SIGRTMAX");
+
+    /* fork + wait: the child exits 7, the parent decodes it. */
+    status = 0;
+    pid = std::process::Process.fork();
+    if (pid == 0) {
+        std::process::Process.exit_process(7);
+    }
+    tp->check_true(pid > 0, "fork returns the child pid in the parent");
+    tp->check_eq_int(std::process::Process.wait_pid(pid, &status, 0), pid,
+                     "wait_pid returns the child pid");
+    tp->check_eq_int(std::process::Process.is_exited(status), 1, "the child exited");
+    tp->check_eq_int(std::process::Process.exit_status_code(status), 7,
+                     "the exit status is 7");
+    tp->check_eq_int(std::process::Process.is_signaled(status), 0,
+                     "the child was not signalled");
+
+    /* system: a shell command's status goes through the same helpers. */
+    status = std::process::Process.system("exit 3");
+    tp->check_eq_int(std::process::Process.is_exited(status), 1,
+                     "system returns a wait status");
+    tp->check_eq_int(std::process::Process.exit_status_code(status), 3,
+                     "system decodes the shell exit code");
+
+    /* The pipe handle is borrowed: open and close only (reading it belongs to
+       std::io once that module owns FILE handles). */
+    pipe = std::process::Process.pipe_open("true", "r");
+    tp->check_true(pipe != 0, "pipe_open returns a handle");
+    status = std::process::Process.pipe_close(pipe);
+    tp->check_eq_int(std::process::Process.is_exited(status), 1,
+                     "pipe_close returns a wait status");
+    tp->check_eq_int(std::process::Process.exit_status_code(status), 0,
+                     "the piped command exited 0");
+
+    /* A handler installed through the void* callback channel fires on raise. */
+    sig = std::process::Process.sigalrm();
+    tp->check_eq_int(std::process::Process.signal(sig, on_alarm), 0,
+                     "install the SIGALRM handler");
+    tp->check_eq_int(std::process::Process.raise_signal(sig), 0, "raise SIGALRM");
+    tp->check_eq_int(g_alarmed, sig, "the handler ran with the signal number");
+
+    /* kill(pid, 0) is the documented existence probe and must not signal. */
+    tp->check_eq_int(std::process::Process.kill(std::process::Process.get_pid(), 0), 0,
+                     "kill with signal 0 probes the pid");
+    tp->check_eq_int(std::process::Process.alarm(0), 0,
+                     "alarm(0) cancels and returns the previous remainder");
+
+    /* No such process: kill reports -1. */
+    tp->check_eq_int(std::process::Process.kill(999999, 0), -1,
+                     "kill of an invalid pid fails");
+
+    return tp->report();
+}

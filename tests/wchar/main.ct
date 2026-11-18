@@ -1,0 +1,60 @@
+/* std::wchar - multibyte / wide conversion through int buffers.
+ *
+ * The tests stay in the "C" locale, so the conversions are ASCII; the locale
+ * dependent part is exercised by std::locale's own fixture. */
+import std::test::Test;
+import std::wchar::Wchar;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    int wbuf[16];
+    int small[2];
+    char out[16];
+    char tiny[2];
+    int *wp;
+    int n;
+
+    tp->init();
+    wp = wbuf;
+
+    wbuf[0] = 0;
+    n = "hello".to_wide(wbuf, 16);
+    tp->check_eq_int(n, 5, "to_wide returns the wide-unit count");
+    tp->check_eq_int(wbuf[0], 'h', "the first wide unit is h");
+    tp->check_eq_int(wbuf[4], 'o', "the fifth wide unit is o");
+    tp->check_eq_int(wbuf[5], 0, "the result is NUL-terminated");
+
+    tp->check_eq_int(wp.wide_length(), 5, "wide_length counts wide units");
+    tp->check_eq_int(std::wchar::Wchar.wide_string_length(wbuf), 5,
+                     "the namespace form agrees");
+
+    n = wp.to_multibyte(out, 16);
+    tp->check_eq_int(n, 5, "to_multibyte returns the byte count");
+    tp->check_eq_str(out, "hello", "the round trip preserves the text");
+
+    /* Too small: the wide buffer needs six units for "hello", the narrow one
+       six bytes. Both refuse and clear rather than truncate. */
+    small[0] = 0;
+    tp->check_eq_int("hello".to_wide(small, 2), -1,
+                     "two wide units cannot hold hello");
+    tp->check_eq_int(small[0], 0, "the refused wide buffer is cleared");
+
+    tiny[0] = 'x';
+    tp->check_eq_int(wp.to_multibyte(tiny, 2), -1,
+                     "two bytes cannot hold hello");
+    tp->check_true(tiny[0] == 0, "the refused narrow buffer is cleared");
+
+    /* The empty string converts to zero units and is still terminated. */
+    wbuf[0] = 1;
+    tp->check_eq_int("".to_wide(wbuf, 16), 0, "an empty string is zero units");
+    tp->check_eq_int(wbuf[0], 0, "the empty result is terminated");
+
+    tp->check_eq_int("hello".to_wide(wbuf, 0), -1, "a zero capacity is refused");
+    tp->check_eq_int(wp.to_multibyte(out, 0), -1, "a zero byte capacity is refused");
+    tp->check_eq_int(std::wchar::Wchar.wide_string_length(0), -1,
+                     "a null wide string has no length");
+
+    return tp->report();
+}

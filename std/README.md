@@ -14,8 +14,13 @@
 | `std::search` | `std::search::Search` | [search/README.md](search/README.md) |
 | `std::arena` | `std::arena::Arena` | [arena/README.md](arena/README.md) |
 | `std::test` | `std::test::Test` | [test/README.md](test/README.md) |
+| `std::env` | `std::env::Env` | [env/README.md](env/README.md) |
+| `std::process` | `std::process::Process` | [process/README.md](process/README.md) |
+| `std::errno` | `std::errno::Errno` | [errno/README.md](errno/README.md) |
+| `std::locale` | `std::locale::LocaleHandle` | [locale/README.md](locale/README.md) |
+| `std::wchar` | `std::wchar::Wchar` | [wchar/README.md](wchar/README.md) |
 
-九个模块的教程都已并入各自的 README，包内不再有独立的 `tutorial.md`。
+十四个模块的教程都已并入各自的 README，包内不再有独立的 `tutorial.md`。
 
 容器不在本包：`Vec<T>` / `Map<K,V>` 自 ct 0.30.0 起是编译器的内置层（`lib/std/Vec.h.ct`，
 自动加载、不需要 import）。本包 0.3.0 删掉了与它们重名的 `std::vec` / `std::map`。

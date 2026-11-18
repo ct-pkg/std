@@ -1,0 +1,53 @@
+/*
+ * Wchar.m.ct - the <wchar.h> conversions behind std::wchar.
+ *
+ * CT has no `wchar_t`, so the module uses `int *` as the wide-string type and
+ * states the platform assumption once: the size check in Wchar.shim.h refuses
+ * to compile where `wchar_t` is not the same width as `int` (Linux, macOS and
+ * the BSDs are fine; a 2-byte `wchar_t` platform is not supported).
+ *
+ * Three shapes, one capability each:
+ *   - `std::wchar::Wchar.wide_string_length(ws)` - length in wide units;
+ *   - `"text".to_wide(out, cap)` - multibyte to wide, `cap` in wide units;
+ *   - `ws.to_multibyte(out, cap)` - wide to multibyte, `cap` in bytes;
+ * plus `ws.wide_length()` as the receiver spelling of the length.
+ *
+ * Both conversions count first and refuse a buffer that cannot hold the
+ * result plus the terminator (-1, buffer cleared). They do not truncate, and
+ * they do not allocate. The encoding follows the current locale - the result
+ * of `"C"` is ASCII-only, which is why std::locale exists next door.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+namespace std::wchar;
+
+pub trait Wchar {
+    int wide_string_length(int *ws);
+    int multibyte_to_wide_string(const char *text, int *out, int cap);
+    int wide_to_multibyte_string(int *ws, char *out, int cap);
+}
+
+map trait Wchar for namespace std::wchar {
+    wide_string_length(ws) -> std_wchar_wide_length(ws);
+    multibyte_to_wide_string(text, out, cap) -> std_wchar_mb_to_wide(text, out, cap);
+    wide_to_multibyte_string(ws, out, cap) -> std_wchar_wide_to_mb(ws, out, cap);
+}
+
+pub trait WideText {
+    int to_wide(int *out, int cap);
+}
+
+map trait WideText for type char * {
+    to_wide(text, out, cap) -> std_wchar_mb_to_wide(text, out, cap);
+}
+
+pub trait WideString {
+    int wide_length();
+    int to_multibyte(char *out, int cap);
+}
+
+map trait WideString for type int * {
+    wide_length(ws) -> std_wchar_wide_length(ws);
+    to_multibyte(ws, out, cap) -> std_wchar_wide_to_mb(ws, out, cap);
+}

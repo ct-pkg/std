@@ -1,0 +1,27 @@
+/*
+ * LocaleFactory.m.ct - the string-start factory for std::locale.
+ *
+ * `"zh_CN.UTF-8".make_locale()` returns the same `LocaleHandle` type declared in
+ * LocaleHandle.h.ct; the alias below names the C struct tag that unit emits, because
+ * a mapping unit cannot import a `.h.ct` unit. The shim wrapper
+ * (`std_locale_from_name`) is visible once LocaleHandle.h.ct has been included, which
+ * is guaranteed for a consumer that imports LocaleHandle.h.ct.
+ *
+ * A method call cannot initialise `own` (ct 0.65.1: `'own' requires a malloc,
+ * calloc or factory call`), so the automatic-release spelling is the free
+ * factory in LocaleHandle.h.ct: `own LocaleHandle *l = std::locale::make_locale(name);`.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+namespace std::locale;
+
+pub type LocaleName = struct std_locale_LocaleHandle;
+
+pub trait PathLocale {
+    LocaleName *make_locale();
+}
+
+map trait PathLocale for type char * {
+    make_locale(name) -> std_locale_from_name(name);
+}

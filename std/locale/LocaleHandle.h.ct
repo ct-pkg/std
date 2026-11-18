@@ -1,0 +1,120 @@
+/*
+ * LocaleHandle.h.ct - the owned locale handle behind std::locale.
+ *
+ * A `LocaleHandle` only remembers a locale name; creating it never calls
+ * `setlocale`, so `"zh_CN.UTF-8".make_locale()` cannot change the process by
+ * itself. `apply(category)` is the explicit step that changes the process-wide
+ * locale and is therefore not thread-safe -- the README says so once and the
+ * tests rely on it.
+ *
+ * The handle is a CT struct with `use Drop`, so `own LocaleHandle *l = ...` releases
+ * the copied name on every exit. The string-start factory
+ * (`"zh_CN.UTF-8".make_locale()`) lives in the sibling LocaleFactory.m.ct and returns
+ * the same type; a method call cannot initialise `own` (ct 0.65.1 rejects it),
+ * so callers that want automatic release use the free factory
+ * `std::locale::make_locale(name)`.
+ *
+ * `conventions` copies the two fields that matter for numeric round-trips
+ * (`decimal_point`, `thousands_sep`) into caller buffers instead of returning
+ * the borrowed `struct lconv *`: the pointer is static and would leak libc
+ * ownership into every call site. The rest of `struct lconv` stays a direct C
+ * concern.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+import std::locale::LocaleFactory;
+
+namespace std::locale;
+
+pub struct LocaleHandle {
+    char *name;
+} use Drop;
+
+impl Drop for LocaleHandle {
+    void drop()
+    {
+        free(self->name);
+        self->name = 0;
+    }
+}
+
+/* Save a copy of `name`; NULL when the name is empty or memory is short. Does
+   not validate the name against the platform and does not call setlocale. */
+pub struct LocaleHandle *make_locale(const char *name)
+{
+    struct LocaleHandle *l;
+    char *copy;
+
+    copy = std_locale_duplicate(name);
+    if (!copy) return 0;
+    l = malloc(sizeof(struct LocaleHandle));
+    if (!l) {
+        free(copy);
+        return 0;
+    }
+    l->name = copy;
+    return l;
+}
+
+/* Category ids. Free functions because there is no receiver to hang them on;
+   `apply` takes one of these. */
+pub int lc_all()
+{
+    return std_locale_category_all();
+}
+
+pub int lc_numeric()
+{
+    return std_locale_category_numeric();
+}
+
+pub int lc_time()
+{
+    return std_locale_category_time();
+}
+
+pub int lc_collate()
+{
+    return std_locale_category_collate();
+}
+
+pub int lc_ctype()
+{
+    return std_locale_category_ctype();
+}
+
+pub int lc_monetary()
+{
+    return std_locale_category_monetary();
+}
+
+/* Name of the process-wide locale, copied into the caller's buffer. */
+pub int current_locale(char *out, int cap)
+{
+    return std_locale_current(out, cap);
+}
+
+impl LocaleHandle {
+    /* The saved name, as it was passed to the factory. */
+    pub int name_to_str(char *out, int cap)
+    {
+        return std_locale_copy(self->name, out, cap);
+    }
+
+    /* `setlocale(category, name)`: 0 on success, -1 when the platform rejects
+       the name. This changes process-global state. */
+    pub int apply(int category)
+    {
+        return std_locale_apply(self->name, category);
+    }
+
+    /* Copy decimal_point and thousands_sep out of `localeconv()`. Both buffers
+       are caller-owned; a buffer that is too small is -1 and cleared. */
+    pub int conventions(char *decimal_point, int dp_cap,
+                        char *thousands_separator, int ts_cap)
+    {
+        return std_locale_conventions(decimal_point, dp_cap,
+                                      thousands_separator, ts_cap);
+    }
+}

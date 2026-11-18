@@ -5,15 +5,17 @@
 
 ## 1. 定位与边界
 
-- 九个模块：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` / `arena` / `test`。
+- 十四个模块：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` / `arena` / `test` /
+  `env` / `process` / `errno` / `locale` / `wchar`。
 - 两种实现形态，机制不同，不要互相套用：
-  - **C 宿主映射**（`.m.ct` + 同名 `.shim.h`）：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search`。
+  - **C 宿主映射**（`.m.ct` + 同名 `.shim.h`）：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` /
+    `env` / `process` / `errno` / `wchar`。
     接收者是 C 已有类型（`char *`、`IoFile *`、`int`、`double` …），调用点直接展开成 C 调用。
-  - **CT 自有类型**（`.h.ct`）：`arena` / `test`。`pub trait` + `struct ... use Trait`
-    + `impl` 写在同一文件里，分派走 vptr。
+  - **CT 自有类型**（`.h.ct`）：`arena` / `test`，以及 `locale` 的 `LocaleHandle`。自有类型写
+    `impl`；`Arena` / `Test` 走 trait + vptr，资源句柄用固有方法 + `use Drop`（无 vptr）。
 - 容器不在本包：`Vec<T>` / `Map<K,V>` 自 ct 0.30.0 起是编译器的内置层（`lib/std/Vec.h.ct`，
   自动加载，不需要 import、不需要 `-I`）。`0.3.0` 删掉了与内置名冲突的 `std::vec` / `std::map`。
-- 不提供：堆字符串类型、Unicode 规范化 / 字素簇、网络、时间、进程、正则。
+- 不提供：堆字符串类型、Unicode 规范化 / 字素簇、网络（P7 前）、时间（P5 前）、正则。
 - 不分配内存的模块（`str` / `fs` / `utf8` / `num` / `math` 的文本化）一律写调用方缓冲区，
   容量不足返回 `-1`。
 
@@ -25,7 +27,7 @@
 name = std
 publisher = std
 ns-root = .
-version = 0.5.0
+version = 0.6.0
 licence = MIT
 requires = ct >= 0.30.0
 ldflags = -lm
@@ -72,7 +74,10 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 
 ### 当前发布状态
 
-`0.5.0` 是当前版本，待打 `v0.5.0`。`0.5.0`（P1）补全 `char` 的 7 个 ctype 谓词、`char *` 的
+`0.6.0` 是当前版本，待打 `v0.6.0`。`0.6.0`（P2）新增五个模块：`std::env`（环境变量复制式读写）、
+`std::process`（身份、`fork` / `execute*` / `system` / `wait*`、信号、`pipe_open`）、
+`std::errno`（`errno` 与 `strerror`）、`std::locale`（`LocaleHandle` + `apply` / `conventions`）、
+`std::wchar`（多字节↔宽字符）。`0.5.0`（P1）补全 `char` 的 7 个 ctype 谓词、`char *` 的
 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` /
 `split_into`，以及 `Float` / `Real` 的完整方法族；数学改为只提供方法形态，
 `is_inf` 改名 `is_infinite`，新增 `std::search`（`qsort` / `bsearch`）。
@@ -384,14 +389,15 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 - **`char *` 方法名全局共享**：新增 trait 必须避开 25 个已有名字。
 - **`const` 不参与类型键**：字面量能直接当 `CStrOps` 接收者，因为该 trait 没有写接收者的方法。
 - **`num.to_str` 静默截断**：容量不够得到短文本，不报错。
-- **容器不在这里**：本包只有 `Arena` / `Test` 两个自有类型；泛型容器是编译器的内置层，
+- **容器不在这里**：本包的自有类型只有 `Arena` / `Test` / `LocaleHandle` 等；泛型容器是编译器的内置层，
   需要编译器能找到 `lib/std/Vec.h.ct`（见 §5.4），找不到时报 `use of an undeclared variable`。
 
 ## 10. 版本与变更记录
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.5.0` | 当前版本，待打 `v0.5.0` | **P1 补齐**：`Char` 新增 7 个谓词；`CStrOps` 新增 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into`（`copy_to` 移除）；`Float` / `Real` 扩到完整 libm 方法族，七个生僻名改全称，`is_inf` → `is_infinite`，数学只保留方法形态；新增 `std::search`。 |
+| `0.6.0` | 当前版本，待打 `v0.6.0` | **P2 五个新模块**：`std::env` / `std::process` / `std::errno` / `std::locale` / `std::wchar`；`LocaleHandle` 用 `own` + `Drop`，`apply` 明确为进程全局副作用。 |
+| `0.5.0` | 待打 `v0.5.0` | **P1 补齐**：`Char` 新增 7 个谓词；`CStrOps` 新增 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into`（`copy_to` 移除）；`Float` / `Real` 扩到完整 libm 方法族，七个生僻名改全称，`is_inf` → `is_infinite`，数学只保留方法形态；新增 `std::search`。 |
 | `0.4.0` | 已打 `v0.4.0` | **破坏性改名与删除**（P0）：`String` → `CStrOps`；`len` → `length`；`open` → `open_file`；`to_upper` / `to_lower` → `uppercase` / `lowercase`；删除 `to_string`（只剩 `to_str(out, cap)`）与 `std::io` 的变参 `printf`（`Io.h.ct` 移除，输出改用 `std::io::Stdout`）。 |
 | `0.3.2` | 已打 `v0.3.2` | 包身份与许可统一：`publisher` 改为 `std`，许可改为 MIT（`LICENSE`、README 与各单元头部表述一并更新）；`ns-root` 与 API 无变化。 |
 | `0.3.1` | 已打 `v0.3.1` | 文档修正：`0.3.0` 打 tag 后仍写着「未打 tag」，本版订正该状态并同步 `ct.pkg` 版本号；API 无变化（包摘要因文档与版本号变动而更新）。 |
