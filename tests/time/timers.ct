@@ -1,0 +1,80 @@
+/* std::time::Timer - one-shot and periodic expiry through a signal.
+ *
+ * The fixture installs a SIGALRM handler and sleeps around the timer; the
+ * fallback implementation on platforms without POSIX timers also uses
+ * SIGALRM, so the same fixture covers both. */
+import std::process::Process;
+import std::test::Test;
+import std::time::Time;
+import std::time::Timer;
+
+int g_hits = 0;
+
+void on_timer(int signum)
+{
+    (void)signum;
+    g_hits = g_hits + 1;
+}
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    Timer *once;
+    Timer *periodic;
+    Timer *method_timer;
+    int sig;
+    int before;
+
+    tp->init();
+    sig = std::process::Process.sigalrm();
+    tp->check_eq_int(std::process::Process.signal(sig, on_timer), 0,
+                     "install the SIGALRM handler");
+
+    /* ---- one-shot ------------------------------------------------------ */
+    g_hits = 0;
+    once = std::time::make_timer_once(20, sig);
+    tp->check_true(once != 0, "make_timer_once returns a handle");
+    if (once) {
+        defer { delete once; }
+        tp->check_true(once->remaining() >= 0, "remaining before start");
+        tp->check_eq_int(once->start(), 0, "one-shot start");
+        std::time::Time.sleep_milliseconds(120);
+        tp->check_eq_int(g_hits, 1, "a one-shot timer fires once");
+        tp->check_eq_int(once->stop(), 0, "stop after expiry is a no-op");
+    }
+
+    /* ---- periodic ------------------------------------------------------ */
+    g_hits = 0;
+    periodic = std::time::make_timer(20, sig);
+    tp->check_true(periodic != 0, "make_timer returns a handle");
+    if (periodic) {
+        defer { delete periodic; }
+        tp->check_eq_int(periodic->start(), 0, "periodic start");
+        std::time::Time.sleep_milliseconds(120);
+        tp->check_true(g_hits >= 2, "a periodic timer fires repeatedly");
+        tp->check_eq_int(periodic->stop(), 0, "periodic stop");
+        before = g_hits;
+        std::time::Time.sleep_milliseconds(60);
+        tp->check_eq_int(g_hits, before, "stopped timers stop firing");
+        tp->check_eq_int(periodic->remaining(), 0, "a stopped timer has no remainder");
+    }
+
+    /* ---- the int receiver factory ------------------------------------- */
+    g_hits = 0;
+    method_timer = (15).make_timer_once(sig);
+    tp->check_true(method_timer != 0, "the numeric factory returns a handle");
+    if (method_timer) {
+        defer { delete method_timer; }
+        method_timer->start();
+        std::time::Time.sleep_milliseconds(100);
+        tp->check_eq_int(g_hits, 1, "the numeric factory timer fires once");
+    }
+
+    /* ---- refusals ------------------------------------------------------ */
+    tp->check_true(std::time::make_timer(0, sig) == 0, "zero interval is refused");
+    tp->check_true(std::time::make_timer(10, 0) == 0, "zero signal is refused");
+    tp->check_true(std::time::make_timer_once(-5, sig) == 0, "negative interval is refused");
+
+    return tp->report();
+}

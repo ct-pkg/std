@@ -1,0 +1,58 @@
+/*
+ * Time.m.ct - the clock and calendar functions behind std::time.
+ *
+ * There is no `Time` type and no methods on `long`: `std::time::Time.year(t)`
+ * is the namespace host spelling (`namespace::Trait.method`), the same shape as
+ * `std::fs::FsEnv.get_last_error()`. The host rule is deliberate (Q8): a
+ * timestamp and a file size are both `long`, so `size.year()` would compile.
+ *
+ * `localtime_r` fills a `struct tm` inside the shim; the type never crosses the
+ * boundary. The calendar functions therefore read the process's local time zone
+ * (whatever `TZ` / `std::locale` set), not UTC; `format` follows the same rule.
+ *
+ * `now_nanoseconds` is `clock_gettime(CLOCK_REALTIME)` in nanoseconds since the
+ * epoch; `now_seconds` is `time(NULL)`. `sleep_milliseconds` uses `nanosleep` and retries after `EINTR`, so a signal
+ * does not shorten it; it returns -1 only on a real failure.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+namespace std::time;
+
+pub trait Time {
+    long now_seconds();
+    long now_nanoseconds();
+    double diff_seconds(long a, long b);
+    int sleep_milliseconds(int milliseconds);
+    long get_cpu_ticks();
+
+    int year(long when);
+    int month(long when);
+    int day(long when);
+    int hour(long when);
+    int minute(long when);
+    int second(long when);
+    int day_of_week(long when);
+
+    int format(long when, const char *pattern, char *out, int cap);
+    long from_parts(int year, int month, int day, int hour, int minute, int second);
+}
+
+map trait Time for namespace std::time {
+    now_seconds() -> std_time_now_seconds();
+    now_nanoseconds() -> std_time_now_nanoseconds();
+    diff_seconds(a, b) -> std_time_diff_seconds(a, b);
+    sleep_milliseconds(milliseconds) -> std_time_sleep_milliseconds(milliseconds);
+    get_cpu_ticks() -> std_time_cpu_ticks();
+
+    year(when) -> std_time_year(when);
+    month(when) -> std_time_month(when);
+    day(when) -> std_time_day(when);
+    hour(when) -> std_time_hour(when);
+    minute(when) -> std_time_minute(when);
+    second(when) -> std_time_second(when);
+    day_of_week(when) -> std_time_day_of_week(when);
+
+    format(when, pattern, out, cap) -> std_time_format(when, pattern, out, cap);
+    from_parts(year, month, day, hour, minute, second) -> std_time_from_parts(year, month, day, hour, minute, second);
+}

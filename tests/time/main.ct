@@ -1,0 +1,58 @@
+/* std::time - the namespace clock/calendar functions.
+ *
+ * Calendar assertions use a fixed timestamp and the local zone, so they check
+ * relations and formatting rather than a hard-coded date. */
+import std::str::String;
+import std::test::Test;
+import std::time::Time;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    char buf[64];
+    long t0;
+    long t1;
+    long stamp;
+    int y;
+
+    tp->init();
+
+    t0 = std::time::Time.now_seconds();
+    tp->check_true(t0 > 0, "now_seconds is positive");
+    tp->check_true(std::time::Time.now_nanoseconds() > 0, "now_nanoseconds is positive");
+
+    std::time::Time.sleep_milliseconds(5);
+    t1 = std::time::Time.now_seconds();
+    tp->check_true(t1 >= t0, "time moves forward");
+    tp->check_true(std::time::Time.diff_seconds(t1, t0) >= 0.0, "diff_seconds");
+    tp->check_true(std::time::Time.get_cpu_ticks() >= 0, "get_cpu_ticks");
+
+    /* A known local time via from_parts, then read it back field by field. */
+    stamp = std::time::Time.from_parts(2024, 3, 15, 12, 34, 56);
+    tp->check_true(stamp > 0, "from_parts returns a timestamp");
+    tp->check_eq_int(std::time::Time.year(stamp), 2024, "year");
+    tp->check_eq_int(std::time::Time.month(stamp), 3, "month");
+    tp->check_eq_int(std::time::Time.day(stamp), 15, "day");
+    tp->check_eq_int(std::time::Time.hour(stamp), 12, "hour");
+    tp->check_eq_int(std::time::Time.minute(stamp), 34, "minute");
+    tp->check_eq_int(std::time::Time.second(stamp), 56, "second");
+    tp->check_eq_int(std::time::Time.day_of_week(stamp), 5, "2024-03-15 is a Friday");
+
+    /* Rounding is not performed: mktime normalises out-of-range parts. */
+    y = std::time::Time.year(std::time::Time.from_parts(2024, 13, 1, 0, 0, 0));
+    tp->check_eq_int(y, 2025, "month 13 normalises into the next year");
+
+    tp->check_eq_int(std::time::Time.format(stamp, "%Y-%m-%d", buf, 64), 10,
+                     "format returns the byte count");
+    tp->check_eq_str(buf, "2024-03-15", "the formatted date");
+    tp->check_eq_int(std::time::Time.format(stamp, "%Y-%m-%d", buf, 4), -1,
+                     "a short buffer is refused");
+    tp->check_true(buf[0] == 0, "the refused buffer is cleared");
+
+    tp->check_eq_int(std::time::Time.year(0), 1970, "the epoch is 1970 in the local zone");
+    tp->check_eq_int(std::time::Time.sleep_milliseconds(-1), -1,
+                     "a negative sleep is refused");
+
+    return tp->report();
+}

@@ -5,8 +5,8 @@
 
 ## 1. 定位与边界
 
-- 十四个模块：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` / `arena` / `test` /
-  `env` / `process` / `errno` / `locale` / `wchar`。
+- 十五个模块：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` / `arena` / `test` /
+  `env` / `process` / `errno` / `locale` / `wchar` / `time`。
 - 两种实现形态，机制不同，不要互相套用：
   - **C 宿主映射**（`.m.ct` + 同名 `.shim.h`）：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` /
     `env` / `process` / `errno` / `wchar`。
@@ -15,7 +15,7 @@
     `impl`；`Arena` / `Test` 走 trait + vptr，资源句柄用固有方法 + `use Drop`（无 vptr）。
 - 容器不在本包：`Vec<T>` / `Map<K,V>` 自 ct 0.30.0 起是编译器的内置层（`lib/std/Vec.h.ct`，
   自动加载，不需要 import、不需要 `-I`）。`0.3.0` 删掉了与内置名冲突的 `std::vec` / `std::map`。
-- 不提供：堆字符串类型、Unicode 规范化 / 字素簇、网络（P7 前）、时间（P5 前）、正则。
+- 不提供：堆字符串类型、Unicode 规范化 / 字素簇、网络（P7 前）、正则。
 - 不分配内存的模块（`str` / `fs` / `utf8` / `num` / `math` 的文本化）一律写调用方缓冲区，
   容量不足返回 `-1`。
 
@@ -27,7 +27,7 @@
 name = std
 publisher = std
 ns-root = .
-version = 0.8.0
+version = 0.9.0
 licence = MIT
 requires = ct >= 0.49.0
 ldflags = -lm
@@ -74,7 +74,9 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 
 ### 当前发布状态
 
-`0.8.0` 是当前版本，待打 `v0.8.0`。`0.8.0`（P4）补全 `std::fs`：`access` / `read_link` / `resize` /
+`0.9.0` 是当前版本，待打 `v0.9.0`。`0.9.0`（P5）新增 `std::time`：`Time` namespace 的时钟、日历、
+格式化与 `from_parts`，以及 `Timer`（周期/一次性、`SIGEV_SIGNAL` 或 `setitimer` 回退、
+`defer { delete }` 释放）。`0.8.0`（P4）补全 `std::fs`：`access` / `read_link` / `resize` /
 `set_mode` / `size` / `mode` / `modification_time` / `is_readable` / `is_writable` / `resolve_path`、
 `scan_directory` 流式回调、`Dir` 目录流与 `Stat` 元数据镜像；`read_file` / `write_file` 改名
 `read` / `write`。`0.7.0`（P3）把 `std::io` 的资源句柄改成 CT struct：`File`（`FILE *`）
@@ -163,6 +165,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | `std::search` | `std::search::Search` | `char *` + 元素大小 | 2 | — |
 | `std::arena` | `std::arena::Arena` | `Arena *` | 4 | [arena/README.md](std/arena/README.md) |
 | `std::test` | `std::test::Test` | `Test *` | 5 | [test/README.md](std/test/README.md) |
+| `std::time` | `std::time::Time` / `Timer` | namespace、`int`、`Timer *` | 14 + 2 + 3 | [time/README.md](std/time/README.md) |
 
 `Vec<T>` / `Map<K,V>` 不在表里，因为它们是编译器内置层，不属于本包（见 §1、§5.4）。
 
@@ -189,12 +192,15 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 | 宿主 | trait / 入口 | 方法 |
 | --- | --- | --- |
+| namespace `std::time` | `Time` | `now_seconds` `now_nanoseconds` `diff_seconds` `sleep_milliseconds` `get_cpu_ticks` `year` `month` `day` `hour` `minute` `second` `day_of_week` `format` `from_parts` |
+| `int` | `IntTimer` | `make_timer` `make_timer_once`（`std::time`） |
 | namespace `std::io` | `Stdout` | `puts` `putchar` `getchar` `fflush` `write` `write_line` |
 | namespace `std::fs` | `FsEnv` | `get_last_error`（最近一次 `std::fs` 调用的 `errno` 快照，成功为 0） |
 | `File *` | `impl File`（CT struct + `Drop`） | `read` `write` `close` `seek` `tell` `rewind_start` `at_end_of_file` `has_error` `clear_error` `read_char` `write_char` `unread_char` `read_line` `write_line` `flush` |
 | `FileDesc *` | `impl FileDesc`（CT struct + `Drop`） | `read` `write` `seek` `tell` `close` `raw_file_desc` `send` `receive` |
 | `Dir *` | `impl Dir`（CT struct + `Drop`） | `next` `rewind` `close` `tell` `seek` `path` `enter` |
 | `Stat *` | `impl Stat`（纯值） | `is_regular` `is_directory` `is_symlink` `is_other` |
+| `Timer *` | `impl Timer`（CT struct + `Drop`） | `start` `stop` `remaining` |
 | `int` | `Int` | `abs` `clamp` `max` `min` `to_str` `to_base` |
 | `long` | `Long` | 同上 6 个 |
 | `long long` | `LLong` | 同上 6 个 |
@@ -410,7 +416,8 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.8.0` | 当前版本，待打 `v0.8.0` | **P4 fs 补全**：路径方法补 10 个；`read_file`/`write_file` → `read`/`write`；新增 `Dir`（`own` 工厂 + 字符串工厂）与 `Stat` 字段镜像；`scan_directory` 流式回调；`resolve_path` 为词法绝对路径。 |
+| `0.9.0` | 当前版本，待打 `v0.9.0` | **P5 time**：`Time` namespace（`now_*` / `diff_seconds` / `sleep_milliseconds` / `get_cpu_ticks` / 日历字段 / `format` / `from_parts`）与 `Timer`（`make_timer` / `make_timer_once` + `start` / `stop` / `remaining`；无回调，到期走信号）。 |
+| `0.8.0` | 待打 `v0.8.0` | **P4 fs 补全**：路径方法补 10 个；`read_file`/`write_file` → `read`/`write`；新增 `Dir`（`own` 工厂 + 字符串工厂）与 `Stat` 字段镜像；`scan_directory` 流式回调；`resolve_path` 为词法绝对路径。 |
 | `0.7.0` | 待打 `v0.7.0` | **P3 stdio 资源化**：`IoFile` 退役，`File` / `FileDesc` 改为 CT struct + `use Drop`；补全 seek/tell/EOF/错误位/字符与行 IO/flush/adopt；方法调用改 `->`；`own` 只认自由工厂。 |
 | `0.6.0` | 待打 `v0.6.0` | **P2 五个新模块**：`std::env` / `std::process` / `std::errno` / `std::locale` / `std::wchar`；`LocaleHandle` 用 `own` + `Drop`，`apply` 明确为进程全局副作用。 |
 | `0.5.0` | 待打 `v0.5.0` | **P1 补齐**：`Char` 新增 7 个谓词；`CStrOps` 新增 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into`（`copy_to` 移除）；`Float` / `Real` 扩到完整 libm 方法族，七个生僻名改全称，`is_inf` → `is_infinite`，数学只保留方法形态；新增 `std::search`。 |

@@ -1,0 +1,24 @@
+/*
+ * TimerFactory.m.ct - the numeric factory for std::time::Timer.
+ *
+ * `(100).make_timer(sig)` / `(250).make_timer_once(sig)` take the interval in
+ * milliseconds from an `int` receiver and return the `Timer` declared in
+ * Timer.h.ct. The alias names that unit's C tag because a mapping unit cannot
+ * import a `.h.ct` unit.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+namespace std::time;
+
+pub type TimerHandle = struct std_time_Timer;
+
+pub trait IntTimer {
+    TimerHandle *make_timer(int signal_number);
+    TimerHandle *make_timer_once(int signal_number);
+}
+
+map trait IntTimer for type int {
+    make_timer(milliseconds, signal_number) -> std_time_timer_from_int(milliseconds, signal_number, 0);
+    make_timer_once(milliseconds, signal_number) -> std_time_timer_from_int(milliseconds, signal_number, 1);
+}

@@ -1,0 +1,90 @@
+/*
+ * Timer.h.ct - the owned POSIX timer behind std::time.
+ *
+ * A `Timer` holds a native handle allocated by the shim. On platforms with
+ * POSIX timers (`timer_create`) expiry delivers the signal passed to the
+ * factory; on platforms without them (macOS) the shim falls back to
+ * `setitimer(ITIMER_REAL)`, so the only usable signal there is `SIGALRM`
+ * (`std::process::Process.sigalrm()`), and at most one fallback timer is
+ * accurate at a time.
+ *
+ * Deliberately no callback: expiry is a signal. The caller installs a handler
+ * with `std::process::Process.signal(...)` and the signal runs it. `Timer`
+ * only manages creation, start, stop, remaining and deletion.
+ *
+ * Two factories, one type: `std::time::make_timer(ms, sig)` /
+ * `make_timer_once(ms, sig)` are the free functions; `(100).make_timer(sig)` /
+ * `(250).make_timer_once(sig)` live in TimerFactory.m.ct. Release with
+ * `defer { delete t; }` (ct 0.65.1 drops `own` cleanup when a method result is
+ * captured; see docs/design/decision-resource-ownership.md).
+ *
+ * License: MIT (see LICENSE).
+ */
+
+import std::time::TimerFactory;
+
+namespace std::time;
+
+pub struct Timer {
+    void *native;
+} use Drop;
+
+impl Drop for Timer {
+    void drop()
+    {
+        std_time_timer_delete(self->native);
+        self->native = 0;
+    }
+}
+
+pub struct Timer *make_timer(int milliseconds, int signal_number)
+{
+    struct Timer *t;
+
+    t = malloc(sizeof(struct Timer));
+    if (!t) return 0;
+    t->native = std_time_timer_new(milliseconds, 0, signal_number);
+    if (!t->native) {
+        free(t);
+        return 0;
+    }
+    return t;
+}
+
+pub struct Timer *make_timer_once(int milliseconds, int signal_number)
+{
+    struct Timer *t;
+
+    t = malloc(sizeof(struct Timer));
+    if (!t) return 0;
+    t->native = std_time_timer_new(milliseconds, 1, signal_number);
+    if (!t->native) {
+        free(t);
+        return 0;
+    }
+    return t;
+}
+
+impl Timer {
+    /* Arm the timer: periodic re-arms every interval, once fires a single
+       time. 0 on success, -1 on failure. */
+    pub int start()
+    {
+        if (!self) return -1;
+        return std_time_timer_start(self->native);
+    }
+
+    /* Disarm. Idempotent; 0 when already stopped. */
+    pub int stop()
+    {
+        if (!self) return -1;
+        return std_time_timer_stop(self->native);
+    }
+
+    /* Milliseconds until the next expiry, 0 when stopped, -1 on error. */
+    pub int remaining()
+    {
+        if (!self) return -1;
+        return std_time_timer_remaining(self->native);
+    }
+}
