@@ -70,6 +70,10 @@ pub trait CStrOps {
     int split_into(const char *sep, char *out, int cap, int slot_size);
     int to_int();
     double to_double();
+    int parse_long(long *out);
+    int parse_long_long(long long *out);
+    int parse_unsigned_long(unsigned long *out);
+    int parse_real(double *out);
 }
 
 map trait CStrOps for type char * {
@@ -93,4 +97,8 @@ map trait CStrOps for type char * {
     split_into(s, sep, out, cap, slot_size) -> std_str_split_into(s, sep, out, cap, slot_size);
     to_int(s) -> std_str_to_int(s);
     to_double(s) -> std_str_to_double(s);
+    parse_long(s, out) -> std_str_parse_long(s, out);
+    parse_long_long(s, out) -> std_str_parse_long_long(s, out);
+    parse_unsigned_long(s, out) -> std_str_parse_unsigned_long(s, out);
+    parse_real(s, out) -> std_str_parse_real(s, out);
 }

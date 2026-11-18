@@ -120,6 +120,10 @@ Hello, ct
 | `split_into(sep, out, cap, slot_size)` | `int split_into(const char *sep, char *out, int cap, int slot_size)` | 按 `sep` 中任一字节切分，每段写进 `out` 的一个 `slot_size` 槽；返回段数；放不下时返回所需段数且不写入；源串不改 |
 | `to_int()` | `int to_int()` | `atoi`；`NULL` 返回 0，溢出是 C 的未定义行为 |
 | `to_double()` | `double to_double()` | `atof`；`NULL` 返回 0.0 |
+| `parse_long(out)` | `int parse_long(long *out)` | `strtol`；0 成功 / `-1` 失败（空串、尾随垃圾、`ERANGE`） |
+| `parse_long_long(out)` | `int parse_long_long(long long *out)` | `strtoll`，失败语义同上 |
+| `parse_unsigned_long(out)` | `int parse_unsigned_long(unsigned long *out)` | `strtoul`，失败语义同上 |
+| `parse_real(out)` | `int parse_real(double *out)` | `strtod`，失败语义同上 |
 
 `cap` 一律包含结尾 NUL 的位置：`"abc"` 需要 `cap >= 4`。
 
@@ -432,7 +436,8 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 - **字面量接收者从 0.20.0 起可用**（本包下限 0.49.0）；0.19.1 只接受变量、元素、调用和字段链。
 - **多给实参不报错**（SH-56）：`s.copy(buf, 8, 9)` 编译通过，`9` 被丢弃；少给才报
   `a map call has fewer arguments than its binding`。
-- **`to_int` / `to_double` 不做错误报告**：与 `atoi` / `atof` 一致，非法输入不抛错。
+- **`to_int` / `to_double` 不做错误报告**：与 `atoi` / `atof` 一致，非法输入不抛错。需要错误报告时用
+  `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`（0 成功 / `-1` 失败，失败不写值）。
 
 ## 9. 版本与变更记录
 

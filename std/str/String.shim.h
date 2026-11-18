@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 /* Length in bytes (0 when `s` is NULL). */
 static inline int std_str_len(const char *s)
@@ -301,6 +302,63 @@ static inline double std_str_to_double(const char *s)
 {
     if (!s) return 0.0;
     return atof(s);
+}
+
+
+/* Parsing with an error report. Each returns 0 and writes `out` on success;
+   -1 on a NULL/empty receiver, trailing garbage, a missing out pointer, or a
+   range error (ERANGE from the strto* family). The value is not written on
+   failure. Unlike `to_int`/`to_double`, these never silently return 0. */
+static inline int std_str_parse_long(const char *s, long *out)
+{
+    char *end;
+    long value;
+
+    if (!s || !*s || !out) return -1;
+    errno = 0;
+    value = strtol(s, &end, 10);
+    if (errno == ERANGE || end == s || *end != 0) return -1;
+    *out = value;
+    return 0;
+}
+
+static inline int std_str_parse_long_long(const char *s, long long *out)
+{
+    char *end;
+    long long value;
+
+    if (!s || !*s || !out) return -1;
+    errno = 0;
+    value = strtoll(s, &end, 10);
+    if (errno == ERANGE || end == s || *end != 0) return -1;
+    *out = value;
+    return 0;
+}
+
+static inline int std_str_parse_unsigned_long(const char *s, unsigned long *out)
+{
+    char *end;
+    unsigned long value;
+
+    if (!s || !*s || !out) return -1;
+    errno = 0;
+    value = strtoul(s, &end, 10);
+    if (errno == ERANGE || end == s || *end != 0) return -1;
+    *out = value;
+    return 0;
+}
+
+static inline int std_str_parse_real(const char *s, double *out)
+{
+    char *end;
+    double value;
+
+    if (!s || !*s || !out) return -1;
+    errno = 0;
+    value = strtod(s, &end);
+    if (errno == ERANGE || end == s || *end != 0) return -1;
+    *out = value;
+    return 0;
 }
 
 #endif

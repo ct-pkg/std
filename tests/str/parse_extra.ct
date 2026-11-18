@@ -1,0 +1,53 @@
+/* std::str - the error-reporting parsers added to close the P1 gap. */
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    long l;
+    long long ll;
+    unsigned long ul;
+    double d;
+    char *bad = "12x";
+    char *empty = "";
+    char *big = "999999999999999999999999999999";
+    char *nullstr = 0;
+
+    tp->init();
+
+    l = 0;
+    tp->check_eq_int("42".parse_long(&l), 0, "parse_long succeeds");
+    tp->check_eq_int((int)l, 42, "parse_long value");
+    l = 0;
+    tp->check_eq_int("  -7".parse_long(&l), 0, "leading space is accepted");
+    tp->check_eq_int((int)l, -7, "negative value");
+    tp->check_eq_int(bad.parse_long(&l), -1, "trailing garbage is refused");
+    tp->check_eq_int(empty.parse_long(&l), -1, "empty text is refused");
+    tp->check_eq_int(nullstr.parse_long(&l), -1, "a null receiver is refused");
+    l = 123;
+    tp->check_eq_int(big.parse_long(&l), -1, "overflow is refused");
+    tp->check_eq_int((int)l, 123, "the value is untouched on failure");
+
+    ll = 0;
+    tp->check_eq_int("9223372036854775807".parse_long_long(&ll), 0,
+                     "parse_long_long succeeds");
+    tp->check_true(ll > 0, "the long long value is positive");
+
+    ul = 0;
+    tp->check_eq_int("18446744073709551615".parse_unsigned_long(&ul), 0,
+                     "parse_unsigned_long succeeds");
+    tp->check_true(ul > 0, "the unsigned value is positive");
+    tp->check_eq_int("-1".parse_unsigned_long(&ul), 0,
+                     "strtoul accepts the minus sign and wraps");
+
+    d = 0.0;
+    tp->check_eq_int("2.5".parse_real(&d), 0, "parse_real succeeds");
+    tp->check_true(d > 2.4 && d < 2.6, "the real value");
+    tp->check_eq_int("1e3".parse_real(&d), 0, "scientific notation");
+    tp->check_true(d > 999.0 && d < 1001.0, "1e3");
+    tp->check_eq_int("abc".parse_real(&d), -1, "garbage is refused");
+
+    return tp->report();
+}

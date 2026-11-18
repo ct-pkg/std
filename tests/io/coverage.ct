@@ -2,6 +2,8 @@
  * read/write direction rules, n == 0 / n < 0 / NULL buffers, append, and the
  * Stdout namespace. */
 import std::io::File;
+import std::str::String;
+import std::num::Num;
 import std::io::Stdout;
 import std::test::Test;
 
@@ -71,12 +73,30 @@ int main(int argc, char **argv)
     tp->check_eq_str(buf, "hellocd", "File.read: appended content");
     tp->check_eq_int(f->close(), 0, "File.close: appended file closes");
 
+    /* ---- the printf replacement: format first, then write -------------- */
+    {
+        int value = 42;
+        char text[16];
+
+        f = path.open_file("w");
+        value.to_str(text, 16);
+        "v=".concat(text, buf, 32);
+        tp->check_eq_int(f->write_line(buf), 0, "write_line of a formatted value");
+        f->close();
+        f = path.open_file("r");
+        tp->check_eq_int(f->read_line(buf, 32), 4, "the formatted line is four bytes");
+        tp->check_eq_str(buf, "v=42", "the formatted line round-trips");
+        f->close();
+        delete f;
+    }
+
     /* ---- adopt_file ---------------------------------------------------- */
     {
         FILE *raw = fopen(path, "r");
-        own File *adopted = std::io::adopt_file(raw);
+        File *adopted = std::io::adopt_file(raw);
+        defer { delete adopted; }
         tp->check_true(adopted != 0, "adopt_file wraps an existing FILE *");
-        tp->check_eq_int(adopted->read_char(), 'h', "the adopted stream reads");
+        tp->check_eq_int(adopted->read_char(), 'v', "the adopted stream reads");
     }
     /* No raw close here: the own handle closed it. */
 
