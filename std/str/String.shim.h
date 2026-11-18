@@ -195,13 +195,97 @@ static inline int std_str_compare(const char *a, const char *b)
     return (a[i] == 0) ? -1 : 1;
 }
 
-/* The `memcpy` shape behind `src.copy_to(dst, n)`: exactly `n` bytes of the
-   receiver into `dst`. No NUL is appended -- `n` is the whole contract, so a
-   missing pointer or a non-positive count copies nothing. */
-static inline void std_str_copy_to(const char *src, char *dst, int n)
+/* The `memcpy` shape behind `dst.copy_from(src, n)`: exactly `n` bytes.
+   Source and destination must not overlap; use `move_from` when they may. */
+static inline void std_str_copy_from(char *dst, const char *src, int n)
 {
     if (!src || !dst || n <= 0) return;
     memcpy(dst, src, (size_t)n);
+}
+
+/* The `memmove` shape behind `dst.move_from(src, n)`: exactly `n` bytes,
+   overlapping ranges allowed. */
+static inline void std_str_move_from(char *dst, const char *src, int n)
+{
+    if (!src || !dst || n <= 0) return;
+    memmove(dst, src, (size_t)n);
+}
+
+/* The `memset` shape behind `dst.fill(c, n)`: exactly `n` bytes set to `c`. */
+static inline void std_str_fill(char *dst, int c, int n)
+{
+    if (!dst || n <= 0) return;
+    memset(dst, c, (size_t)n);
+}
+
+/* The `memcmp` shape behind `a.compare_with(b, n)`: three-state, stops after
+   `n` bytes. */
+static inline int std_str_compare_with(const char *a, const char *b, int n)
+{
+    if (!a || !b || n <= 0) return 0;
+    return memcmp(a, b, (size_t)n);
+}
+
+/* The `memchr` shape behind `s.find_byte(c, n)`: pointer to the byte or NULL.
+   No NUL is implied -- `n` is the whole search window. */
+static inline char *std_str_find_byte(const char *s, int c, int n)
+{
+    if (!s || n <= 0) return 0;
+    return (char *)memchr(s, c, (size_t)n);
+}
+
+/* The `strncmp` shape behind `a.compare_prefix(b, n)`: three-state, stops at a
+   NUL in either string or after `n` bytes. */
+static inline int std_str_compare_prefix(const char *a, const char *b, int n)
+{
+    if (!a || !b || n <= 0) return 0;
+    return strncmp(a, b, (size_t)n);
+}
+
+/* Split the receiver on every byte that appears in `sep` (an empty or missing
+   `sep` keeps the whole string as one field). Fields are copied NUL-terminated
+   into `out`, one slot of `slot_size` bytes per field. Empty fields are kept:
+   `"a,,b"` yields three fields and a trailing separator yields a trailing empty
+   field. Returns the required field count; when `cap` or `slot_size` cannot
+   hold every field, nothing is written. The receiver is never modified. */
+static inline int std_str_split_into(const char *s, const char *sep,
+                                     char *out, int cap, int slot_size)
+{
+    int n;
+    int fields = 1;
+    int maxlen = 0;
+    int curlen = 0;
+    int i;
+    int f = 0;
+    int pos = 0;
+
+    if (!s) return 0;
+    n = std_str_len(s);
+    for (i = 0; i < n; i++) {
+        if (sep && sep[0] && strchr(sep, s[i])) {
+            if (curlen > maxlen) maxlen = curlen;
+            curlen = 0;
+            fields++;
+        } else {
+            curlen++;
+        }
+    }
+    if (curlen > maxlen) maxlen = curlen;
+    if (!out || slot_size <= 0 || cap < fields || maxlen + 1 > slot_size) {
+        return fields;
+    }
+    for (i = 0; i < n; i++) {
+        if (sep && sep[0] && strchr(sep, s[i])) {
+            out[f * slot_size + pos] = 0;
+            f++;
+            pos = 0;
+        } else {
+            out[f * slot_size + pos] = s[i];
+            pos++;
+        }
+    }
+    out[f * slot_size + pos] = 0;
+    return fields;
 }
 
 /* The C parser behind `s.to_int()`: 0 for a missing receiver, otherwise exactly

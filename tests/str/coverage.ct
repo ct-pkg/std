@@ -1,6 +1,6 @@
 /* std::str - the empty string, a string of one repeated byte, every find
  * miss, the full slice bounds matrix, NULL / zero-capacity buffers, the
- * out-buffer case folding, the memcpy copy_to shape and the two C parsers. */
+ * out-buffer case folding, the raw memory shapes and the two C parsers. */
 import std::str::String;
 import std::test::Test;
 
@@ -13,6 +13,10 @@ int main(void)
     char dst[8];
     char src[8];
     char emptybuf[1];
+    char ov[8];
+    char parts[3][8];
+    char *hit;
+    int nparts;
     char *empty = "";
     char *same = "aaaa";
     char *hello = "hello";
@@ -106,16 +110,72 @@ int main(void)
     tp->check_eq_int(nul.compare("a"), -1, "CStrOps.compare: NULL is less than 'a'");
     tp->check_eq_int("a".compare(nul), 1, "CStrOps.compare: 'a' is greater than NULL");
 
-    /* ---- copy_to: exactly n bytes, no NUL -------------------------------- */
+    /* ---- copy_from / move_from / fill: the raw memory shapes ------------- */
     src[0] = 'a'; src[1] = 'b'; src[2] = 'c'; src[3] = 0;
     dst[0] = 'X'; dst[1] = 'Y'; dst[2] = 'Z'; dst[3] = 0;
-    src.copy_to(dst, 3);
+    dst.copy_from(src, 3);
     dst[3] = 0;
-    tp->check_eq_str(dst, "abc", "CStrOps.copy_to: three bytes");
-    src.copy_to(dst, 0);
-    tp->check_eq_str(dst, "abc", "CStrOps.copy_to: n == 0 is a no-op");
-    src.copy_to(nul, 3);
-    tp->check_eq_str(dst, "abc", "CStrOps.copy_to: NULL destination is a no-op");
+    tp->check_eq_str(dst, "abc", "CStrOps.copy_from: three bytes");
+    dst.copy_from(src, 0);
+    tp->check_eq_str(dst, "abc", "CStrOps.copy_from: n == 0 is a no-op");
+    dst.copy_from(nul, 3);
+    tp->check_eq_str(dst, "abc", "CStrOps.copy_from: NULL source is a no-op");
+
+    ov[0] = 'a'; ov[1] = 'b'; ov[2] = 'c';
+    ov[3] = 'd'; ov[4] = 'e'; ov[5] = 'f'; ov[6] = 0;
+    ov.move_from(ov + 2, 4);
+    ov[4] = 0;
+    tp->check_eq_str(ov, "cdef", "CStrOps.move_from: overlapping ranges shift left");
+
+    dst[0] = 'X'; dst[1] = 'Y'; dst[2] = 'Z'; dst[3] = 0;
+    dst.fill('x', 3);
+    dst[3] = 0;
+    tp->check_eq_str(dst, "xxx", "CStrOps.fill: three bytes");
+
+    /* ---- compare_with / find_byte / compare_prefix ----------------------- */
+    tp->check_true("abc".compare_with("abd", 3) < 0, "CStrOps.compare_with: less");
+    tp->check_eq_int("abc".compare_with("abd", 2), 0, "CStrOps.compare_with: equal in two bytes");
+    tp->check_true("abd".compare_with("abc", 3) > 0, "CStrOps.compare_with: greater");
+
+    hit = hello.find_byte('l', 5);
+    tp->check_eq_int((int)(hit - hello), 2, "CStrOps.find_byte: first 'l'");
+    tp->check_true(hello.find_byte('z', 5) == 0, "CStrOps.find_byte: absent");
+    tp->check_true(hello.find_byte('h', 0) == 0, "CStrOps.find_byte: zero-length window");
+
+    tp->check_eq_int("abcdef".compare_prefix("abcxyz", 3), 0,
+                     "CStrOps.compare_prefix: equal prefix");
+    tp->check_true("abcdef".compare_prefix("abcxyz", 4) < 0,
+                   "CStrOps.compare_prefix: differs at byte four");
+    tp->check_eq_int("abc".compare_prefix("abcx", 3), 0,
+                     "CStrOps.compare_prefix: stops after three bytes");
+    tp->check_true("abc".compare_prefix("abcx", 4) < 0,
+                   "CStrOps.compare_prefix: the terminator decides at byte four");
+
+    /* ---- split_into: buffered split, source untouched -------------------- */
+    nparts = "a,bc,d".split_into(",", parts[0], 3, 8);
+    tp->check_eq_int(nparts, 3, "CStrOps.split_into: three fields");
+    tp->check_eq_str(parts[0], "a", "CStrOps.split_into: field 0");
+    tp->check_eq_str(parts[1], "bc", "CStrOps.split_into: field 1");
+    tp->check_eq_str(parts[2], "d", "CStrOps.split_into: field 2");
+
+    parts[0][0] = 'X';
+    nparts = "a,bc,d".split_into(",", parts[0], 2, 8);
+    tp->check_eq_int(nparts, 3, "CStrOps.split_into: too few slots reports the need");
+    tp->check_eq_str(parts[0], "X", "CStrOps.split_into: nothing written when short");
+
+    nparts = "a,bc,d".split_into(",", parts[0], 3, 2);
+    tp->check_eq_int(nparts, 3, "CStrOps.split_into: too small a slot reports the need");
+
+    tp->check_eq_int("abc".split_into("", parts[0], 3, 8), 1,
+                     "CStrOps.split_into: empty separator keeps one field");
+    tp->check_eq_str(parts[0], "abc", "CStrOps.split_into: whole string");
+
+    tp->check_eq_int("a,,b".split_into(",", parts[0], 3, 8), 3,
+                     "CStrOps.split_into: empty field is kept");
+    tp->check_eq_str(parts[1], "", "CStrOps.split_into: the empty field");
+
+    tp->check_eq_int(nul.split_into(",", parts[0], 3, 8), 0,
+                     "CStrOps.split_into: NULL receiver");
 
     /* ---- the C parsers ------------------------------------------------- */
     tp->check_eq_int("-42".to_int(), -42, "CStrOps.to_int: negative");

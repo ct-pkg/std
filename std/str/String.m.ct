@@ -21,9 +21,12 @@
  * not mean "returns a fresh value" either: `s.uppercase(out, cap)` still needs
  * the caller's buffer.
  *
- * `copy_to` is the one raw shape: exactly `n` bytes of the receiver into `dst`,
- * no NUL and no capacity check. Its mirror image -- the old method that wrote
- * the receiver instead -- is gone since 0.2.0: the call is `src.copy_to(dst, n)`.
+ * The raw memory shapes stand apart from the string ones: `copy_from` and
+ * `move_from` take the destination as the receiver and copy exactly `n` bytes,
+ * with no NUL and no capacity check; `move_from` allows overlap. `fill` is the
+ * `memset` shape. `compare_with` / `find_byte` / `compare_prefix` are the
+ * `memcmp` / `memchr` / `strncmp` shapes. `split_into` copies fields into a
+ * caller-supplied slot array and never touches the receiver.
  *
  * The host is `char *`. The compiler's type key drops a top-level `const`, so
  * a `const char *` receiver (a literal, or a `const char *` field) matches the
@@ -58,7 +61,13 @@ pub trait CStrOps {
     int lowercase(char *out, int cap);
     int uppercase(char *out, int cap);
     int compare(const char *other);
-    void copy_to(char *dst, int n);
+    void copy_from(const char *src, int n);
+    void move_from(const char *src, int n);
+    void fill(int c, int n);
+    int compare_with(const char *other, int n);
+    char *find_byte(int c, int n);
+    int compare_prefix(const char *other, int n);
+    int split_into(const char *sep, char *out, int cap, int slot_size);
     int to_int();
     double to_double();
 }
@@ -75,7 +84,13 @@ map trait CStrOps for type char * {
     lowercase(s, out, cap) -> std_str_lower(s, out, cap);
     uppercase(s, out, cap) -> std_str_upper(s, out, cap);
     compare(s, other) -> std_str_compare(s, other);
-    copy_to(s, dst, n) -> std_str_copy_to(s, dst, n);
+    copy_from(dst, src, n) -> std_str_copy_from(dst, src, n);
+    move_from(dst, src, n) -> std_str_move_from(dst, src, n);
+    fill(dst, c, n) -> std_str_fill(dst, c, n);
+    compare_with(a, b, n) -> std_str_compare_with(a, b, n);
+    find_byte(s, c, n) -> std_str_find_byte(s, c, n);
+    compare_prefix(a, b, n) -> std_str_compare_prefix(a, b, n);
+    split_into(s, sep, out, cap, slot_size) -> std_str_split_into(s, sep, out, cap, slot_size);
     to_int(s) -> std_str_to_int(s);
     to_double(s) -> std_str_to_double(s);
 }

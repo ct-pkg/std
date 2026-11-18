@@ -111,7 +111,13 @@ Hello, ct
 | `lowercase(out, cap)` | `int lowercase(char *out, int cap)` | 结果写 `out`，成功 0；放不下或 `NULL` 返回 `-1` |
 | `uppercase(out, cap)` | `int uppercase(char *out, int cap)` | 结果写 `out`，成功 0；放不下或 `NULL` 返回 `-1` |
 | `compare(other)` | `int compare(const char *other)` | 字典序，负 / 0 / 正；`NULL` 当空串 |
-| `copy_to(dst, n)` | `void copy_to(char *dst, int n)` | `memcpy` 形状：接收者的恰好 `n` 字节写进 `dst` |
+| `copy_from(src, n)` | `void copy_from(const char *src, int n)` | `memcpy` 形状：把 `src` 的恰好 `n` 字节写进接收者；源与目标不得重叠 |
+| `move_from(src, n)` | `void move_from(const char *src, int n)` | `memmove` 形状：同上，允许重叠 |
+| `fill(c, n)` | `void fill(int c, int n)` | `memset` 形状：把接收者的前 `n` 字节都设成 `c` |
+| `compare_with(other, n)` | `int compare_with(const char *other, int n)` | `memcmp` 形状：比较前 `n` 字节，负 / 0 / 正 |
+| `find_byte(c, n)` | `char *find_byte(int c, int n)` | `memchr` 形状：在前 `n` 字节里找 `c`，返回指针或 `NULL` |
+| `compare_prefix(other, n)` | `int compare_prefix(const char *other, int n)` | `strncmp` 形状：最多比较 `n` 字节，遇 NUL 停止 |
+| `split_into(sep, out, cap, slot_size)` | `int split_into(const char *sep, char *out, int cap, int slot_size)` | 按 `sep` 中任一字节切分，每段写进 `out` 的一个 `slot_size` 槽；返回段数；放不下时返回所需段数且不写入；源串不改 |
 | `to_int()` | `int to_int()` | `atoi`；`NULL` 返回 0，溢出是 C 的未定义行为 |
 | `to_double()` | `double to_double()` | `atof`；`NULL` 返回 0.0 |
 
@@ -187,9 +193,9 @@ int main(void)
     "upper=".concat(word, line, 64);
     std::io::Stdout.puts(line);
 
-    hw.copy_to(raw, 5);
+    raw.move_from(hw, 5);
     raw[5] = 0;
-    "copy_to=".concat(raw, line, 64);
+    "move_from=".concat(raw, line, 64);
     std::io::Stdout.puts(line);
 
     digits.to_int().to_str(numbuf, 16);
@@ -211,7 +217,7 @@ slice past end rc=-1
 compare rc=-1
 lower=hello
 upper=HELLO
-copy_to=hello
+move_from=hello
 to_int=42
 to_double=2.5
 ```
@@ -232,18 +238,21 @@ to_double=2.5
 
 `slice` 是半开区间：`slice(0, 5, ...)` 得到 `"Hello"`。
 
-### 5.4 `copy_to`：`memcpy` 的 OO 写法
+### 5.4 内存形状：`copy_from` / `move_from` / `fill`
 
-它与 `copy` 的规则不同：
+这三个方法不处理 NUL，`n` 就是**字节数本身**：
 
-- `n` 是**字节数本身**，不包含也不追加 NUL；
-- 不检查目标容量，也不返回状态（`void`）；
-- `n <= 0` 或任一指针为 `NULL` 时什么也不做。
+- `copy_from` 与 `move_from` 都是 `void`，不检查容量、不返回状态；
+  源与目标重叠时必须用 `move_from`（内部是 `memmove`）；
+- `fill` 是 `memset` 形状：`buf.fill(0, 32)` 清零，`buf.fill('x', 3)` 写三个 `x`；
+- 想得到 C 字符串，自己留位置并写 `raw[n] = 0;`。
 
-想得到 C 字符串，自己留位置并写 `raw[n] = 0;`。
+`compare_with` / `find_byte` / `compare_prefix` 是只读的 `memcmp` / `memchr` / `strncmp` 形状。
+`find_byte` 返回指针而不是偏移，偏移由调用方相减得到。
 
-旧版还有一个写接收者的镜像方法 `copyFrom`，已移除：`dst.copyFrom(src, n)` 现在写成
-`src.copy_to(dst, n)`，语义完全等价。
+`split_into` 不分配内存、也不改写源串：它按 `sep` 里的任一字节切分，把每段连同 NUL 拷进
+`out` 的一个 `slot_size` 槽。空段会保留（`"a,,b"` 得到三段）；`cap` 是段数上限。
+段数或槽宽不够时返回**所需段数**且一个字节都不写。
 
 ### 5.5 大小写转换：接收者只读，结果写 `out`
 
@@ -416,7 +425,8 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 - **大小写只覆盖 ASCII**：`lowercase` / `uppercase` 按 `A-Z` / `a-z` 逐字节转换，不做 locale。
 - **`char *` 上的方法名全局共享**：同一接收者上两个可见 trait 声明同名方法，调用点报
   `ambiguous type-host map for method 'x' on type 'char *'`。本模块占用
-  `length` / `find` / `find_char` / `starts_with` / `ends_with` / `copy` / `copy_to` /
+  `length` / `find` / `find_char` / `starts_with` / `ends_with` / `copy` / `copy_from` /
+  `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into` /
   `slice` / `concat` / `lowercase` / `uppercase` / `compare` / `to_int` / `to_double`；
   新增 `char *` trait 前先 grep。
 - **字面量接收者从 0.20.0 起可用**（本包下限 0.30.0）；0.19.1 只接受变量、元素、调用和字段链。

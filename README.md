@@ -138,18 +138,18 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 | 模块 | 入口 import | 宿主 | 方法数 | 文档 |
 | --- | --- | --- | --- | --- |
-| `std::str` | `std::str::String` | `char *` | 14 | [str/README.md](std/str/README.md) |
+| `std::str` | `std::str::String` | `char *` | 20 | [str/README.md](std/str/README.md) |
 | `std::io` | `std::io::Stdout` / `File` | namespace、`char *`、`IoFile *` | 4 + 1 + 3 | [io/README.md](std/io/README.md) |
 | `std::fs` | `std::fs::Fs` | `char *` | 7 | [fs/README.md](std/fs/README.md) |
 | `std::utf8` | `std::utf8::Utf8Ops` | `char *` | 3 | [utf8/README.md](std/utf8/README.md) |
-| `std::num` | `std::num::Num` | `int` / `long` / `long long` / `char` | 6 × 3 + 7 | [num/README.md](std/num/README.md) |
+| `std::num` | `std::num::Num` | `int` / `long` / `long long` / `char` | 6 × 3 + 14 | [num/README.md](std/num/README.md) |
 | `std::math` | `std::math::Math` / `Real` | namespace、`float`、`double` | 2 + 5 + 8 | [math/README.md](std/math/README.md) |
 | `std::arena` | `std::arena::Arena` | `Arena *` | 4 | [arena/README.md](std/arena/README.md) |
 | `std::test` | `std::test::Test` | `Test *` | 5 | [test/README.md](std/test/README.md) |
 
 `Vec<T>` / `Map<K,V>` 不在表里，因为它们是编译器内置层，不属于本包（见 §1、§5.4）。
 
-### 4.2 `char *` 宿主（25 个方法，名字全局共享）
+### 4.2 `char *` 宿主（31 个方法，名字全局共享）
 
 同一接收者类型上，**方法名不能重复**：任意两个可见 trait 声明同名方法，调用点就报
 `ambiguous type-host map for method 'x' on type 'char *'`。按名字判定，不看参数个数。
@@ -157,12 +157,12 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 | 模块 | 方法 |
 | --- | --- |
-| `CStrOps` | `length` `find` `find_char` `starts_with` `ends_with` `copy` `slice` `concat` `lowercase` `uppercase` `compare` `copy_to` `to_int` `to_double` |
+| `CStrOps` | `length` `find` `find_char` `starts_with` `ends_with` `copy` `slice` `concat` `lowercase` `uppercase` `compare` `copy_from` `move_from` `fill` `compare_with` `find_byte` `compare_prefix` `split_into` `to_int` `to_double` |
 | `FsOps` | `exists` `read_file` `write_file` `list` `mkdir` `remove` `rename` |
 | `Utf8Ops` | `decode` `count_codepoints` `encode` |
 | `Path`（`std::io`） | `open_file` |
 
-合计 14 + 7 + 3 + 1 = **25**。`errno` 访问器不在 `char *` 上：它是每翻译单元一份的全局值，
+合计 20 + 7 + 3 + 1 = **31**（`split_into` 是便利层，不是 libc 映射）。`errno` 访问器不在 `char *` 上：它是每翻译单元一份的全局值，
 挂在 namespace 宿主（`std::fs::FsEnv.get_last_error()`，见 §4.3）。`const char *` 也匹配同一宿主：
 类型键丢掉顶层 `const`，但 `CStrOps` 里已没有任何写接收者的方法，字面量接收者不会踩到只读内存。
 
