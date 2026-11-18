@@ -115,4 +115,39 @@ static inline int std_num_is_lower(int v)
     return islower((unsigned char)v);
 }
 
+static inline int std_num_is_alnum(int v)
+{
+    return isalnum((unsigned char)v);
+}
+
+static inline int std_num_is_punct(int v)
+{
+    return ispunct((unsigned char)v);
+}
+
+static inline int std_num_is_print(int v)
+{
+    return isprint((unsigned char)v);
+}
+
+static inline int std_num_is_graph(int v)
+{
+    return isgraph((unsigned char)v);
+}
+
+static inline int std_num_is_cntrl(int v)
+{
+    return iscntrl((unsigned char)v);
+}
+
+static inline int std_num_is_blank(int v)
+{
+    return isblank((unsigned char)v);
+}
+
+static inline int std_num_is_xdigit(int v)
+{
+    return isxdigit((unsigned char)v);
+}
+
 #endif

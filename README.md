@@ -176,7 +176,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | `int` | `Int` | `abs` `clamp` `max` `min` `to_str` `to_base` |
 | `long` | `Long` | 同上 6 个 |
 | `long long` | `LLong` | 同上 6 个 |
-| `char` | `Char` | `is_digit` `is_alpha` `is_space` `is_upper` `is_lower` `uppercase` `lowercase` |
+| `char` | `Char` | `is_digit` `is_alpha` `is_space` `is_upper` `is_lower` `is_alnum` `is_punct` `is_print` `is_graph` `is_cntrl` `is_blank` `is_xdigit` `uppercase` `lowercase` |
 | namespace `std::math` | `Math` | `sqrt` `fabs` |
 | `float` | `Float` | `abs` `sqrt` `floor` `ceil` `round` |
 | `double` | `Real` | 同上 5 个，另有 `is_nan` `is_inf` `to_str` |

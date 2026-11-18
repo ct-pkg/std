@@ -8,6 +8,7 @@
 - 覆盖四种宿主：`int`（`Int`）、`long`（`Long`）、`long long`（`LLong`）、`char`（`Char`）。
 - 数值宿主提供：`abs` / `clamp` / `max` / `min` / `to_str` / `to_base`。
 - `char` 宿主提供 ctype 表面：`is_digit` / `is_alpha` / `is_space` / `is_upper` / `is_lower` /
+  `is_alnum` / `is_punct` / `is_print` / `is_graph` / `is_cntrl` / `is_blank` / `is_xdigit` /
   `uppercase` / `lowercase`；`char` 不会提升成 `int`，所以两套方法互不干扰。
 - **不分配**：`to_str` / `to_base` 写调用方缓冲区，容量不足的规则见第 4 节。
 - 不做格式化宽度、精度、千分位；需要拼接时先用 `to_str` 得到文本，再用 `std::str` 的 `concat`。
@@ -129,10 +130,21 @@ upper=A
 | `is_space()` | `int is_space()` | 是空白返回非 0 |
 | `is_upper()` | `int is_upper()` | 是大写返回非 0 |
 | `is_lower()` | `int is_lower()` | 是小写返回非 0 |
+| `is_alnum()` | `int is_alnum()` | 字母或数字返回非 0 |
+| `is_punct()` | `int is_punct()` | 标点返回非 0 |
+| `is_print()` | `int is_print()` | 可打印（含空格）返回非 0 |
+| `is_graph()` | `int is_graph()` | 可打印且非空格返回非 0 |
+| `is_cntrl()` | `int is_cntrl()` | 控制字符返回非 0 |
+| `is_blank()` | `int is_blank()` | 空格或制表符返回非 0 |
+| `is_xdigit()` | `int is_xdigit()` | 十六进制数字返回非 0 |
 | `uppercase()` | `int uppercase()` | 转换后的字符（`int`）；非字母原样返回 |
 | `lowercase()` | `int lowercase()` | 转换后的字符（`int`）；非字母原样返回 |
 
-负数会先转成 `unsigned char` 再交给 C 的 ctype，这是 C 标准要求的安全写法。
+**契约**：所有接收 `char` 的判定/转换方法都按**无符号字节**解释——实现内部先转成 `unsigned char`
+再交给 C 的 ctype。`char` 在多数平台有符号，UTF-8 多字节字符的单个字节（如 `0xC3` 读作 `-61`）
+直接传给 ctype 是未定义行为；转换之后行为与平台无关。
+
+返回值只保证「非 0 为真」，不保证等于 1——C 库可能返回任意非零值，需要布尔值时写 `!= 0`。
 
 ## 5. 教程
 

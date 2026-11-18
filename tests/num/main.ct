@@ -22,6 +22,13 @@ int main(void)
     char digit = '7';
     char letter = 'a';
     char upper = 'A';
+    char hex = 'f';
+    char nonhex = 'g';
+    char punct = ',';
+    char space = ' ';
+    char tab = '\t';
+    char ctrl = 1;
+    char nonascii = (char)0xC3;
 
     tp->init();
 
@@ -53,6 +60,29 @@ int main(void)
     tp->check_eq_int(upper.lowercase(), 'a', "lowercase");
     tp->check_true(upper.is_upper(), "is_upper");
     tp->check_true(letter.is_lower(), "is_lower");
+
+    tp->check_true(letter.is_alnum(), "is_alnum: letter");
+    tp->check_true(digit.is_alnum(), "is_alnum: digit");
+    tp->check_true(!punct.is_alnum(), "is_alnum: punctuation");
+    tp->check_true(punct.is_punct(), "is_punct");
+    tp->check_true(!letter.is_punct(), "is_punct: letter");
+    tp->check_true(space.is_print(), "is_print: space");
+    tp->check_true(!ctrl.is_print(), "is_print: control");
+    tp->check_true(letter.is_graph(), "is_graph: letter");
+    tp->check_true(!space.is_graph(), "is_graph: space");
+    tp->check_true(ctrl.is_cntrl(), "is_cntrl");
+    tp->check_true(!letter.is_cntrl(), "is_cntrl: letter");
+    tp->check_true(space.is_blank(), "is_blank: space");
+    tp->check_true(tab.is_blank(), "is_blank: tab");
+    tp->check_true(!letter.is_blank(), "is_blank: letter");
+    tp->check_true(hex.is_xdigit(), "is_xdigit: f");
+    tp->check_true(digit.is_xdigit(), "is_xdigit: 7");
+    tp->check_true(!nonhex.is_xdigit(), "is_xdigit: g is not a hex digit");
+
+    /* A UTF-8 continuation byte is negative as a `char`. Passing it as a
+       plain `char` would be undefined for ctype; the shim casts to unsigned
+       char, so this must simply be false, not crash or read out of bounds. */
+    tp->check_true(!nonascii.is_alpha(), "is_alpha: UTF-8 byte 0xC3");
 
     return tp->report();
 }

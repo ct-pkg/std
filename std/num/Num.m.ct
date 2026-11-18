@@ -87,6 +87,13 @@ pub trait Char {
     int is_space();
     int is_upper();
     int is_lower();
+    int is_alnum();
+    int is_punct();
+    int is_print();
+    int is_graph();
+    int is_cntrl();
+    int is_blank();
+    int is_xdigit();
     int uppercase();
     int lowercase();
 }
@@ -97,6 +104,13 @@ map trait Char for type char {
     is_space(v) -> std_num_is_space(v);
     is_upper(v) -> std_num_is_upper(v);
     is_lower(v) -> std_num_is_lower(v);
+    is_alnum(v) -> std_num_is_alnum(v);
+    is_punct(v) -> std_num_is_punct(v);
+    is_print(v) -> std_num_is_print(v);
+    is_graph(v) -> std_num_is_graph(v);
+    is_cntrl(v) -> std_num_is_cntrl(v);
+    is_blank(v) -> std_num_is_blank(v);
+    is_xdigit(v) -> std_num_is_xdigit(v);
     uppercase(v) -> std_num_char_upper(v);
     lowercase(v) -> std_num_char_lower(v);
 }
