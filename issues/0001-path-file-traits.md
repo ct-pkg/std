@@ -6,6 +6,7 @@
 | 关联 | [issue 0001](0001-str-string-trait-rename.md) §6 的「同类问题」 |
 | 结论 | 两个都是方法层 trait，不是类型；`Path` 挂在 `char *`，`File` 挂在 `IoFile *` |
 | 日期 | 2026-11-15 |
+| 说明 | 记录的是 0.3.x 的接口形态；0.4.0 起 `open` → `open_file`、`printf` 已删除，本文只作历史对照，示例不再保证可直接构建 |
 
 ## 1. 声明形态与宿主
 
@@ -153,10 +154,10 @@ int main(int argc, char **argv)
 }
 ```
 
-构建并运行（`ct` 不在 PATH，用绝对路径；`-I` 指向本仓）：
+构建并运行（`ct` 在 PATH 上；在仓根执行，`-I .` 指向本仓）：
 
 ```sh
-$ /Users/samxx/.local/bin/ct build -I /Users/samxx/trae-ws/std \
+$ ct build -I . \
       --cflags "-Wall -Wextra" demo.ct -o demo.bin
 $ ./demo.bin /tmp/ct-pathfile-demo/out.txt
 ```
