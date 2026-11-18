@@ -27,7 +27,7 @@
 
 ## 2. 各期交付与验收
 
-通用验收：构建通过、`tests/run.sh` 通过、`ct pkg check` 通过。下表只列该期特有检查。
+通用验收：构建通过、`tests/run.sh` 通过、`ct pkg check` 通过；平台证据见 [platform-validation.md](design/platform-validation.md)。下表只列该期特有检查。
 
 ### P0 — 改名与删除（`0.4.0`）
 

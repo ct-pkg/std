@@ -35,6 +35,8 @@ requires = ct >= 0.67.0
 ldflags = -lm
 ```
 
+平台验证记录见 [platform-validation.md](docs/design/platform-validation.md)（macOS arm64 + Ubuntu 24.04/gcc13，ct 0.67.0）。
+
 `requires` 只告警、不拒装；`ldflags` 里的 `-lm` 给 `std::math` 用，在 libm 已并入 libc 的平台上
 是空操作。
 
