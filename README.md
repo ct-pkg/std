@@ -8,11 +8,13 @@
 - 十六个模块：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` / `arena` / `test` /
   `env` / `process` / `errno` / `locale` / `wchar` / `time` / `net`。
 - 两种实现形态，机制不同，不要互相套用：
-  - **C 宿主映射**（`.m.ct` + 同名 `.shim.h`）：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` /
-    `env` / `process` / `errno` / `wchar`。
-    接收者是 C 已有类型（`char *`、`int`、`double` …）或包内资源句柄，调用点直接展开成 C 调用。
-  - **CT 自有类型**（`.h.ct`）：`arena` / `test`，以及 `locale` 的 `LocaleHandle`。自有类型写
-    `impl`；`Arena` / `Test` 走 trait + vptr，资源句柄用固有方法 + `use Drop`（无 vptr）。
+  - **C 宿主映射**（`.m.ct` + 同名 `.shim.h`）：`str` / `io` / `fs` / `utf8` / `num` / `math` /
+    `search` / `env` / `process` / `errno` / `wchar` / `time` 的方法层。接收者是 C 已有类型
+    （`char *`、`int`、`double` …），调用点直接展开成 C 调用。
+  - **CT 自有类型**（`.h.ct`）：`arena` / `test` 的值类型，以及资源句柄 `io::File` /
+    `io::FileDesc`、`fs::Dir`、`locale::LocaleHandle`、`time::Timer`；`net::Socket` 是
+    `FileDesc` 的别名。`Arena` / `Test` 走 trait + vptr，资源句柄用固有 `impl` + `use Drop`
+    （无 vptr）。
 - 容器不在本包：`Vec<T>` / `Map<K,V>` 自 ct 0.30.0 起是编译器的内置层（`lib/std/Vec.h.ct`，
   自动加载，不需要 import、不需要 `-I`）。`0.3.0` 删掉了与内置名冲突的 `std::vec` / `std::map`。
 - 不提供：堆字符串类型、Unicode 规范化 / 字素簇、正则。
@@ -163,14 +165,14 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | --- | --- | --- | --- | --- |
 | `std::str` | `std::str::String` | `char *` | 20 | [str/README.md](std/str/README.md) |
 | `std::io` | `std::io::File` / `FileDesc` / `Stdout` | namespace、`char *`、`File *`、`FileDesc *` | 6 + 1 + 15 + 8 | [io/README.md](std/io/README.md) |
-| `std::fs` | `std::fs::Fs` / `Dir` / `Stat` | `char *`、`Dir *`、`Stat *` | 17 + 10 + 4 | [fs/README.md](std/fs/README.md) |
+| `std::fs` | `std::fs::Fs` / `Dir` / `Stat` | `char *`、`Dir *`、`Stat *` | 17 + 7 + 4 | [fs/README.md](std/fs/README.md) |
 | `std::utf8` | `std::utf8::Utf8Ops` | `char *` | 3 | [utf8/README.md](std/utf8/README.md) |
 | `std::num` | `std::num::Num` | `int` / `long` / `long long` / `char` | 6 × 3 + 14 | [num/README.md](std/num/README.md) |
 | `std::math` | `std::math::Real`（`Float` / `Real`） | `float` / `double` | 34 + 38 | [math/README.md](std/math/README.md) |
 | `std::search` | `std::search::Search` | `char *` + 元素大小 | 2 | — |
 | `std::arena` | `std::arena::Arena` | `Arena *` | 4 | [arena/README.md](std/arena/README.md) |
 | `std::test` | `std::test::Test` | `Test *` | 5 | [test/README.md](std/test/README.md) |
-| `std::time` | `std::time::Time` / `Timer` | namespace、`int`、`Timer *` | 14 + 2 + 3 | [time/README.md](std/time/README.md) |
+| `std::time` | `std::time::Time` / `Timer` | namespace、`int`、`Timer *` | 14 + 2 + 4 | [time/README.md](std/time/README.md) |
 | `std::net` | `std::net::Socket` | `FileDesc *`（别名）、`char *` | 17 + 2 + 1 | [net/README.md](std/net/README.md) |
 
 `Vec<T>` / `Map<K,V>` 不在表里，因为它们是编译器内置层，不属于本包（见 §1、§5.4）。
@@ -302,9 +304,11 @@ int main(void)
 或输入文件旁的 `../lib/std/`），找不到时报的是 `use of an undeclared variable` 而不是
 「内置层缺失」（ct-lang SH-76）；局部声明的 `Vec`/`Map` 不自动清零，先写 `v.h = 0`。
 
-`arena` / `test` 仍是本包的原生 OO：先声明值、取地址，再调方法；每个持有资源的类型都有
-显式 `free()` / `reset()` / `free_all()` / `clear()`，没有析构。有界实现溢出返回 `-1`。
-详见各自 README。
+`arena` / `test` 仍是本包的原生 OO：先声明值、取地址，再调方法，`Arena` 用 `reset()` /
+`free_all()`，`Test` 无资源。资源句柄 `File` / `FileDesc` / `Dir` / `Timer` 是 CT struct +
+`use Drop` + 幂等 `close()`，拿到句柄后写 `defer { delete h; }`；`own` 是可选糖（ct 0.65.1
+在方法返回值被捕获时会丢掉释放，见[裁定](docs/design/decision-resource-ownership.md)）。
+有界实现溢出返回 `-1`。详见各自 README。
 
 ## 6. 常见配方
 
@@ -416,10 +420,10 @@ main.ct:4:1: error: no method 'length' for type 'char *'
   本包只在 0.65.1 上完整验证。历史下限：`pub type IoFile` 别名需要 0.20.3、字面量接收者需要
   0.20.0，内置容器需要 0.30.0，都已被 0.49.0 覆盖。低于 0.49.0 的编译器不满足 `requires`
   （只告警，不代表能编过）。
-- **`char *` 方法名全局共享**：新增 trait 必须避开 25 个已有名字。
+- **`char *` 方法名全局共享**：新增 trait 必须避开 45 个已有名字（§4.2）。
 - **`const` 不参与类型键**：字面量能直接当 `CStrOps` 接收者，因为该 trait 没有写接收者的方法。
 - **`num.to_str` 静默截断**：容量不够得到短文本，不报错。
-- **容器不在这里**：本包的自有类型只有 `Arena` / `Test` / `LocaleHandle` 等；泛型容器是编译器的内置层，
+- **容器不在这里**：本包的自有类型是 `Arena` / `Test` 与资源句柄 `File` / `FileDesc` / `Dir` / `LocaleHandle` / `Timer`（`Socket` 为别名）；泛型容器是编译器的内置层，
   需要编译器能找到 `lib/std/Vec.h.ct`（见 §5.4），找不到时报 `use of an undeclared variable`。
 
 ## 10. 版本与变更记录

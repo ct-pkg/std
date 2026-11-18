@@ -42,11 +42,13 @@ int main(void)
     tp->check_true(client != 0, "the string factory connects");
     if (!client) return tp->report();
     defer { delete client; }
+    client->set_receive_timeout(2000);
 
     conn = server->accept();
     tp->check_true(conn != 0, "accept returns a connection");
     if (!conn) return tp->report();
     defer { delete conn; }
+    conn->set_receive_timeout(2000);
 
     client->send("ping", 4);
     n = 0;

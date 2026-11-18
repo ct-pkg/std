@@ -35,14 +35,14 @@
 
 | 工厂 | 产出 | 位置 |
 | --- | --- | --- |
-| `open_file(mode)` | `own File` | §2.4 |
-| `open_dir()` | `own Dir` | §2.5 |
-| `open_as_file_desc(open_read)` | `own FileDesc` | §2.4 |
-| `make_locale()` | `own Locale` | §2.7 |
-| `make_timer(ms, sig)` | `own Timer` | §2.7 |
-| `make_timer_once(ms, sig)` | `own Timer` | §2.7 |
-| `connect()` | `own Socket` | §2.7 |
-| `current()` | `own Dir` | §2.5 |
+| `open_file(mode)` | `File *`（字符串工厂；释放用 `defer { delete }`） | §2.4 |
+| `open_dir()` | `Dir *`（字符串工厂；释放用 `defer { delete }`） | §2.5 |
+| `open_as_file_desc(flags)` | `FileDesc *`（同一类型） | §2.4 |
+| `make_locale()` | `LocaleHandle *` | §2.7 |
+| `make_timer(ms, sig)` | `Timer *` | §2.5 |
+| `make_timer_once(ms, sig)` | `Timer *` | §2.5 |
+| `connect()` | `Socket *`（`FileDesc` 别名） | §2.7 |
+| `current_dir()` | `Dir *`（自由函数） | §2.5 |
 
 ## 4. Roadmap
 

@@ -5,39 +5,22 @@
 #
 # Version policy: 0.x means the surface may break in a minor bump. See README.md.
 #
-# `requires` is measured, not guessed. Literal receivers (`"/tmp/x".open("r")`,
-# `"abc".len()`) are rejected by v0.19.1 with "method receiver must be a
-# variable, an element, a call or a field chain", so 0.20.0 is the floor for
-# that feature. `std::io` names its handle with a type alias
-# (`pub type IoFile = struct ct_io_file;`), and type aliases only parse from
-# 0.20.3 on.
+# `requires` is measured, not guessed. The floor is 0.49.0:
+#   - literal receivers (0.20.0) and CT type aliases (0.20.3) are historical;
+#   - Vec<T> / Map<K,V> became the compiler's built-in layer in 0.30.0;
+#   - cross-unit Drop needs 0.48.0 and own-able factory calls need 0.49.0.
+# The package is fully verified on ct 0.65.1; the resource-object protocol is
+# documented in docs/design/decision-resource-ownership.md.
 #
-# 0.4.0 raised the floor to 0.30.0; 0.7.0 raises it to 0.49.0 because
-# the resource objects use cross-unit Drop (0.48.0) and own-able factory
-# calls (0.49.0). See docs/design/decision-resource-ownership.md.
-# 0.3.0 raises the floor to 0.30.0: `Vec<T>` / `Map<K,V>` / `MapEntry<K,V>`
-# became the compiler's built-in layer in v0.30.0 (ct-lang Phase 29, released
-# with v0.30.0; `lib/std/Vec.h.ct` plus the reserved-name check at
-# `Parser.h.ct`'s "is a built-in type and cannot be redeclared"), and this
-# package no longer ships `std::vec` / `std::map`. On 0.20.3..0.29.x there is
-# no built-in container layer, so a consumer would lose the containers
-# entirely -- hence the raised floor rather than the old 0.20.3.
-#
-# The version line restarted at 0.1.0; 0.1.0 also adds `std::io` (printf, puts,
-# putchar, getchar, fflush, and file open/read/write/close) next to `std::num`
-# and `std::math`. `-lm` rides in `ldflags` because std::math calls sqrt / fabs
-# / isnan / isinf; on platforms where libm is part of libc it is a no-op, on
-# the others it is required.
+# -lm rides in `ldflags` because std::math calls sqrt / fabs / isnan / isinf;
+# on platforms where libm is part of libc it is a no-op.
 #
 # `publisher` and `ns-root` are the two keys the replacement package mechanism
 # requires (SP-002 / SP-003 in ct-lang's ct-pkg-shared-store requirements).
 # Measured on ct v0.53.0: both are accepted with no diagnostic and silently
-# ignored -- unknown keys in `ct.pkg` are skipped by `read_manifest` -- so
-# `ct build` and `tests/run.sh` behave byte-for-byte as before. They are
-# declared here so the manifest already carries the package identity: the
-# include root is the package root itself, hence `ns-root = .` (the `std/`
-# segment of `import std::<mod>::<Unit>` comes from the directory tree under
-# it, not from this key).
+# ignored, so `ct build` and `tests/run.sh` are unaffected. The include root is
+# the package root itself, hence `ns-root = .` (the `std/` segment of
+# `import std::<mod>::<Unit>` comes from the directory tree, not this key).
 name = std
 publisher = std
 ns-root = .
