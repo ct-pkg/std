@@ -1,0 +1,26 @@
+/*
+ * Search.m.ct - the generic algorithms that need a comparator.
+ *
+ * Both entry points take the array as `char *` plus an element size, so they
+ * work on any element type; the comparator is a plain C function
+ * `int cmp(const void *, const void *)`. The receiver-free form (`std::search::
+ * Search.sort(...)`) is deliberate: no value owns the algorithm.
+ *
+ * `binary_search` returns the element index or -1; the array must be sorted by
+ * the same comparator first.
+ *
+ * License: MIT (see LICENSE).
+ */
+#include <stdlib.h>
+
+namespace std::search;
+
+pub trait Search {
+    void sort(char *base, int count, int elem_size, void *cmp);
+    int binary_search(char *base, int count, int elem_size, void *key, void *cmp);
+}
+
+map trait Search for namespace std::search {
+    sort(base, count, elem_size, cmp) -> std_search_sort(base, count, elem_size, cmp);
+    binary_search(base, count, elem_size, key, cmp) -> std_search_binary_search(base, count, elem_size, key, cmp);
+}

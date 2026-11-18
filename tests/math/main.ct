@@ -1,5 +1,5 @@
-/* std::math - the namespace pair (Math) and the value hosts (Float / Real). */
-import std::math::Math;
+/* std::math - the value hosts (Float / Real). There is no namespace entry:
+ * every function is called as a method on its argument. */
 import std::math::Real;
 import std::test::Test;
 
@@ -18,20 +18,33 @@ int main(void)
     double inf = 1.0 / zero;
     float f = -2.5f;
     float f26 = 2.6f;
+    int expo;
+    double frac;
+    double intpart;
+    double fracpart;
 
     tp->init();
 
-    tp->check_eq_int((int)std::math::Math.sqrt(x), 4, "Math.sqrt");
-    tp->check_eq_int((int)std::math::Math.fabs(neg), 3, "Math.fabs");
+    tp->check_eq_int((int)x.sqrt(), 4, "double sqrt");
+    tp->check_eq_int((int)neg.abs(), 3, "double abs");
+    tp->check_eq_int((int)d.pow(2.0), 6, "double pow");
 
     tp->check_eq_int((int)f.abs(), 2, "float abs");
     tp->check_eq_int((int)f.floor(), -3, "float floor");
     tp->check_eq_int((int)f26.ceil(), 3, "float ceil");
     tp->check_eq_int((int)f26.round(), 3, "float round");
-    tp->check_eq_int((int)d.sqrt(), 1, "double sqrt");
     tp->check_eq_int((int)d.round(), 3, "double round");
     tp->check_true(nan.is_nan(), "is_nan");
-    tp->check_true(inf.is_inf(), "is_inf");
+    tp->check_true(inf.is_infinite(), "is_infinite");
+
+    /* The out-parameter shapes: frexp and modf. */
+    frac = x.split_exponent(&expo);
+    tp->check_true(frac > 0.4 && frac < 0.6, "split_exponent returns the fraction");
+    tp->check_eq_int(expo, 5, "split_exponent yields 2^5");
+    tp->check_true(x.scale_by_power_of_two(-4) == 1.0, "scale_by_power_of_two");
+    fracpart = x.split_fraction(&intpart);
+    tp->check_true(fracpart == 0.0, "split_fraction: fraction for a whole number");
+    tp->check_true(intpart == 16.0, "split_fraction: integer part");
 
     tp->check_eq_str(d.to_str(buf, 32), "2.6", "to_str keeps the short form");
     /* 1.23456789 is not representable, so the short form does not round-trip

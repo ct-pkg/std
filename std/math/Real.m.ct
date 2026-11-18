@@ -1,13 +1,22 @@
 /*
  * Real.m.ct - the value half of std::math (`float` / `double` methods).
  *
- * `float` keeps the `f`-suffixed libm entry points so the argument and the
- * result stay `float`; `double` uses the unsuffixed ones. `to_str` calls the
- * helper in `Real.shim.h`, which sits beside this file and shares its base name.
- * The text is round-trip exact: `%g` when it already reads back as the same
- * `double`, `%.17g` otherwise.
+ * Math functions have exactly one spelling here: the method form. There is no
+ * namespace entry point (`std::math::Math.sqrt(x)` was removed in 0.5.0), so
+ * `x.sqrt()` is the only way to call. `float` keeps the `f`-suffixed libm
+ * entry points so the argument and the result stay `float`; `double` uses the
+ * unsuffixed ones.
  *
- * Only `double` has `to_str`; `Float` stays purely numeric.
+ * Seven opaque libm names are spelled out as full names:
+ * `expm1` -> `exponential_minus_one`, `log1p` -> `logarithm_one_plus`,
+ * `fdim` -> `positive_difference`, `fma` -> `fused_multiply_add`,
+ * `cbrt` -> `cube_root`, `fmod` -> `floating_modulo`, `copysign` -> `copy_sign`.
+ * The rest keep their C spelling.
+ *
+ * `to_str` calls the helper in `Real.shim.h`, which sits beside this file and
+ * shares its base name. The text is round-trip exact: `%g` when it already reads
+ * back as the same `double`, `%.17g` otherwise. Only `double` has `to_str`;
+ * `Float` stays purely numeric.
  *
  * License: MIT (see LICENSE).
  */
@@ -21,6 +30,35 @@ pub trait Float {
     float floor();
     float ceil();
     float round();
+    float truncate();
+    float pow(float y);
+    float exp();
+    float exponential_minus_one();
+    float log();
+    float log2();
+    float log10();
+    float logarithm_one_plus();
+    float sin();
+    float cos();
+    float tan();
+    float asin();
+    float acos();
+    float atan();
+    float atan2(float x);
+    float sinh();
+    float cosh();
+    float tanh();
+    float hypot(float y);
+    float cube_root();
+    float floating_modulo(float y);
+    float remainder(float y);
+    float positive_difference(float y);
+    float fused_multiply_add(float b, float c);
+    float copy_sign(float y);
+    float min(float y);
+    float max(float y);
+    int   is_nan();
+    int   is_infinite();
 }
 
 map trait Float for type float {
@@ -29,6 +67,35 @@ map trait Float for type float {
     floor(v) -> floorf(v);
     ceil(v) -> ceilf(v);
     round(v) -> roundf(v);
+    truncate(v) -> truncf(v);
+    pow(v, y) -> powf(v, y);
+    exp(v) -> expf(v);
+    exponential_minus_one(v) -> expm1f(v);
+    log(v) -> logf(v);
+    log2(v) -> log2f(v);
+    log10(v) -> log10f(v);
+    logarithm_one_plus(v) -> log1pf(v);
+    sin(v) -> sinf(v);
+    cos(v) -> cosf(v);
+    tan(v) -> tanf(v);
+    asin(v) -> asinf(v);
+    acos(v) -> acosf(v);
+    atan(v) -> atanf(v);
+    atan2(v, x) -> atan2f(v, x);
+    sinh(v) -> sinhf(v);
+    cosh(v) -> coshf(v);
+    tanh(v) -> tanhf(v);
+    hypot(v, y) -> hypotf(v, y);
+    cube_root(v) -> cbrtf(v);
+    floating_modulo(v, y) -> fmodf(v, y);
+    remainder(v, y) -> remainderf(v, y);
+    positive_difference(v, y) -> fdimf(v, y);
+    fused_multiply_add(v, b, c) -> fmaf(v, b, c);
+    copy_sign(v, y) -> copysignf(v, y);
+    min(v, y) -> fminf(v, y);
+    max(v, y) -> fmaxf(v, y);
+    is_nan(v) -> isnan(v);
+    is_infinite(v) -> isinf(v);
 }
 
 pub trait Real {
@@ -37,8 +104,38 @@ pub trait Real {
     double  floor();
     double  ceil();
     double  round();
+    double  truncate();
+    double  pow(double y);
+    double  exp();
+    double  exponential_minus_one();
+    double  log();
+    double  log2();
+    double  log10();
+    double  logarithm_one_plus();
+    double  sin();
+    double  cos();
+    double  tan();
+    double  asin();
+    double  acos();
+    double  atan();
+    double  atan2(double x);
+    double  sinh();
+    double  cosh();
+    double  tanh();
+    double  hypot(double y);
+    double  cube_root();
+    double  floating_modulo(double y);
+    double  remainder(double y);
+    double  positive_difference(double y);
+    double  fused_multiply_add(double b, double c);
+    double  copy_sign(double y);
+    double  min(double y);
+    double  max(double y);
     int     is_nan();
-    int     is_inf();
+    int     is_infinite();
+    double  scale_by_power_of_two(int e);
+    double  split_exponent(int *e);
+    double  split_fraction(double *ipart);
     char   *to_str(char *out, int cap);
 }
 
@@ -48,7 +145,37 @@ map trait Real for type double {
     floor(v) -> floor(v);
     ceil(v) -> ceil(v);
     round(v) -> round(v);
+    truncate(v) -> trunc(v);
+    pow(v, y) -> pow(v, y);
+    exp(v) -> exp(v);
+    exponential_minus_one(v) -> expm1(v);
+    log(v) -> log(v);
+    log2(v) -> log2(v);
+    log10(v) -> log10(v);
+    logarithm_one_plus(v) -> log1p(v);
+    sin(v) -> sin(v);
+    cos(v) -> cos(v);
+    tan(v) -> tan(v);
+    asin(v) -> asin(v);
+    acos(v) -> acos(v);
+    atan(v) -> atan(v);
+    atan2(v, x) -> atan2(v, x);
+    sinh(v) -> sinh(v);
+    cosh(v) -> cosh(v);
+    tanh(v) -> tanh(v);
+    hypot(v, y) -> hypot(v, y);
+    cube_root(v) -> cbrt(v);
+    floating_modulo(v, y) -> fmod(v, y);
+    remainder(v, y) -> remainder(v, y);
+    positive_difference(v, y) -> fdim(v, y);
+    fused_multiply_add(v, b, c) -> fma(v, b, c);
+    copy_sign(v, y) -> copysign(v, y);
+    min(v, y) -> fmin(v, y);
+    max(v, y) -> fmax(v, y);
     is_nan(v) -> isnan(v);
-    is_inf(v) -> isinf(v);
+    is_infinite(v) -> isinf(v);
+    scale_by_power_of_two(v, e) -> ldexp(v, e);
+    split_exponent(v, e) -> frexp(v, e);
+    split_fraction(v, ipart) -> modf(v, ipart);
     to_str(v, out, cap) -> std_math_double_to_str(v, out, cap);
 }

@@ -1,7 +1,5 @@
-/* std::math - the namespace pair (Math), the float host (Float) and the double
- * host (Real): non-finite values, signed zeros, the extreme magnitudes, the
- * to_str capacity contract. */
-import std::math::Math;
+/* std::math - the float host (Float) and the double host (Real): non-finite
+ * values, signed zeros, the extreme magnitudes, the to_str capacity contract. */
 import std::math::Real;
 import std::test::Test;
 
@@ -20,6 +18,7 @@ int main(void)
     double zero = 0.0;
     double nzero = -0.0;
     double one = 1.0;
+    double negone = -1.0;
     double x = 16.0;
     double neg = -3.5;
     double d26 = 2.6;
@@ -40,17 +39,17 @@ int main(void)
 
     tp->init();
 
-    /* ---- Math: the namespace host ------------------------------------- */
-    tp->check_true(std::math::Math.sqrt(zero) == 0.0, "Math.sqrt: 0");
-    tp->check_true(std::math::Math.sqrt(x) == 4.0, "Math.sqrt: 16");
-    tp->check_true(std::math::Math.sqrt(2.25) == 1.5, "Math.sqrt: 2.25");
-    sqneg = std::math::Math.sqrt(-one);
-    tp->check_eq_int(sqneg.is_nan(), 1, "Math.sqrt: a negative argument is NaN");
-    tp->check_true(std::math::Math.fabs(neg) == 3.5, "Math.fabs: -3.5");
-    tp->check_true(std::math::Math.fabs(nzero) == 0.0, "Math.fabs: -0 is 0");
-    tp->check_eq_int(signbit(std::math::Math.fabs(nzero)), 0, "Math.fabs: -0 loses its sign");
-    tp->check_eq_int(std::math::Math.fabs(ninf).is_inf(), 1, "Math.fabs: -inf is inf");
-    tp->check_eq_int(std::math::Math.fabs(nan).is_nan(), 1, "Math.fabs: NaN stays NaN");
+    /* ---- the method form replaces the old namespace host ---------------- */
+    tp->check_true(zero.sqrt() == 0.0, "Real.sqrt: 0");
+    tp->check_true(x.sqrt() == 4.0, "Real.sqrt: 16");
+    tp->check_true(2.25.sqrt() == 1.5, "Real.sqrt: 2.25");
+    sqneg = negone.sqrt();
+    tp->check_eq_int(sqneg.is_nan(), 1, "Real.sqrt: a negative argument is NaN");
+    tp->check_true(neg.abs() == 3.5, "Real.abs: -3.5");
+    tp->check_true(nzero.abs() == 0.0, "Real.abs: -0 is 0");
+    tp->check_eq_int(signbit(nzero.abs()), 0, "Real.abs: -0 loses its sign");
+    tp->check_eq_int(ninf.abs().is_infinite(), 1, "Real.abs: -inf is inf");
+    tp->check_eq_int(nan.abs().is_nan(), 1, "Real.abs: NaN stays NaN");
 
     /* ---- Float -------------------------------------------------------- */
     tp->check_true(fneg.abs() == 2.5f, "Float.abs: -2.5");
@@ -83,9 +82,9 @@ int main(void)
     /* ---- Real: classification ----------------------------------------- */
     tp->check_eq_int(nan.is_nan(), 1, "Real.is_nan: NaN");
     tp->check_eq_int(one.is_nan(), 0, "Real.is_nan: 1");
-    tp->check_eq_int(inf.is_inf(), 1, "Real.is_inf: +inf");
-    tp->check_eq_int(ninf.is_inf(), 1, "Real.is_inf: -inf");
-    tp->check_eq_int(one.is_inf(), 0, "Real.is_inf: 1");
+    tp->check_eq_int(inf.is_infinite(), 1, "Real.is_infinite: +inf");
+    tp->check_eq_int(ninf.is_infinite(), 1, "Real.is_infinite: -inf");
+    tp->check_eq_int(one.is_infinite(), 0, "Real.is_infinite: 1");
     tp->check_eq_int(inf.is_nan(), 0, "Real.is_nan: inf is not NaN");
 
     /* ---- Real: to_str --------------------------------------------------- */

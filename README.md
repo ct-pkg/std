@@ -5,9 +5,9 @@
 
 ## 1. 定位与边界
 
-- 八个模块：`str` / `io` / `fs` / `utf8` / `num` / `math` / `arena` / `test`。
+- 九个模块：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search` / `arena` / `test`。
 - 两种实现形态，机制不同，不要互相套用：
-  - **C 宿主映射**（`.m.ct` + 同名 `.shim.h`）：`str` / `io` / `fs` / `utf8` / `num` / `math`。
+  - **C 宿主映射**（`.m.ct` + 同名 `.shim.h`）：`str` / `io` / `fs` / `utf8` / `num` / `math` / `search`。
     接收者是 C 已有类型（`char *`、`IoFile *`、`int`、`double` …），调用点直接展开成 C 调用。
   - **CT 自有类型**（`.h.ct`）：`arena` / `test`。`pub trait` + `struct ... use Trait`
     + `impl` 写在同一文件里，分派走 vptr。
@@ -143,7 +143,8 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | `std::fs` | `std::fs::Fs` | `char *` | 7 | [fs/README.md](std/fs/README.md) |
 | `std::utf8` | `std::utf8::Utf8Ops` | `char *` | 3 | [utf8/README.md](std/utf8/README.md) |
 | `std::num` | `std::num::Num` | `int` / `long` / `long long` / `char` | 6 × 3 + 14 | [num/README.md](std/num/README.md) |
-| `std::math` | `std::math::Math` / `Real` | namespace、`float`、`double` | 2 + 5 + 8 | [math/README.md](std/math/README.md) |
+| `std::math` | `std::math::Real`（`Float` / `Real`） | `float` / `double` | 34 + 38 | [math/README.md](std/math/README.md) |
+| `std::search` | `std::search::Search` | `char *` + 元素大小 | 2 | — |
 | `std::arena` | `std::arena::Arena` | `Arena *` | 4 | [arena/README.md](std/arena/README.md) |
 | `std::test` | `std::test::Test` | `Test *` | 5 | [test/README.md](std/test/README.md) |
 
@@ -177,9 +178,9 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | `long` | `Long` | 同上 6 个 |
 | `long long` | `LLong` | 同上 6 个 |
 | `char` | `Char` | `is_digit` `is_alpha` `is_space` `is_upper` `is_lower` `is_alnum` `is_punct` `is_print` `is_graph` `is_cntrl` `is_blank` `is_xdigit` `uppercase` `lowercase` |
-| namespace `std::math` | `Math` | `sqrt` `fabs` |
-| `float` | `Float` | `abs` `sqrt` `floor` `ceil` `round` |
-| `double` | `Real` | 同上 5 个，另有 `is_nan` `is_inf` `to_str` |
+| namespace `std::search` | `Search` | `sort` `binary_search`（接收 `char *` + 元素大小；比较器是 C 的 `int cmp(const void *, const void *)`） |
+| `float` | `Float` | 34 个（`abs` … `is_nan` `is_infinite`，全表见 [math/README.md](std/math/README.md#4-api-全表)） |
+| `double` | `Real` | 与 `Float` 相同的 34 个，另有 `scale_by_power_of_two` `split_exponent` `split_fraction` `to_str`（共 38 个） |
 
 `int` / `long` / `long long` 与 `char` 是四个独立宿主，同名方法跨宿主允许（`n.to_str(buf, cap)` 与
 `c.is_digit()` 互不冲突）；`char` 不会提升成 `int`。
@@ -200,7 +201,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | 形态 | 例子 | 说明 |
 | --- | --- | --- |
 | `char *` 上的值方法 | `s.length()`、`path.exists()`、`buf.encode(cp, cap)` | 最常用；`encode` 的接收者是输出缓冲区 |
-| 命名空间函数 | `std::io::Stdout.puts(s)`、`std::math::Math.sqrt(x)` | 必须带全命名空间 |
+| 命名空间函数 | `std::io::Stdout.puts(s)`、`std::search::Search.sort(base, n, size, cmp_int)` | 必须带全命名空间 |
 | C 不透明句柄 | `path.open_file("w")` 返回 `IoFile *`，再 `f.read(...)` / `f.close()` | 句柄包装私有 `FILE *`；`close()` 可重复调用，但不回收包装体 |
 | CT 自有类型 | `ap->alloc(8)`、`tp->report()` | 先声明值再取地址；裸 `malloc` 的 vptr 是垃圾 |
 
@@ -342,11 +343,11 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 | 术语 | 含义 | 本包中的所指 |
 | --- | --- | --- |
 | `std` | 包名，也是 `import` 的命名空间前缀 | 仓库根是包根，`std/` 子目录是命名空间根；`import std::str::String` 对应 `std/str/String.m.ct` |
-| `.m.ct` | 映射式单元：只接受 `#include` / `#define` 作前导，没有函数体，方法经 `map trait` 转发 | `str/String.m.ct`、`fs/Fs.m.ct`、`utf8/Utf8Ops.m.ct`、`io/Stdout.m.ct`、`io/File.m.ct`、`math/Math.m.ct`、`math/Real.m.ct`、`num/Num.m.ct` |
+| `.m.ct` | 映射式单元：只接受 `#include` / `#define` 作前导，没有函数体，方法经 `map trait` 转发 | `str/String.m.ct`、`fs/Fs.m.ct`、`utf8/Utf8Ops.m.ct`、`io/Stdout.m.ct`、`io/File.m.ct`、`math/Real.m.ct`、`num/Num.m.ct` |
 | `.h.ct` | 可写 `pub trait` / `pub struct` / `impl` 与函数体的单元；本包的原生 OO 都走它 | `arena/Arena.h.ct`、`test/Test.h.ct` |
-| `host`（宿主） | 方法挂载的接收者类型；同一宿主上方法名必须唯一 | `char *`、`IoFile *`、`int` / `long` / `long long` / `char`、`float` / `double`、`Arena *`、`Test *`，以及 namespace `std::io` / `std::math` |
+| `host`（宿主） | 方法挂载的接收者类型；同一宿主上方法名必须唯一 | `char *`、`IoFile *`、`int` / `long` / `long long` / `char`、`float` / `double`、`Arena *`、`Test *`，以及 namespace `std::io` / `std::search` |
 | `map trait` | `.m.ct` 专有声明，把 trait 方法逐条映射成 C 调用，调用点展开，没有 vtable | `String.m.ct` 的 `map trait CStrOps for type char *`、`File.m.ct` 的 `map trait File for type IoFile *`、`Stdout.m.ct` 的 `map trait Stdout for namespace std::io` |
-| `pub trait` | 方法集声明；映射式里配 `map trait`，原生 OO 里配 `impl` | `CStrOps`、`FsOps`、`Utf8Ops`、`Path`、`File`、`Stdout`、`Int` / `Long` / `LLong` / `Char`、`Math` / `Float` / `Real`、`ArenaOps`、`TestOps` |
+| `pub trait` | 方法集声明；映射式里配 `map trait`，原生 OO 里配 `impl` | `CStrOps`、`FsOps`、`Utf8Ops`、`Path`、`File`、`Stdout`、`Int` / `Long` / `LLong` / `Char`、`Float` / `Real`、`Search`、`ArenaOps`、`TestOps` |
 | `impl` | 为已声明的 `pub trait` 写方法体的块 | `Arena.h.ct` 的 `impl ArenaOps for Arena`、`Test.h.ct` 的 `impl TestOps for Test` |
 | `use` | `struct ... use Trait` 把 vtable 指针追加到结构体尾部，并绑定该 trait | `struct Arena { ... } use ArenaOps`、`struct Test { ... } use TestOps` |
 | `vptr` | 由 `use` 追加的 vtable 指针，方法调用经它间接分派 | 生成代码里的 `__vptr`，以及导出头里的 `__arenaops_vptr`；`sizeof(Arena) == 32`（24 字节字段 + 8 字节 vptr） |
@@ -458,7 +459,7 @@ CT 语言规范 §5.1「源码命名约定」把函数 / 方法统一到 `snake_
 | `std::utf8` | `codepointCount` → `count_codepoints` |
 | `std::num`（`int` / `long` / `long long`） | `toStr` → `to_str`、`toBase` → `to_base`（十进制文本方法进 `to_str`，不再单独存在） |
 | `std::num`（`char`） | `isDigit` → `is_digit`、`isAlpha` → `is_alpha`、`isSpace` → `is_space`、`isUpper` → `is_upper`、`isLower` → `is_lower`、`toUpper` → `uppercase`、`toLower` → `lowercase` |
-| `std::math`（`double`） | `isNan` → `is_nan`、`isInf` → `is_inf`、`toStr` → `to_str`（可往返文本只保留写缓冲区的形态） |
+| `std::math`（`float` / `double`） | `isNan` → `is_nan`、`isInf` → `is_infinite`（`0.5.0` 定名）、`toStr` → `to_str`（可往返文本只保留写缓冲区的形态） |
 | `std::arena` | `freeAll` → `free_all` |
 | `std::test` | `checkTrue` → `check_true`、`checkEqInt` → `check_eq_int`、`checkEqStr` → `check_eq_str` |
 

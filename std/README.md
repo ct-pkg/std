@@ -10,11 +10,12 @@
 | `std::fs` | `std::fs::Fs` | [fs/README.md](fs/README.md) |
 | `std::utf8` | `std::utf8::Utf8Ops` | [utf8/README.md](utf8/README.md) |
 | `std::num` | `std::num::Num` | [num/README.md](num/README.md) |
-| `std::math` | `std::math::Math` / `Real` | [math/README.md](math/README.md) |
+| `std::math` | `std::math::Real`（`Float` / `Real`） | [math/README.md](math/README.md) |
+| `std::search` | `std::search::Search` | [search/README.md](search/README.md) |
 | `std::arena` | `std::arena::Arena` | [arena/README.md](arena/README.md) |
 | `std::test` | `std::test::Test` | [test/README.md](test/README.md) |
 
-八个模块的教程都已并入各自的 README，包内不再有独立的 `tutorial.md`。
+九个模块的教程都已并入各自的 README，包内不再有独立的 `tutorial.md`。
 
 容器不在本包：`Vec<T>` / `Map<K,V>` 自 ct 0.30.0 起是编译器的内置层（`lib/std/Vec.h.ct`，
 自动加载、不需要 import）。本包 0.3.0 删掉了与它们重名的 `std::vec` / `std::map`。

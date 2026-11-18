@@ -1,0 +1,38 @@
+/* std::search - qsort / bsearch with the C comparator signature. */
+import std::search::Search;
+import std::test::Test;
+
+int cmp_int(const void *a, const void *b)
+{
+    int x = *(const int *)a;
+    int y = *(const int *)b;
+    return (x > y) - (x < y);
+}
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    int v[5];
+    char *base = (char *)v;
+    int first;
+
+    tp->init();
+
+    v[0] = 30; v[1] = 10; v[2] = 50; v[3] = 20; v[4] = 40;
+    std::search::Search.sort(base, 5, 4, cmp_int);
+    tp->check_eq_int(v[0], 10, "sort: smallest first");
+    tp->check_eq_int(v[2], 30, "sort: middle");
+    tp->check_eq_int(v[4], 50, "sort: largest last");
+
+    first = 20;
+    tp->check_eq_int(std::search::Search.binary_search(base, 5, 4, &first, cmp_int),
+                     1, "binary_search: found at index 1");
+    first = 25;
+    tp->check_eq_int(std::search::Search.binary_search(base, 5, 4, &first, cmp_int),
+                     -1, "binary_search: absent");
+    tp->check_eq_int(std::search::Search.binary_search(base, 0, 4, &first, cmp_int),
+                     -1, "binary_search: empty array");
+
+    return tp->report();
+}
