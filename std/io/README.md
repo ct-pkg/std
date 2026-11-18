@@ -31,7 +31,7 @@
 ## 2. 依赖与安装
 
 依赖 C 的 `<stdio.h>` / `<fcntl.h>` / `<unistd.h>` / `<sys/socket.h>`；
-`requires ct >= 0.49.0`。
+`requires ct >= 0.64.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -151,4 +151,4 @@ f->close();                    /* idempotent; the deferred delete still frees */
 | `0.7.0` | 本轮变更 | `IoFile` 不透明句柄退役：`File` 改为 CT struct + `use Drop` + 自由工厂；新增 `seek` / `tell` / `rewind_start` / `at_end_of_file` / `has_error` / `clear_error` / `read_char` / `write_char` / `unread_char` / `read_line` / `write_line` / `flush`；新增 `FileDesc`、`adopt_file` / `adopt_file_desc` 与 flag 常量；`Stdout` 增加 `write` / `write_line`。 |
 | `0.4.0` | 已发布 | 变参 `printf` 删除。 |
 
-编译器下限 `ct >= 0.49.0`。
+编译器下限 `ct >= 0.64.0`。

@@ -31,7 +31,7 @@ publisher = std
 ns-root = .
 version = 0.11.0
 licence = MIT
-requires = ct >= 0.49.0
+requires = ct >= 0.64.0
 ldflags = -lm
 ```
 
@@ -155,8 +155,8 @@ int main(void)
 file=ct-pkg bytes=6 upper=CT-PKG
 ```
 
-接收者必须写成变量（`path`、`buf`、`n`、`word`）。本包下限是 **ct 0.49.0**（资源对象的 `Drop` 与 `own` 工厂需要 0.48 / 0.49）；字面量接收者
-`"abc".length()` 从 0.20.0 起可用，低于 0.49.0 的编译器不满足 `ct.pkg` 的 `requires`。
+接收者必须写成变量（`path`、`buf`、`n`、`word`）。本包下限是 **ct 0.64.0**（资源对象的 `.h.ct` shim 从 0.64.0 起；`Drop` / `own` 工厂的 0.48 / 0.49 已覆盖）；字面量接收者
+`"abc".length()` 从 0.20.0 起可用，低于 0.64.0 的编译器不满足 `ct.pkg` 的 `requires`。
 
 ## 4. API 全表（按宿主分组）
 
@@ -347,7 +347,7 @@ main.ct:5:1: error: method receiver must be a variable, an element, a call or a 
 ```
 
 这个错误来自低于 0.20.0 的编译器（v0.19.1 只接受变量、元素、调用、字段链作接收者）；本包下限
-是 **ct 0.49.0**。先写 `char *s = "abc";` 再 `s.length()`。调用结果可以直接继续当接收者：
+是 **ct 0.64.0**。先写 `char *s = "abc";` 再 `s.length()`。调用结果可以直接继续当接收者：
 `s.length().to_str(buf, cap)` 合法（`s.length()` 是调用）。
 
 ### 7.2 忘了 import
@@ -409,7 +409,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 | `codepoint`（码点） | UTF-8 里一个字符的编号；一个码点占 1..4 字节，码点数不等于字节数 | `Utf8Ops.count_codepoints()` 数码点，`decode()` 返回本次消耗的 1..4 字节，`encode()` 写 1..4 字节且不补 NUL；解码拒绝代理区（U+D800..U+DFFF）和超过 U+10FFFF 的值 |
 | `NUL` | 值为 0x00 的字节，C 字符串的终止符，不是 `NULL` 指针 | `length()` 不计 NUL，`cap` 必须给它留位置；`read` / `write` / `encode` 都不自动补 NUL |
 | `iterator`（迭代器） | 遍历容器的游标；本包没有实现 | 本包不提供容器；内建 `Vec` / `Map` 用 `foreach (v)` 的 `item` / `i` 绑定遍历，没有迭代器对象。最接近的失效规则是 `Arena.alloc()` 的指针在 `reset()` / `free_all()` 后作废 |
-| `literal receiver`（字面量接收者） | 直接拿字面量作方法接收者 | `"abc".length()`；0.20.0 起可用，本包下限 0.49.0。v0.19.1 报 `method receiver must be a variable, an element, a call or a field chain` |
+| `literal receiver`（字面量接收者） | 直接拿字面量作方法接收者 | `"abc".length()`；0.20.0 起可用，本包下限 0.64.0。v0.19.1 报 `method receiver must be a variable, an element, a call or a field chain` |
 | `chaining`（链式调用） | 把一个方法调用的结果继续当接收者 | `s.length().to_str(buf, cap)` 合法，因为 `s.length()` 是调用而不是字面量 |
 | `Drop` | 语言内建的析构钩子 | 包单元里的 `Drop` 发射为 `static`，消费者不可见，所以本包只提供显式 `free()` / `reset()` / `free_all()` / `clear()` |
 
@@ -417,10 +417,11 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 - **索引只收录最新 tag**：没有历史版本，老编译器取不到匹配的旧版 std。
 - **`requires` 只告警**：装得上不代表文档示例能编译。
-- **编译器下限 0.49.0**：资源对象的跨单元 `Drop` 需要 0.48.0，`own` 工厂初始化需要 0.49.0；
-  本包只在 0.65.1 上完整验证。历史下限：`pub type IoFile` 别名需要 0.20.3、字面量接收者需要
-  0.20.0，内置容器需要 0.30.0，都已被 0.49.0 覆盖。低于 0.49.0 的编译器不满足 `requires`
-  （只告警，不代表能编过）。
+- **编译器下限 0.64.0**：`.h.ct` 单元自己的 `<base>.shim.h`（自动进公开头与 `-I`）从 0.64.0
+  起（ct-lang PH-65），资源对象全部依赖它；跨单元 `Drop` 需要 0.48.0、`own` 工厂初始化需要
+  0.49.0，都在 0.64.0 之下。本包只在 0.65.1 上完整验证；0.49.0 实测在 `.h.ct` shim 上失败，
+  所以下限不能写 0.49。历史下限：`pub type IoFile` 别名 0.20.3、字面量接收者 0.20.0、内置容器
+  0.30.0。低于 0.64.0 的编译器不满足 `requires`（只告警，不代表能编过）。
 - **`char *` 方法名全局共享**：新增 trait 必须避开 49 个已有名字（§4.2）。
 - **`const` 不参与类型键**：字面量能直接当 `CStrOps` 接收者，因为该 trait 没有写接收者的方法。
 - **`num.to_str` 静默截断**：容量不够得到短文本，不报错。
@@ -566,7 +567,7 @@ int get_last_error();             /* std::fs::FsEnv.get_last_error()，见 §10.
 | `0.x` 期间 | 破坏性改动走 minor（`0.1.0` → `0.2.0`），修复走 patch；不承诺向后兼容 |
 | `1.0.0` 之后 | 破坏性改动走 major |
 | tag | `v<version>`；索引只认 `v*` 且取最高一个 |
-| 编译器下限 | `ct >= 0.49.0`，写在 `ct.pkg` 的 `requires` |
+| 编译器下限 | `ct >= 0.64.0`，写在 `ct.pkg` 的 `requires` |
 
 打 tag 之后索引里的摘要会覆盖包目录下除 `.git`、`vendor`、`.ctcache` 外的所有文件，
 包括 `README.md`、`tests/`、`.github/`。所以打 tag 前必须让所有文件定稿；tag 之后任何文件改动

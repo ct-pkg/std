@@ -5,10 +5,12 @@
 #
 # Version policy: 0.x means the surface may break in a minor bump. See README.md.
 #
-# `requires` is measured, not guessed. The floor is 0.49.0:
+# `requires` is measured, not guessed. The floor is 0.64.0:
 #   - literal receivers (0.20.0) and CT type aliases (0.20.3) are historical;
 #   - Vec<T> / Map<K,V> became the compiler's built-in layer in 0.30.0;
-#   - cross-unit Drop needs 0.48.0 and own-able factory calls need 0.49.0.
+#   - cross-unit Drop needs 0.48.0 and own-able factory calls need 0.49.0;
+#   - a .h.ct unit's own <base>.shim.h (auto-include + -I) is v0.64.0 (PH-65),
+#     and every resource unit here uses one.
 # The package is fully verified on ct 0.65.1; the resource-object protocol is
 # documented in docs/design/decision-resource-ownership.md.
 #
@@ -26,5 +28,5 @@ publisher = std
 ns-root = .
 version = 0.11.0
 licence = MIT
-requires = ct >= 0.49.0
+requires = ct >= 0.64.0
 ldflags = -lm

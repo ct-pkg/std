@@ -15,7 +15,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 的 `<stdlib.h>` / `<ctype.h>` / `<stdio.h>`；`ct.pkg` 的约束是 `requires ct >= 0.49.0`。
+依赖 C 的 `<stdlib.h>` / `<ctype.h>` / `<stdio.h>`；`ct.pkg` 的约束是 `requires ct >= 0.64.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -98,7 +98,7 @@ upper=A
 ```
 
 `int` 宿主是后加的：在此之前只有 `Long` / `LLong` / `Char`，`int` 值没有自己的文本化落点。
-字面量接收者本身从 **0.20.0** 起可用（本包下限 0.49.0）；v0.19.1 先写 `int n = 5;`，再调
+字面量接收者本身从 **0.20.0** 起可用（本包下限 0.64.0）；v0.19.1 先写 `int n = 5;`，再调
 `n.to_str(buf, cap)`。
 
 ## 4. API 全表
@@ -364,4 +364,4 @@ main.ct:5:1: error: no method 'to_str' for type 'int'
 | `0.5.0` | 待发布 | `Char` 新增 7 个谓词：`is_alnum` / `is_punct` / `is_print` / `is_graph` / `is_cntrl` / `is_blank` / `is_xdigit`；契约写明按无符号字节解释。 |
 | `0.1.0` | 已打 `v0.1.0` | 新增 `Int`（`int`）宿主，补上最常用的整数类型；此前只有 `Long` / `LLong` / `Char`。文档重写：教程并入本 README，删除 `docs/tutorial.md`。 |
 
-编译器下限 `ct >= 0.49.0`。
+编译器下限 `ct >= 0.64.0`。

@@ -20,7 +20,7 @@
 
 ## 2. 依赖与安装
 
-依赖 `<time.h>` / `<signal.h>` / `<sys/time.h>` / `<unistd.h>`；`requires ct >= 0.49.0`。
+依赖 `<time.h>` / `<signal.h>` / `<sys/time.h>` / `<unistd.h>`；`requires ct >= 0.64.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -127,4 +127,4 @@ int main(void)
 | --- | --- | --- |
 | `0.9.0` | 本轮新增 | 新建模块：`Time` namespace（时钟、日历、格式化、`from_parts`）与 `Timer`（周期/一次性、`own` 自由工厂 + 数字工厂、`defer delete`）。 |
 
-编译器下限 `ct >= 0.49.0`。
+编译器下限 `ct >= 0.64.0`。

@@ -13,7 +13,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 标准库的 `<string.h>` / `<stdlib.h>`；`ct.pkg` 的约束是 `requires ct >= 0.49.0`。
+依赖 C 标准库的 `<string.h>` / `<stdlib.h>`；`ct.pkg` 的约束是 `requires ct >= 0.64.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -433,7 +433,7 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
   `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into` /
   `slice` / `concat` / `lowercase` / `uppercase` / `compare` / `to_int` / `to_double`；
   新增 `char *` trait 前先 grep。
-- **字面量接收者从 0.20.0 起可用**（本包下限 0.49.0）；0.19.1 只接受变量、元素、调用和字段链。
+- **字面量接收者从 0.20.0 起可用**（本包下限 0.64.0）；0.19.1 只接受变量、元素、调用和字段链。
 - **多给实参不报错**（SH-56）：`s.copy(buf, 8, 9)` 编译通过，`9` 被丢弃；少给才报
   `a map call has fewer arguments than its binding`。
 - **`to_int` / `to_double` 不做错误报告**：与 `atoi` / `atof` 一致，非法输入不抛错。需要错误报告时用
@@ -446,5 +446,5 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 | `0.5.0` | 待发布 | 新增内存形状 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` 与缓冲式 `split_into`；`copy_to` 移除。 |
 | `0.1.0` | 已打 `v0.1.0` | `lowercase` / `uppercase` 改为 out 缓冲（`s.uppercase(out, cap)`）；移除写接收者的 `copyFrom`，`dst.copyFrom(src, n)` 改成 `src.copy_to(dst, n)`。 |
 
-编译器下限 `ct >= 0.49.0`。本文所有程序都有对应夹具，由 `bash tests/run.sh` 在 ct v0.53.0 上跑过；
+编译器下限 `ct >= 0.64.0`。本文所有程序都有对应夹具，由 `bash tests/run.sh` 在 ct v0.53.0 上跑过；
 字面量接收者写法从 0.20.0 起可用。

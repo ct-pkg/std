@@ -18,7 +18,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 的 `<locale.h>`；`requires ct >= 0.49.0`。
+依赖 C 的 `<locale.h>`；`requires ct >= 0.64.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -100,4 +100,4 @@ l->apply(std::locale::lc_numeric());
 | --- | --- | --- |
 | `0.6.0` | 本轮新增 | 新建模块：`LocaleHandle`（`own` / `Drop`）、字符串工厂、分类常量、`conventions` 拷贝式。 |
 
-编译器下限 `ct >= 0.49.0`。
+编译器下限 `ct >= 0.64.0`。

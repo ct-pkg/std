@@ -19,7 +19,7 @@
 ## 2. 依赖与安装
 
 依赖 `<unistd.h>` / `<signal.h>` / `<sys/wait.h>` / `<stdio.h>` / `<stdlib.h>`；
-`requires ct >= 0.49.0`。
+`requires ct >= 0.64.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -120,4 +120,4 @@ int main(void)
 | --- | --- | --- |
 | `0.6.0` | 本轮新增 | 新建模块：身份、`fork` / `execute*` / `system`、`wait*`、信号、`pipe_open`。 |
 
-编译器下限 `ct >= 0.49.0`。
+编译器下限 `ct >= 0.64.0`。

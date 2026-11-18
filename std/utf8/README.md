@@ -13,7 +13,7 @@
 
 ## 2. 依赖与安装
 
-只依赖 C 的 `<string.h>` 级操作，无外部库；`ct.pkg` 的约束是 `requires ct >= 0.49.0`。
+只依赖 C 的 `<string.h>` 级操作，无外部库；`ct.pkg` 的约束是 `requires ct >= 0.64.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -83,7 +83,7 @@ encoded=2
 ```
 
 同一个 `"é"`：`length()`（字节）是 2，`count_codepoints()`（码点）是 1。
-字面量接收者（`"é".decode(&cp)`）从 **0.20.0** 起可用（本包下限 0.49.0）；v0.19.1 先赋给 `char *`。
+字面量接收者（`"é".decode(&cp)`）从 **0.20.0** 起可用（本包下限 0.64.0）；v0.19.1 先赋给 `char *`。
 
 ## 4. API 全表
 
@@ -396,7 +396,7 @@ main.ct:6:1: error: no method 'encode' for type 'int'
   `length` / `find` 等属于 [`std::str`](../str/README.md)，`open_file` 属于
   [`std::io`](../io/README.md)，`exists` / `read` / `write` / `list` 属于
   [`std::fs`](../fs/README.md)。
-- **字面量接收者从 0.20.0 起可用**（本包下限 0.49.0）；0.19.1 只接受变量、元素、调用和字段链。
+- **字面量接收者从 0.20.0 起可用**（本包下限 0.64.0）；0.19.1 只接受变量、元素、调用和字段链。
 - **多给实参不报错**：与其它映射模块相同的编译器行为（SH-56）。
 
 ## 9. 版本与变更记录
@@ -405,4 +405,4 @@ main.ct:6:1: error: no method 'encode' for type 'int'
 | --- | --- | --- |
 | `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写：教程并入本 README，删除 `tutorial.md`；API 未变。 |
 
-编译器下限 `ct >= 0.49.0`。
+编译器下限 `ct >= 0.64.0`。
