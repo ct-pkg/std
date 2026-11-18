@@ -2,7 +2,7 @@
 
 `math.h` 的一层方法映射，**只有方法形态**：`float` 宿主是 `Float`（34 个方法），`double`
 宿主是 `Real`（38 个方法），调用一律写成 `x.sqrt()` / `x.pow(2.0)` 这样的值方法。
-namespace 入口已不再作为公开写法，`math/Math.m.ct` 待物理移除。
+namespace 入口已删除，`math/Math.m.ct` 已物理移除。
 
 ## 1. 定位与边界
 
@@ -25,7 +25,6 @@ namespace 入口已不再作为公开写法，`math/Math.m.ct` 待物理移除�
 
 | 文件 | 内容 |
 | --- | --- |
-| `Math.m.ct` | 待物理移除；namespace 入口不再作为公开写法，文件里只剩 `pub trait Math` + `map trait Math for namespace std::math` |
 | `Real.m.ct` | `pub trait Float`（`float` 宿主，34 个方法）+ `pub trait Real`（`double` 宿主，38 个方法） |
 | `Real.shim.h` | `std_math_double_to_str` 的 `static inline` 实现 |
 
@@ -254,7 +253,7 @@ double z = x.pow(2.0);
 接收者的宿主决定宽度：`float` 变量走 `Float`（`float` 进、`float` 出），`double` 变量走
 `Real`（`double` 进、`double` 出）。`x.sqrt()` 的结果仍是原宽度，不会自动升成 `double`。
 
-namespace 入口自 **0.5.0** 起不再作为公开写法，`Math.m.ct` 待物理移除。
+namespace 入口自 **0.5.0** 起删除，`Math.m.ct` 已物理移除。
 迁移时把旧的函数式调用改成 `x.sqrt()`，其它函数同理改成接收者方法。
 
 ### 5.2 `float` 与 `double` 不互相匹配
@@ -436,7 +435,7 @@ main.ct:4:1: error: no method 'sqrt' for type 'double'
   需要时直接调 C 的 `math.h`。
 - **`float` 没有文本化**：`to_str` 只在 `double` 上；`Float` 也没有三个出参方法。
 - **`min` / `max` 不传播 NaN**：按 C 的 `fmin` / `fmax`，一个参数是 NaN 时返回另一个。
-- **namespace 入口不再是公开写法**：`Math.m.ct` 待物理移除；数学只有方法形态。
+- **namespace 入口已删除**：`Math.m.ct` 已物理移除；数学只有方法形态。
 - **`to_str` 截断会破坏往返**：容量不够时得到短文本，不报错。
 - **短格式只有 6 位有效数字**：`to_str` 只在短格式能精确回读时使用它，否则自动加长；
   自己用固定格式拼接不保证往返。
@@ -448,7 +447,7 @@ main.ct:4:1: error: no method 'sqrt' for type 'double'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.5.0` | 未打 tag、待发布 | 数学只保留方法形态：namespace 入口不再作为公开写法（`Math.m.ct` 待物理移除）。`Float` 从 5 个方法扩到 34 个，`Real` 扩到 38 个；`isInf` 改名 `is_infinite`，`Float` 也提供 `is_nan` / `is_infinite`；`Real` 新增 `scale_by_power_of_two` / `split_exponent` / `split_fraction`。 |
+| `0.5.0` | 未打 tag、待发布 | 数学只保留方法形态：namespace 入口删除，`Math.m.ct` 物理移除。`Float` 从 5 个方法扩到 34 个，`Real` 扩到 38 个；`isInf` 改名 `is_infinite`，`Float` 也提供 `is_nan` / `is_infinite`；`Real` 新增 `scale_by_power_of_two` / `split_exponent` / `split_fraction`。 |
 | `0.1.0` | 已发布 | 文档首次成文：此前 `std/math` 只有源码与模块表，没有 README 或教程。 |
 
 编译器下限 `ct >= 0.30.0`。
