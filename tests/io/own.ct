@@ -24,7 +24,7 @@ int main(int argc, char **argv)
         tp->check_true(owned != 0, "the free factory returns a handle");
         if (owned) {
             owned->write("owned", 5);
-            owned->close();
+            /* No explicit close: Drop must flush and close it. */
         }
     }
 

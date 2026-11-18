@@ -10,7 +10,8 @@
 #   CT=/path/to/ct CC=clang bash tests/run.sh
 #
 # For every unit under std/<mod>/<Unit>.h.ct it checks that the unit declares the
-# namespace its directory implies and a `pub struct` named after its file, then
+# namespace its directory implies and either a `pub struct` named after its file
+# or a `pub type <base> = ...` alias (the Socket alias unit), then
 # drives every fixture under tests/<name>/:
 #
 #   every *.ct in the directory (main.ct plus any example, e.g. guide.ct)
@@ -126,6 +127,7 @@ for dir in tests/*/; do
             # directory and the first one to run creates the file.
             fs) cmd+=("$work/fsdir" "$work/$base.out.txt") ;;
             io) cmd+=("$work/$base.io.txt") ;;
+            net) cmd+=("$work/$base.net.txt") ;;
         esac
         "${cmd[@]}" >"$out/$base.stdout" 2>"$out/$base.stderr"
         rc=$?

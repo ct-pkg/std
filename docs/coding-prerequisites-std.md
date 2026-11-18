@@ -29,7 +29,7 @@
 | `time` / `env` / `process` / `errno` / `locale` / `net` | [§2.7](design/std-scope-and-presentation.md) | [§6.2](design/std-scope-and-presentation.md) |
 | 原排除项 | [§2.9](design/std-scope-and-presentation.md) | [§6.2](design/std-scope-and-presentation.md) |
 
-数学全名清单见 [`std-math-full-names-draft.md`](std-math-full-names-draft.md)。
+数学全名清单见 [`std-math-full-names-draft.md`](design/std-math-full-names-draft.md)。
 
 ## 3. 工厂命名清单
 
@@ -46,4 +46,4 @@
 
 ## 4. Roadmap
 
-分期、版本位、依赖与验收见 [`docs/roadmap.md`](../roadmap.md)。
+分期、版本位、依赖与验收见 [`docs/roadmap.md`](roadmap.md)。

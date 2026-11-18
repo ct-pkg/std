@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     char *path;
 
     tp->init();
-    path = (argc > 1) ? argv[1] : "std-net-alias.txt";
+    path = (argc > 1) ? argv[1] : "/tmp/std-net-alias.txt";
 
     desc = path.open_as_file_desc(std::io::open_update());
     tp->check_true(desc != 0, "open a FileDesc");

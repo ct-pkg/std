@@ -38,7 +38,7 @@
 | --- | --- | --- | --- |
 | `printf` | `std::io::printf`（`Io.h.ct:25`，namespace 宿主） | 已在 std | — |
 | `puts` / `putchar` / `getchar` / `fflush` | `Stdout.puts` / `putchar` / `getchar` / `fflush`（`Stdout.m.ct:5-12`） | 已在 std | — |
-| `fopen` / `fclose` / `fread` / `fwrite` | `Path.open` + `File.read` / `write` / `close`（`File.m.ct:11-29`） | 已在 std | 细节见 [issue 0001 配套梳理](issues/0001-path-file-traits.md) |
+| `fopen` / `fclose` / `fread` / `fwrite` | `Path.open` + `File.read` / `write` / `close`（`File.m.ct:11-29`） | 已在 std | 细节见 [issue 0001 配套梳理](../issues/0001-path-file-traits.md) |
 | `fseek` / `ftell` / `rewind` | 无 | 建议包·第一档 | `seek(offset, origin)` / `tell()` / `rewind_start()`，宿主 `IoFile *`；失败 `-1` |
 | `feof` / `ferror` / `clearerr` | 无 | 建议包·第一档 | `at_eof()` / `has_error()` / `clear_error()`，宿主 `IoFile *`；前两个 `0/1`，`clear_error` 无返回 |
 | `fgetc` / `getc` / `ungetc` | 无 | 建议包·第一档 | `read_char()` / `unread_char(c)`，宿主 `IoFile *`；`-1` 失败或 EOF（二者不可分） |

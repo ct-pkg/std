@@ -15,7 +15,7 @@
   `continue`，`delete` 先跑 `Drop`（关闭）再释放结构体。
   **`own` 只是可选糖**：ct 0.65.1 在方法返回值被局部捕获时会静默跳过 `own` 的释放
   （`int n = f->read(...)` 就触发），所以 README 不把它当默认；详见
-  [资源对象裁定](../README.md) 与 `docs/design/decision-resource-ownership.md`。
+  [资源对象裁定](../../docs/design/decision-resource-ownership.md)。
   `FileDesc` 同理：`path.open_as_file_desc(flags)` 与 `std::io::open_as_file_desc(path, flags)`。
 - **方法用 `->`**：`File` / `FileDesc` 是 CT struct 指针，方法调用写成 `f->read(...)`，
   不是旧 `IoFile *` 时代的 `f.read(...)`。

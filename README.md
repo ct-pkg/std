@@ -251,8 +251,8 @@ file=ct-pkg bytes=6 upper=CT-PKG
 （断点要下在消费者里），`std_*` 不再是外部符号，跨语言 FFI 需要自己再导出一层。
 好处是零开销：`s.length()` 在调用点就是 `std_str_len(s)`，没有 wrapper、没有 vtable、布局不变。
 
-**原生 OO**（`.h.ct`）：`use` 会给结构体尾部追加 vptr，本机实测 `sizeof(Arena) == 32`、
-`sizeof(Test) == 16`；vptr 出现在导出头里。方法永远不能被内联，
+**原生 OO**（`.h.ct`）：`use Trait` 会给结构体尾部追加 vptr（`use Drop` 是例外，只置位、不加
+vptr），本机实测 `sizeof(Arena) == 32`、`sizeof(Test) == 16`、`sizeof(File) == 8`；vptr 出现在导出头里。方法永远不能被内联，
 这是机制属性。堆对象不能裸 `malloc` 后直接调方法（vptr 是垃圾，实测段错误），先声明值或赋复合字面量。
 
 ### 5.3 字节与码点

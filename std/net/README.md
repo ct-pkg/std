@@ -45,6 +45,8 @@ TCP 回环：
 
 ```ct
 import std::net::Socket;
+import std::num::Num;
+import std::str::String;
 
 int main(void)
 {
@@ -75,9 +77,11 @@ int main(void)
 }
 ```
 
-UDP 回环：
+UDP 回环（片段，省略错误检查）：
 
 ```ct
+import std::net::Socket;
+
 Socket *a = std::net::open_datagram();
 Socket *b = std::net::open_datagram();
 char ip[32];
