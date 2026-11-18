@@ -11,10 +11,18 @@
  * License: MIT (see LICENSE).
  */
 
+/* The POSIX.1-2008 feature set: shims are the first headers in a generated
+   consumer, so defining it here makes mkdir/readlink/telldir/fileno/setenv and
+   friends visible under strict -std=c99 on glibc. */
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #ifndef CT_STD_NET_NET_SHIM_H
 #define CT_STD_NET_NET_SHIM_H
 
 #include "Socket.shim.h"
+#include "FileDesc.h"
 
 static inline struct std_io_FileDesc *std_net_connect_path(const char *host_port)
 {
@@ -34,7 +42,7 @@ static inline struct std_io_FileDesc *std_net_accept_socket(void *sock)
 
 static inline int std_net_local_port(void *sock)
 {
-    char text[INET_ADDRSTRLEN];
+    char text[46];
     int port = -1;
 
     if (std_net_local_address(sock, text, (int)sizeof text, &port) != 0) return -1;

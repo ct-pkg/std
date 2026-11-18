@@ -86,7 +86,7 @@ int main(void)
 
 | 方法 | 签名 | 语义 | 失败 |
 | --- | --- | --- | --- |
-| `signal(signum, handler)` | `int signal(int signum, void *handler)` | 装 `void (*)(int)` 处理器 | `-1` |
+| `signal(signum, handler)` | `int signal(int signum, void *handler)` | `sigaction` 装 `void (*)(int)` 处理器；处理器持续有效，不自动复位 | `-1` |
 | `raise_signal(signum)` | `int raise_signal(int signum)` | `raise` | `-1` |
 | `kill(pid, signum)` | `int kill(int pid, int signum)` | `kill`；`signum == 0` 是存在性探测 | `-1` |
 | `alarm(seconds)` | `int alarm(int seconds)` | 返回上次剩余秒数 | `-1`（负参数） |
@@ -111,6 +111,7 @@ int main(void)
 - **`system` / `pipe_open` 经 shell**：命令注入与引用规则由调用方负责。
 - **回调只支持顶层函数**：CT 没有跨 C 边界的闭包；处理器运行在信号上下文，只能调用
   async-signal-safe 函数。
+- **处理器不会自动复位**：实现用 `sigaction`（不是 System V `signal`），一次安装对后续信号持续有效。
 - **没有实时信号的平台**：`sigrtmin()` / `sigrtmax()` 返回 `SIGUSR2`。
 - **不等待进程组**：`wait_pid` 只映射 `waitpid`，没有 `waitid` / `wait4`。
 

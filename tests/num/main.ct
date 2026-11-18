@@ -53,7 +53,7 @@ int main(void)
     tp->check_eq_str(iv.to_base(16, buf, 32), "41", "int to_base 16");
     tp->check_true(iv.to_base(16, buf, 2) == 0, "int to_base refuses to truncate");
 
-    tp->check_eq_int(digit.is_digit(), 1, "is_digit");
+    tp->check_true(digit.is_digit() != 0, "is_digit");
     tp->check_true(letter.is_alpha(), "is_alpha");
     tp->check_true(!digit.is_alpha(), "is_alpha on a digit");
     tp->check_eq_int(letter.uppercase(), 'A', "uppercase");

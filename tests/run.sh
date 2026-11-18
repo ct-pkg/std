@@ -124,7 +124,7 @@ for dir in tests/*/; do
         # roots, the generated outdir, the shim sources) and runs it. A
         # hand-written `cc` line here drifted from that one once and silently
         # dropped the shim roots, so do not reintroduce a second spelling.
-        if ! CC="$CC" "$CT" build -I . --cflags "-Wall -Wextra" \
+        if ! CC="$CC" "$CT" build -I . --cflags "-Wall -Wextra" --ldflags "-lm" \
                 "$src" -o "$bin" >"$out/$base.build.log" 2>&1; then
             dir_ok=0
             detail="$detail

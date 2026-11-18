@@ -1,3 +1,10 @@
+/* The POSIX.1-2008 feature set: shims are the first headers in a generated
+   consumer, so defining it here makes mkdir/readlink/telldir/fileno/setenv and
+   friends visible under strict -std=c99 on glibc. */
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #ifndef STD_IO_STDOUT_SHIM_H
 #define STD_IO_STDOUT_SHIM_H
 

@@ -21,6 +21,7 @@
  * License: MIT (see LICENSE).
  */
 
+import std::time::Time;
 import std::time::TimerFactory;
 
 namespace std::time;

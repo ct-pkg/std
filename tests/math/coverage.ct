@@ -44,20 +44,20 @@ int main(void)
     tp->check_true(x.sqrt() == 4.0, "Real.sqrt: 16");
     tp->check_true(2.25.sqrt() == 1.5, "Real.sqrt: 2.25");
     sqneg = negone.sqrt();
-    tp->check_eq_int(sqneg.is_nan(), 1, "Real.sqrt: a negative argument is NaN");
+    tp->check_true(sqneg.is_nan() != 0, "Real.sqrt: a negative argument is NaN");
     tp->check_true(neg.abs() == 3.5, "Real.abs: -3.5");
     tp->check_true(nzero.abs() == 0.0, "Real.abs: -0 is 0");
-    tp->check_eq_int(signbit(nzero.abs()), 0, "Real.abs: -0 loses its sign");
-    tp->check_eq_int(ninf.abs().is_infinite(), 1, "Real.abs: -inf is inf");
-    tp->check_eq_int(nan.abs().is_nan(), 1, "Real.abs: NaN stays NaN");
+    tp->check_true(signbit(nzero.abs()) == 0, "Real.abs: -0 loses its sign");
+    tp->check_true(ninf.abs().is_infinite() != 0, "Real.abs: -inf is inf");
+    tp->check_true(nan.abs().is_nan() != 0, "Real.abs: NaN stays NaN");
 
     /* ---- Float -------------------------------------------------------- */
     tp->check_true(fneg.abs() == 2.5f, "Float.abs: -2.5");
-    tp->check_eq_int(signbit(fz.abs()), 0, "Float.abs: -0 loses its sign");
+    tp->check_true(signbit(fz.abs()) == 0, "Float.abs: -0 loses its sign");
     tp->check_true(f9.sqrt() == 3.0f, "Float.sqrt: 9");
     tp->check_true(fhalf.floor() == -1.0f, "Float.floor: -0.5");
     tp->check_true(fhalf.ceil() == 0.0f, "Float.ceil: -0.5 is zero");
-    tp->check_eq_int(signbit(fhalf.ceil()), 1, "Float.ceil: -0.5 keeps a negative zero");
+    tp->check_true(signbit(fhalf.ceil()) != 0, "Float.ceil: -0.5 keeps a negative zero");
     tp->check_true(fneg.floor() == -3.0f, "Float.floor: -2.5");
     tp->check_true(fneg.ceil() == -2.0f, "Float.ceil: -2.5");
     tp->check_true(fneg.round() == -3.0f, "Float.round: -2.5 rounds away from zero");
@@ -74,18 +74,18 @@ int main(void)
     tp->check_true(dn25.round() == -3.0, "Real.round: -2.5");
     tp->check_true(half.floor() == -1.0, "Real.floor: -0.5");
     tp->check_true(half.ceil() == 0.0, "Real.ceil: -0.5 is zero");
-    tp->check_eq_int(signbit(half.ceil()), 1, "Real.ceil: -0.5 keeps a negative zero");
-    tp->check_eq_int(signbit(nzero.floor()), 1, "Real.floor: -0 keeps its sign");
-    tp->check_eq_int(signbit(nzero.ceil()), 1, "Real.ceil: -0 keeps its sign");
-    tp->check_eq_int(signbit(nzero.round()), 1, "Real.round: -0 keeps its sign");
+    tp->check_true(signbit(half.ceil()) != 0, "Real.ceil: -0.5 keeps a negative zero");
+    tp->check_true(signbit(nzero.floor()) != 0, "Real.floor: -0 keeps its sign");
+    tp->check_true(signbit(nzero.ceil()) != 0, "Real.ceil: -0 keeps its sign");
+    tp->check_true(signbit(nzero.round()) != 0, "Real.round: -0 keeps its sign");
 
     /* ---- Real: classification ----------------------------------------- */
-    tp->check_eq_int(nan.is_nan(), 1, "Real.is_nan: NaN");
-    tp->check_eq_int(one.is_nan(), 0, "Real.is_nan: 1");
-    tp->check_eq_int(inf.is_infinite(), 1, "Real.is_infinite: +inf");
-    tp->check_eq_int(ninf.is_infinite(), 1, "Real.is_infinite: -inf");
-    tp->check_eq_int(one.is_infinite(), 0, "Real.is_infinite: 1");
-    tp->check_eq_int(inf.is_nan(), 0, "Real.is_nan: inf is not NaN");
+    tp->check_true(nan.is_nan() != 0, "Real.is_nan: NaN");
+    tp->check_true(one.is_nan() == 0, "Real.is_nan: 1");
+    tp->check_true(inf.is_infinite() != 0, "Real.is_infinite: +inf");
+    tp->check_true(ninf.is_infinite() != 0, "Real.is_infinite: -inf");
+    tp->check_true(one.is_infinite() == 0, "Real.is_infinite: 1");
+    tp->check_true(inf.is_nan() == 0, "Real.is_nan: inf is not NaN");
 
     /* ---- Real: to_str --------------------------------------------------- */
     buf[0] = 0;
