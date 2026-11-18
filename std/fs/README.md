@@ -1,377 +1,157 @@
-# `std::fs` — `char *` 上的文件系统方法（`FsOps`）
+# `std::fs` — 路径方法、目录流与元数据
 
-路径就是接收者：`path.exists()` / `path.read_file(out, cap)` / `path.write_file(data)` / `path.list(out, cap)`。
-实现是 `static inline`，调用点直接展开成 `std_fs_*`，没有 wrapper、没有 vtable。
+`std::fs` 有三块：`char *` 上的路径方法（`path.exists()` / `path.size()` / `path.resolve_path(...)`）、
+目录流 `Dir`、以及元数据值 `Stat`（`std::fs::stat_path(path, &st)`）。
 
 ## 1. 定位与边界
 
-- 只做七件事：判断存在、整文件读、整文件写、列目录、建目录、删文件或空目录、改名。
-- **不分配内存**：`read_file` / `list` 写进调用方提供的 `out + cap`，放不下返回 `-1`。
-- `write_file` 是**整文件替换**，不是追加；内容按 `strlen` 写，不能含 NUL 字节。
-- 依赖 POSIX 的 `<dirent.h>` / `<sys/stat.h>`；`list` 在 Windows 上不可用。
-- 不提供递归删除 / 递归遍历 / 文件属性 / `chmod` / 符号链接操作；需要时直接用 C API。
+- 路径方法挂在 `char *` 上，宿主已交代「这是路径」，方法名不再带 `file_` 前缀。
+- `Dir` 是 ③ 资源对象：持有 `DIR *` 与一份路径副本；`defer { delete d; }` 释放。
+- `Stat` 是纯值类型（无 `Drop`、无 vptr）；`stat_path` / `lstat_path` 是自由函数，因为
+  `.m.ct` 映射单元不能命名 `.h.ct` 里的类型，`path.stat(&st)` 这种接收者形态无法编译。
+- **`struct stat` 不原样暴露**：CT 看不到 C 结构体字段，所以 `Stat` 是字段镜像
+  （`size` / `mode` / `kind` / 三个时间 / uid / gid / device / inode / links / block_size / blocks）。
+  `kind` 是文件类型；谓词 `is_regular` / `is_directory` / `is_symlink` / `is_other` 直接读它。
+- `size()` / `mode()` / `modification_time()` 是便捷方法，各自一次 `stat`，**不替代**
+  `stat_path`（后者一次拿全部字段）。
+- `is_readable()` / `is_writable()` 用 `access(2)`，按**真实身份**判定，不代表生效身份下
+  实际可读写（setuid 程序里可能不同）。
+- `resolve_path` 是**词法**绝对路径：相对路径拼上 `getcwd`，折叠 `//`、`.`、`..`；
+  不解析符号链接，路径不要求存在。这是为了避开 strict `-std=c99` 下 `realpath` 的声明问题。
+- `scan_directory` 是流式回调（每个条目回调一次），不分配数组、没有释放责任；
+  回调返回非 0 提前停止。`.` / `..` 跳过。
+- `list` 保留原样：把条目用 `\n` 拼进调用方缓冲；大目录请用 `Dir` 或 `scan_directory`。
 
 ## 2. 依赖与安装
 
-依赖 POSIX 头文件 `<stdio.h>` / `<dirent.h>` / `<sys/stat.h>`；`ct.pkg` 的约束是
-`requires ct >= 0.30.0`。
+依赖 `<sys/stat.h>` / `<dirent.h>` / `<unistd.h>` / `<stdio.h>`；`requires ct >= 0.49.0`。
 
 | 文件 | 内容 |
 | --- | --- |
-| `Fs.m.ct` | `pub trait FsOps` + `map trait FsOps for type char *`（7 个方法）、`pub trait FsEnv` + `map trait FsEnv for namespace std::fs`（`get_last_error`） |
-| `Fs.shim.h` | `std_fs_*` 的 `static inline` 实现，编译器自动 include |
+| `Fs.m.ct` | `FsOps`（`char *` 路径方法）+ `FsEnv`（namespace：错误快照、`access` 常量、`scan_directory`） |
+| `Dir.h.ct` | `pub struct Dir { void *dp; char *stored_path; } use Drop`、自由工厂 `open_dir` / `current_dir`、`impl Dir` |
+| `DirFactory.m.ct` | `char *` 宿主上的 `"dir".open_dir()` |
+| `Stat.h.ct` | `pub struct Stat`（字段镜像）+ `stat_path` / `lstat_path` + 类型谓词 |
+| `Fs.shim.h` / `Dir.shim.h` / `Stat.shim.h` | 各自的 `static inline` C 实现 |
 
-没有 `Fs.h.ct`：本模块不引入新类型，路径本身就是 `char *`。
-
-引入方式：`import std::fs::Fs;`。
-
-包安装后（详见[包根 README](../../README.md#安装)）：
-
-```sh
-ct get std@^0.2.0
-ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
-```
+引入：`import std::fs::Fs;` 带入路径方法；`import std::fs::Dir;` 带入目录流；
+`import std::fs::Stat;` 带入元数据。
 
 ## 3. 快速开始
 
 ```ct
 import std::fs::Fs;
-import std::num::Num;
+import std::fs::Dir;
+import std::fs::Stat;
 import std::str::String;
-import std::io::Stdout;
 
 int main(void)
 {
-    char buf[64];
-    char num[16];
-    char line[96];
-    char *path = "/tmp/std-fs-demo.txt";
-    int n;
+    Stat st;
+    char name[64];
+    char *dir = "/tmp";
 
-    path.write_file("hello");
-    n = path.read_file(buf, 64);
-    "exists=".concat(path.exists().to_str(num, 16), line, 96);
-    std::io::Stdout.puts(line);
-    "bytes=".concat(n.to_str(num, 16), line, 96);
-    std::io::Stdout.puts(line);
-    std::io::Stdout.puts(buf);
+    "/tmp/std-fs-demo.txt".write("hello");
+    "/tmp/std-fs-demo.txt".size();                 /* 5 */
+    std::fs::stat_path("/tmp/std-fs-demo.txt", &st);
+    st.is_regular();                               /* 1 */
+
+    Dir *d = dir.open_dir();
+    defer { delete d; }
+    while (d->next(name, 64) == 1) {
+        /* one name per iteration */
+    }
+    d->close();
     return 0;
 }
 ```
-
-`ct build` 实际执行的 `cc` 行（本机实测，路径随检出位置变化）：
-
-```
-'cc' -std=c99 -Wall -Wextra -I '/Users/samxx/vscspace/ct-pkg/std/std/fs' -I '/Users/samxx/vscspace/ct-pkg/std/std/num' -I '/Users/samxx/vscspace/ct-pkg/std/std/str' -I '/Users/samxx/vscspace/ct-pkg/std/std/io' '.ctbuild/main.c' '-o' '/tmp/std-fs'
-```
-
-输出：
-
-```text
-exists=1
-bytes=5
-hello
-```
-
-字面量接收者（`"/tmp/x".exists()`）从 **0.20.0** 起可用（本包下限 0.30.0）；v0.19.1 先赋给 `char *` 变量。
 
 ## 4. API 全表
 
-宿主：`char *`（`const char *` 同样匹配）。接收者是第一个参数。
+### 4.1 `char *` 上的路径方法（`FsOps`）
 
-| 方法 | 签名 | 返回 / 失败 |
+| 方法 | 签名 | 语义 | 失败 |
+| --- | --- | --- | --- |
+| `exists` | `int path.exists()` | `stat` 可见即 1 | 0（`EACCES` 也是 0） |
+| `read` | `int path.read(char *out, int cap)` | 读整个文件，补 NUL | `-1`；目录/放不下也 `-1` |
+| `write` | `int path.write(const char *data)` | 覆盖写 | `-1` |
+| `list` | `int path.list(char *out, int cap)` | 条目用 `\n` 拼接 | `-1`（不返回部分结果） |
+| `mkdir` | `int path.mkdir(int mode)` | 建目录 | `-1` |
+| `remove` | `int path.remove()` | 删文件/空目录 | `-1` |
+| `rename` | `int path.rename(const char *to)` | 改名 | `-1` |
+| `access` | `int path.access(int mode)` | `access(2)`，mode 用 `FsEnv.access_*()` | `-1` |
+| `read_link` | `int path.read_link(char *out, int cap)` | `readlink(2)` | `-1`（放不下） |
+| `resize` | `int path.resize(long length)` | `truncate(2)` | `-1` |
+| `set_mode` | `int path.set_mode(int mode)` | `chmod(2)`，如 `0600` | `-1` |
+| `size` | `int path.size()` | `stat` 的字节数 | `-1` |
+| `mode` | `int path.mode()` | 权限位（`st_mode & 07777`） | `-1` |
+| `modification_time` | `int path.modification_time()` | `st_mtime` | `-1` |
+| `is_readable` | `int path.is_readable()` | `access(R_OK)` | 0/1 |
+| `is_writable` | `int path.is_writable()` | `access(W_OK)` | 0/1 |
+| `resolve_path` | `int path.resolve_path(char *out, int cap)` | 词法绝对路径 | `-1` |
+
+### 4.2 namespace `std::fs::FsEnv`
+
+| 方法 | 签名 | 语义 |
 | --- | --- | --- |
-| `exists()` | `int exists()` | `stat` 能看到返回 1，否则 0；`NULL` 或空串返回 0 |
-| `read_file(out, cap)` | `int read_file(char *out, int cap)` | 读到的字节数，并补 NUL；路径是目录、打不开或放不下（含 NUL）返回 `-1` |
-| `write_file(data)` | `int write_file(const char *data)` | 成功 0；打不开、写失败或 `data` 为 `NULL` 返回 `-1` |
-| `list(out, cap)` | `int list(char *out, int cap)` | 条目数；目录打不开或列表放不下返回 `-1`（不返回部分结果） |
-| `mkdir(mode)` | `int mkdir(int mode)` | 成功 0；已存在（`EEXIST`）、父目录不存在、`mode` 非法返回 `-1` |
-| `remove()` | `int remove()` | 成功 0；删文件或**空**目录；非空目录（`ENOTEMPTY`）、不存在返回 `-1`，不递归 |
-| `rename(to)` | `int rename(const char *to)` | 成功 0；跨文件系统（`EXDEV`）、`to` 非法返回 `-1` |
+| `get_last_error()` | `int` | 最近一次 `std::fs` 调用的 `errno` 快照（per-TU） |
+| `access_read()` / `access_write()` / `access_execute()` / `access_exists()` | `int` | `R_OK` / `W_OK` / `X_OK` / `F_OK` |
+| `scan_directory(path, cb, ctx)` | `int scan_directory(const char *path, void *cb, void *ctx)` | 流式遍历；返回回调次数或 `-1` |
 
-`read_file` 的 `cap` 包含结尾 NUL：5 字节的文件至少需要 `cap >= 6`。
+扫描回调是 `int cb(const char *name, void *context)`；非 0 返回值提前停止。
 
-`list` 用 `'\n'` 连接条目，**结尾没有换行**，跳过 `.` 和 `..`；顺序是 `readdir` 的顺序，
-不排序。返回值是条目数，不是字节数。
+### 4.3 `Dir`（自由工厂 + `impl Dir`）
 
-`mkdir` 的 `mode` **必须显式给**（典型 `p.mkdir(0755)`）：映射按方法名分派、不支持重载，
-同一宿主上不能有第二个 `mkdir`，所以没有「默认 0755」的形态。
+| 入口 | 签名 | 语义 | 失败 |
+| --- | --- | --- | --- |
+| `std::fs::open_dir` | `Dir *open_dir(const char *path)` | `opendir` | `0` |
+| `std::fs::current_dir` | `Dir *current_dir()` | 打开当前目录（保存绝对路径） | `0` |
+| `path.open_dir` | `Dir *path.open_dir()` | 字符串工厂，同一类型 | `0` |
+| `next` | `int d->next(char *out, int cap)` | 下一个名字（跳过 `.`/`..`） | 1/0/-1 |
+| `rewind` | `int d->rewind()` | `rewinddir` | `-1` |
+| `close` | `int d->close()` | `closedir`，幂等 | `-1` |
+| `tell` | `long d->tell()` | `telldir` | `-1` |
+| `seek` | `int d->seek(long pos)` | `seekdir` | `-1` |
+| `path` | `int d->path(char *out, int cap)` | 取保存的路径 | `-1` |
+| `enter` | `int d->enter()` | `chdir` 到保存路径 | `-1` |
 
-### 4.1 `errno` 访问器
+### 4.4 `Stat`（`std::fs::Stat`）
 
-```ct
-int std::fs::FsEnv.get_last_error();
-```
+字段：`size` `mode` `kind` `modification_time` `access_time` `change_time` `uid` `gid`
+`device` `inode` `links` `block_size` `blocks`。
 
-`errno` 是每翻译单元一份的全局值，不是某条路径的属性，所以它挂在 namespace 宿主
-`std::fs::FsEnv` 上，而不是 `path.get_last_error()`。
+| 函数 / 方法 | 签名 | 语义 |
+| --- | --- | --- |
+| `stat_path` | `int std::fs::stat_path(const char *path, Stat *st)` | `stat(2)`，跟随符号链接 |
+| `lstat_path` | `int std::fs::lstat_path(const char *path, Stat *st)` | `lstat(2)` |
+| `is_regular` / `is_directory` / `is_symlink` / `is_other` | `int st->is_...()` | 读 `kind` |
 
-| 情形 | `get_last_error()` |
-| --- | --- |
-| 上一次调用成功 | `0` |
-| 系统调用失败 | 当次 `errno`（`ENOENT`、`EEXIST`、`ENOTEMPTY`、`EXDEV`、`EACCES` …） |
-| 本模块自身拒绝 | `EINVAL`（`NULL` / 空串参数）、`ERANGE`（缓冲区放不下）、`EISDIR`（读目录） |
+## 5. 与相邻模块的关系
 
-限制：缓存是 `Fs.shim.h` 里的 `static int`，**每个消费单元一份**——非线程安全、不跨翻译单元
-共享，也不跨 `import`。多线程或多单元程序请自己在调用点保存返回值，不要依赖它做错误分支。
+- 错误：`FsEnv.get_last_error()` 是 `std::fs` 自己的 per-TU 快照；也可用
+  `std::errno::Errno.get_last()` 直读。
+- `is_readable` / `is_writable` 与 `std::io::FileDesc` 的 `open` 失败是两层：前者只探测，
+  后者真打开。
+- `Stat` 的时间字段是 `long` 秒，不是 `std::time` 的格式化时间；需要年月日时用
+  `std::time::Time`（P5）。
+- `Dir` 与 `list` 并存：小目录用 `list` 拿拼接字符串，大目录用 `Dir` 流式读。
 
-## 5. 教程
+## 6. 限制与未支持
 
-### 5.1 读写一个文件
+- **`Stat` 是字段镜像，不是 `struct stat` 本体**：没有平台专有字段；需要原始结构体时直接调 C。
+- **`size` / `modification_time` 返回 `int`**：超过 `INT_MAX` 的字节数 / 时间返回 `-1`（`ERANGE`），
+  避免静默截断。
+- **`resolve_path` 不解析符号链接、不要求路径存在**：与 `realpath(3)` 不同。
+- **`is_*` 按真实身份**：`access(2)` 不看 setuid 之后的生效身份。
+- **`.ct` 不能 `#include <sys/stat.h>`**：`Stat` 的字段由 shim 填，平台差异不暴露。
+- **扫描回调是顶层函数**：CT 没有闭包；上下文只能经 `void *` 传。
+- **`Dir` 句柄不要值拷贝**：释放写 `defer { delete d; }`；`close()` 后再 `delete` 安全。
 
-```ct
-import std::fs::Fs;
-import std::num::Num;
-import std::str::String;
-import std::io::Stdout;
-
-int main(void)
-{
-    char buf[64];
-    char num[16];
-    char line[32];
-    char *path = "/tmp/std-fs-demo.txt";
-    int n;
-
-    path.write_file("hello");
-    n = path.read_file(buf, 64);
-    "bytes=".concat(n.to_str(num, 16), line, 32);
-    std::io::Stdout.puts(line);
-    std::io::Stdout.puts(buf);
-    return 0;
-}
-```
-
-输出：
-
-```text
-bytes=5
-hello
-```
-
-`write_file` 只写 `strlen(data)` 个字节，所以 `"hello"` 的 5 个字节全部落盘，没有额外内容。
-写完后 `read_file` 自动补 `buf[n] = 0`。
-
-### 5.2 失败路径与容量
-
-```ct
-import std::fs::Fs;
-import std::str::String;
-import std::num::Num;
-import std::io::Stdout;
-
-int main(void)
-{
-    char buf[32];
-    char listing[128];
-    char num[16];
-    char line[128];
-    char *dir = "/tmp/std-fs-demo-dir";
-    char *pa = "/tmp/std-fs-demo-dir/a.txt";
-    char *pb = "/tmp/std-fs-demo-dir/b.txt";
-    char *missing = "/no/such/file";
-    int n;
-    int has_a;
-    int has_b;
-
-    dir.mkdir(0755);
-    pa.write_file("A");
-    pb.write_file("B");
-
-    n = dir.list(listing, 128);
-    has_a = listing.find("a.txt") >= 0;
-    has_b = listing.find("b.txt") >= 0;
-    "list count=".concat(n.to_str(num, 16), line, 128);
-    std::io::Stdout.puts(line);
-    "has_a=".concat(has_a.to_str(num, 16), line, 128);
-    std::io::Stdout.puts(line);
-    "has_b=".concat(has_b.to_str(num, 16), line, 128);
-    std::io::Stdout.puts(line);
-
-    n = pa.read_file(buf, 32);
-    "read bytes=".concat(n.to_str(num, 16), line, 128);
-    std::io::Stdout.puts(line);
-    std::io::Stdout.puts(buf);
-
-    "tiny rc=".concat(pa.read_file(buf, 1).to_str(num, 16), line, 128);
-    std::io::Stdout.puts(line);
-    "missing rc=".concat(missing.read_file(buf, 32).to_str(num, 16), line, 128);
-    std::io::Stdout.puts(line);
-
-    pa.write_file("oo");
-    n = pa.read_file(buf, 32);
-    "rewrite bytes=".concat(n.to_str(num, 16), line, 128);
-    std::io::Stdout.puts(line);
-    std::io::Stdout.puts(buf);
-    return 0;
-}
-```
-
-输出：
-
-```text
-list count=2
-has_a=1
-has_b=1
-read bytes=1
-A
-tiny rc=-1
-missing rc=-1
-rewrite bytes=2
-oo
-```
-
-要点：
-
-1. `read_file` 的 `cap` 必须容得下文件内容 **加 NUL**；`cap = 1` 连 1 字节的文件都读不了。
-2. 文件不存在、**路径是目录**、权限不足都统一返回 `-1`；具体原因用
-   `std::fs::FsEnv.get_last_error()` 查看。目录以前会「成功」返回 0 字节（POSIX 能只读打开目录、
-   随后立即 EOF），`0.3.0` 起按失败处理。
-3. `list` 放不下时返回 `-1`，不返回部分列表；要么完整，要么失败。
-4. 再写一次是**替换**，不是追加：`"oo"` 覆盖了原来的 `"A"`。
-
-`dir.mkdir(0755)` 是本模块的 `FsOps.mkdir`；`mode` 必须显式给，映射不支持重载。
-
-### 5.3 `list` 的输出格式
-
-```text
-a.txt\nb.txt
-```
-
-- 条目之间一个 `'\n'`，最后一个条目后面没有换行；
-- `.` 和 `..` 被跳过；
-- 不排序，不要假设字母序；
-- 不区分文件、目录、符号链接，名字原样输出。
-
-按行拆分时用 [`std::str`](../str/README.md) 的 `find_char('\n')` 或 `find`。
-
-## 6. 常见配方
-
-### 追加内容（读—拼—写）
-
-```ct
-import std::fs::Fs;
-import std::str::String;
-import std::num::Num;
-import std::io::Stdout;
-
-int main(void)
-{
-    char buf[64];
-    char next[64];
-    char num[16];
-    char line[32];
-    char *path = "/tmp/std-fs-append.txt";
-    int n;
-
-    path.write_file("one");
-    n = path.read_file(buf, 64);
-    buf.concat("two", next, 64);
-    path.write_file(next);
-    n = path.read_file(buf, 64);
-    "bytes=".concat(n.to_str(num, 16), line, 32);
-    std::io::Stdout.puts(line);
-    std::io::Stdout.puts(buf);
-    return 0;
-}
-```
-
-输出：
-
-```text
-bytes=6
-onetwo
-```
-
-本模块没有 append 模式；追加必须整读、拼接、整写，因此文件不能超过 `cap`。
-
-### 其它常用组合
-
-| 任务 | 写法 |
-| --- | --- |
-| 判断路径是否存在 | `if (path.exists()) { ... }` |
-| 整文件读入 | `n = path.read_file(buf, sizeof buf); if (n < 0) { /* 太大或打不开 */ }` |
-| 整文件替换 | `path.write_file(data)` |
-| 列目录 | `n = dir.list(buf, sizeof buf);` |
-| 遍历列目录结果 | 用 `std::str` 的 `find_char('\n')` 逐行切 |
-
-## 7. 排错
-
-### 7.1 少给参数
-
-```ct
-import std::fs::Fs;
-
-int main(void)
-{
-    char buf[8];
-    char *p = "/tmp/x";
-    return p.read_file(buf);
-}
-```
-
-```text
-main.ct:7:1: error: a map call has fewer arguments than its binding
-```
-
-`read_file` 需要 `out` 和 `cap` 两个实参。
-
-### 7.2 忘了 import
-
-```ct
-int main(void)
-{
-    char *p = "/tmp/x";
-    return p.exists();
-}
-```
-
-```text
-main.ct:4:1: error: no method 'exists' for type 'char *'
-```
-
-`exists` 属于 `std::fs::Fs`，import 之后才存在。
-
-### 7.3 字面量接收者（0.19.1）
-
-```ct
-import std::fs::Fs;
-
-int main(void)
-{
-    return "/tmp/x".exists();
-}
-```
-
-```text
-main.ct:5:1: error: method receiver must be a variable, an element, a call or a field chain
-```
-
-先写 `char *p = "/tmp/x"; p.exists();`。字面量接收者需要 0.20.0。
-
-## 8. 限制与未支持
-
-- **POSIX only**：`list` 用 `<dirent.h>`，Windows 不适用。
-- **不分配**：`read_file` / `list` 全靠调用方缓冲区；大文件请自己分块读，或换用
-  [`std::io`](../io/README.md) 的 `File.read`。
-- **`write_file` 按 `strlen` 写**：内容里有 `'\0'` 时后面的字节不会落盘；二进制数据用
-  `std::io` 的 `File.write(buf, n)`。
-- **`list` 不排序、不递归、不给类型**：只输出名字，顺序来自 `readdir`。
-- **错误码只是快照**：所有失败返回 `-1`（`exists` 是 0），原因要另查
-  `std::fs::FsEnv.get_last_error()`，且缓存每个翻译单元一份。
-- **`char *` 方法名全局共享**：本模块占用 `exists` / `read_file` / `write_file` / `list` /
-  `mkdir` / `remove` / `rename`；
-  `length` / `find` 等属于 [`std::str`](../str/README.md)，`open_file` 属于
-  [`std::io`](../io/README.md)，`decode` / `count_codepoints` / `encode` 属于
-  [`std::utf8`](../utf8/README.md)。
-- **字面量接收者需要 0.20.0**。
-- **多给实参不报错**：与其它映射模块相同的编译器行为（SH-56）。
-
-## 9. 版本与变更记录
+## 7. 版本与变更记录
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.3.0` | 已打 `v0.3.0` | ① 新增 `mkdir` / `remove` / `rename` 与 `FsEnv.get_last_error`（`errno` 快照，每翻译单元一份）；② `read_file` 对目录返回 `-1`（此前静默返回 `0` 并给出空字符串），普通文件、空文件、含 `'\0'` 文件的行为不变；③ 全量改名到 `snake_case`：`readFile` → `read_file`、`writeFile` → `write_file`，无别名、无兼容层。 |
-| `0.1.0` | 未打 tag、未发布 | 文档重写：教程并入本 README，删除 `tutorial.md`；API 未变。 |
+| `0.8.0` | 本轮变更 | 新增 `access` / `read_link` / `resize` / `set_mode` / `size` / `mode` / `modification_time` / `is_readable` / `is_writable` / `resolve_path`；新增 `Dir`（`own` 自由工厂 + 字符串工厂 + `defer delete`）；新增 `Stat` 字段镜像与 `stat_path` / `lstat_path`；新增 `scan_directory` 流式回调。 |
+| `0.6.0` | 已发布 | `exists` / `read_file` / `write_file` / `list` / `mkdir` / `remove` / `rename` 与 `FsEnv.get_last_error`。 |
 
-编译器下限 `ct >= 0.30.0`。
+编译器下限 `ct >= 0.49.0`。

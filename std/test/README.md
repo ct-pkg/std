@@ -16,7 +16,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 的 `<stdio.h>` / `<string.h>`；`ct.pkg` 的约束是 `requires ct >= 0.30.0`。
+依赖 C 的 `<stdio.h>` / `<string.h>`；`ct.pkg` 的约束是 `requires ct >= 0.49.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -317,7 +317,7 @@ main.ct:8:1: error: no method 'nope' for type 'struct std_test_Test *'
 - **布局是公开的**：64 位下 `sizeof(Test) == 16`（8 字节字段 + 8 字节 vptr），vptr
   （`__testops_vptr`）出现在导出的 `Test.h` 里。
 - **方法不能被内联**：每次断言都是一次间接跳转；测试代码里可以忽略。
-- **字面量接收者从 0.20.0 起可用**（本包下限 0.30.0）：v0.19.1 只接受变量、元素、调用和字段链。
+- **字面量接收者从 0.20.0 起可用**（本包下限 0.49.0）：v0.19.1 只接受变量、元素、调用和字段链。
 
 ## 9. 版本与变更记录
 
@@ -325,5 +325,5 @@ main.ct:8:1: error: no method 'nope' for type 'struct std_test_Test *'
 | --- | --- | --- |
 | `0.1.0` | 未打 tag、未发布 | 当前版本。文档重写：教程并入本 README，删除 `tutorial.md`；修正「汇编写 stdout」为「汇总写 stdout」；API 未变。 |
 
-编译器下限 `ct >= 0.30.0`。本文所有程序都有对应夹具，由 `bash tests/run.sh` 在 ct v0.53.0 上跑过；字面量接收者写法从
+编译器下限 `ct >= 0.49.0`。本文所有程序都有对应夹具，由 `bash tests/run.sh` 在 ct v0.53.0 上跑过；字面量接收者写法从
 0.20.0 起可用。

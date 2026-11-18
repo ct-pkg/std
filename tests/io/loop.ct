@@ -1,0 +1,40 @@
+/* std::io - the release protocol under repetition.
+ *
+ * 1000 open/write/delete cycles would exhaust the default fd limit if a handle
+ * leaked. `defer { delete f; }` must run on the loop body's exits; the helper
+ * returns early to prove the defer fires there too. */
+import std::io::File;
+import std::test::Test;
+
+int open_write_once(const char *path)
+{
+    File *f = path.open_file("w");
+
+    if (!f) return -1;
+    defer { delete f; }
+    if (f->write("x", 1) != 1) return -2;
+    return 0;
+}
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    int i;
+    int ok = 0;
+    int rc;
+
+    tp->init();
+    for (i = 0; i < 1000; i++) {
+        File *f = "/tmp/ct-std-io-loop.txt".open_file("a");
+        if (!f) break;
+        defer { delete f; }
+        if (f->write("x", 1) == 1) ok++;
+    }
+    tp->check_eq_int(ok, 1000, "1000 open/write/delete cycles do not exhaust fds");
+
+    rc = open_write_once("/tmp/ct-std-io-loop-once.txt");
+    tp->check_eq_int(rc, 0, "an early return runs the deferred delete");
+
+    return tp->report();
+}

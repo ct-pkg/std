@@ -9,12 +9,14 @@
 - **两个资源对象**：`File`（`FILE *`）与 `FileDesc`（fd）。两者独立，不互相包装；
   `raw_file_desc()` 把 fd 交给未包装的 POSIX 接口。
 - **两个工厂，一个类型**：
-  - 自由函数 `std::io::open_file(path, mode)` 返回 `File *`，可写
-    `own File *f = ...`，出口自动 `Drop`；
-  - 字符串工厂 `path.open_file(mode)` 返回同一个 `File *`，但方法调用不能初始化 `own`
-    （ct 0.65.1 限制），必须 `delete f;`（或 `close()` 后再 `delete f;`）。
-  `FileDesc` 同理：`std::io::open_as_file_desc(path, flags)` 与
-  `path.open_as_file_desc(flags)`。
+  - 字符串工厂 `path.open_file(mode)` 返回 `File *`，是 CT 的默认写法；
+  - 自由函数 `std::io::open_file(path, mode)` 返回同一个 `File *`，可写 `own File *f = ...`。
+  释放协议一律是拿到句柄后写 `defer { delete f; }`：覆盖正常落出 / `return` / `break` /
+  `continue`，`delete` 先跑 `Drop`（关闭）再释放结构体。
+  **`own` 只是可选糖**：ct 0.65.1 在方法返回值被局部捕获时会静默跳过 `own` 的释放
+  （`int n = f->read(...)` 就触发），所以 README 不把它当默认；详见
+  [资源对象裁定](../README.md) 与 `docs/design/decision-resource-ownership.md`。
+  `FileDesc` 同理：`path.open_as_file_desc(flags)` 与 `std::io::open_as_file_desc(path, flags)`。
 - **方法用 `->`**：`File` / `FileDesc` 是 CT struct 指针，方法调用写成 `f->read(...)`，
   不是旧 `IoFile *` 时代的 `f.read(...)`。
 - **`close()` 幂等**：关闭后把内部句柄置空/`-1`，再次 `close`、`Drop`、或方法调用都安全。
@@ -29,7 +31,7 @@
 ## 2. 依赖与安装
 
 依赖 C 的 `<stdio.h>` / `<fcntl.h>` / `<unistd.h>` / `<sys/socket.h>`；
-`requires ct >= 0.30.0`。
+`requires ct >= 0.49.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -56,17 +58,19 @@ int main(void)
     f->write("hello\n", 6);
     f->rewind_start();
     f->read_line(buf, 32);     /* "hello" */
-    f->close();
-    delete f;                  /* the struct itself; close was already done */
+    defer { delete f; }        /* Drop closes, delete frees; runs on every exit */
+    f->write("more", 4);
     return 0;
 }
 ```
 
-自动释放（`own` 只能用自由函数初始化）：
+带 `close()` 的提前释放（`delete` 仍必须执行）：
 
 ```ct
-own File *f = std::io::open_file("/tmp/std-io-demo.txt", "w");
+File *f = "/tmp/std-io-demo.txt".open_file("w");
+defer { delete f; }
 f->write_line("owned");
+f->close();                    /* idempotent; the deferred delete still frees */
 ```
 
 ## 4. API 全表
@@ -75,11 +79,11 @@ f->write_line("owned");
 
 | 入口 | 签名 | 语义 | 层 | 失败 |
 | --- | --- | --- | --- | --- |
-| `std::io::open_file` | `File *open_file(const char *path, const char *mode)` | `fopen`，`own` 可用 | ② | `0` |
-| `path.open_file` | `File *path.open_file(const char *mode)` | 同上，字符串工厂；需 `delete` | ② | `0` |
+| `std::io::open_file` | `File *open_file(const char *path, const char *mode)` | `fopen`，`own` 可用（自由工厂） | ② | `0` |
+| `path.open_file` | `File *path.open_file(const char *mode)` | 同上，字符串工厂；`defer { delete }` | ② | `0` |
 | `std::io::adopt_file` | `File *adopt_file(void *fp)` | 接管已打开的 `FILE *` | ② | `0` |
-| `std::io::open_as_file_desc` | `FileDesc *open_as_file_desc(const char *path, int flags)` | `open(2)`，`own` 可用 | ② | `0` |
-| `path.open_as_file_desc` | `FileDesc *path.open_as_file_desc(int flags)` | 同上，字符串工厂；需 `delete` | ② | `0` |
+| `std::io::open_as_file_desc` | `FileDesc *open_as_file_desc(const char *path, int flags)` | `open(2)`，`own` 可用（自由工厂） | ② | `0` |
+| `path.open_as_file_desc` | `FileDesc *path.open_as_file_desc(int flags)` | 同上，字符串工厂；`defer { delete }` | ② | `0` |
 | `std::io::adopt_file_desc` | `FileDesc *adopt_file_desc(int fd)` | 接管已有 fd | ② | `0` |
 | `seek_start` / `seek_current` / `seek_end` | `int` | `File` 的 `fseek` origin | ① | — |
 | `desc_seek_start` / `desc_seek_current` / `desc_seek_end` | `int` | `FileDesc` 的 `lseek` origin | ① | — |
@@ -130,8 +134,8 @@ f->write_line("owned");
 
 ## 6. 限制与未支持
 
-- **`own` 只认自由函数**：`own File *f = path.open_file(mode)` 编译不过（ct 0.65.1），
-  用 `delete` 或自由工厂。
+- **`own` 只认自由函数，且在 0.65.1 上有缺陷**：`own File *f = path.open_file(mode)` 编译不过；
+  即使 `own` 编译通过，方法返回值被局部捕获时释放会被丢掉。默认用 `defer { delete }`。
 - **不要值拷贝句柄**：`File g = *f;` 会产生两个所有者；只传指针。
 - **`read_line` 行太长会消费到超限处**：返回 `-1` 时该行剩余字节仍在流里，下一次读会接着读。
 - **EOF 与错误不可分**：`read_char` 返回 `-1` 时用 `at_end_of_file()` / `has_error()` 区分。
@@ -147,4 +151,4 @@ f->write_line("owned");
 | `0.7.0` | 本轮变更 | `IoFile` 不透明句柄退役：`File` 改为 CT struct + `use Drop` + 自由工厂；新增 `seek` / `tell` / `rewind_start` / `at_end_of_file` / `has_error` / `clear_error` / `read_char` / `write_char` / `unread_char` / `read_line` / `write_line` / `flush`；新增 `FileDesc`、`adopt_file` / `adopt_file_desc` 与 flag 常量；`Stdout` 增加 `write` / `write_line`。 |
 | `0.4.0` | 已发布 | 变参 `printf` 删除。 |
 
-编译器下限 `ct >= 0.30.0`。
+编译器下限 `ct >= 0.49.0`。

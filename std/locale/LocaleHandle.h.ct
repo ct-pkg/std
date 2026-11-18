@@ -7,12 +7,13 @@
  * locale and is therefore not thread-safe -- the README says so once and the
  * tests rely on it.
  *
- * The handle is a CT struct with `use Drop`, so `own LocaleHandle *l = ...` releases
- * the copied name on every exit. The string-start factory
- * (`"zh_CN.UTF-8".make_locale()`) lives in the sibling LocaleFactory.m.ct and returns
- * the same type; a method call cannot initialise `own` (ct 0.65.1 rejects it),
- * so callers that want automatic release use the free factory
- * `std::locale::make_locale(name)`.
+ * The handle is a CT struct with `use Drop`; the release protocol is
+ * `defer { delete l; }` after the factory, which frees the copied name on every
+ * exit. The string-start factory (`"zh_CN.UTF-8".make_locale()`) lives in the
+ * sibling LocaleFactory.m.ct and returns the same type; the free factory
+ * `std::locale::make_locale(name)` is the `own`-able one. ct 0.65.1 drops
+ * `own` cleanup when a method result is captured in a local, so `own` is not
+ * the documented default (docs/design/decision-resource-ownership.md).
  *
  * `conventions` copies the two fields that matter for numeric round-trips
  * (`decimal_point`, `thousands_sep`) into caller buffers instead of returning

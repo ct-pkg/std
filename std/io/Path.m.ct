@@ -8,9 +8,10 @@
  * is guaranteed for a consumer importing File.h.ct.
  *
  * A method call cannot initialise `own` (ct 0.65.1: `'own' requires a malloc,
- * calloc or factory call`), so automatic release uses the free factory:
- * `own File *f = std::io::open_file(path, mode);`. The method form returns the
- * same type and must be released with `delete f;` (or `close()` plus `delete`).
+ * calloc or factory call`), and ct 0.65.1 drops `own` cleanup when a method
+ * result is captured in a local. The documented release is
+ * `defer { delete f; }` right after the factory; the same handle is also
+ * available from `std::io::open_file` for the `own` form.
  *
  * License: MIT (see LICENSE).
  */

@@ -44,6 +44,8 @@
 #include <string.h>
 #include <dirent.h>
 #include <errno.h>
+#include <unistd.h>
+#include <limits.h>
 #include <sys/stat.h>
 
 /* errno snapshot of the last std::fs call in this translation unit. */
@@ -246,6 +248,244 @@ static inline int std_fs_rename(const char *path, const char *to)
     }
     std_fs_note(0);
     return 0;
+}
+
+
+/* ---- metadata, links, permissions ------------------------------------- */
+
+static inline int std_fs_access(const char *path, int mode)
+{
+    if (!path || !*path) {
+        std_fs_note(EINVAL);
+        return -1;
+    }
+    if (access(path, mode) != 0) {
+        std_fs_note(errno);
+        return -1;
+    }
+    std_fs_note(0);
+    return 0;
+}
+
+static inline int std_fs_read_link(const char *path, char *out, int cap)
+{
+    ssize_t n;
+
+    if (!path || !*path || !out || cap <= 0) {
+        std_fs_note(EINVAL);
+        return -1;
+    }
+    n = readlink(path, out, (size_t)cap);
+    if (n < 0) {
+        std_fs_note(errno);
+        return -1;
+    }
+    if (n >= cap) {
+        out[0] = 0;
+        std_fs_note(ERANGE);
+        return -1;
+    }
+    out[n] = 0;
+    std_fs_note(0);
+    return (int)n;
+}
+
+static inline int std_fs_resize(const char *path, long length)
+{
+    if (!path || !*path || length < 0) {
+        std_fs_note(EINVAL);
+        return -1;
+    }
+    if (truncate(path, (off_t)length) != 0) {
+        std_fs_note(errno);
+        return -1;
+    }
+    std_fs_note(0);
+    return 0;
+}
+
+static inline int std_fs_set_mode(const char *path, int mode)
+{
+    if (!path || !*path) {
+        std_fs_note(EINVAL);
+        return -1;
+    }
+    if (chmod(path, (mode_t)mode) != 0) {
+        std_fs_note(errno);
+        return -1;
+    }
+    std_fs_note(0);
+    return 0;
+}
+
+static inline int std_fs_size(const char *path)
+{
+    struct stat st;
+
+    if (!path || !*path || stat(path, &st) != 0) {
+        std_fs_note(path && *path ? errno : EINVAL);
+        return -1;
+    }
+    if (st.st_size > (off_t)INT_MAX) {
+        std_fs_note(ERANGE);
+        return -1;
+    }
+    std_fs_note(0);
+    return (int)st.st_size;
+}
+
+static inline int std_fs_mode(const char *path)
+{
+    struct stat st;
+
+    if (!path || !*path || stat(path, &st) != 0) {
+        std_fs_note(path && *path ? errno : EINVAL);
+        return -1;
+    }
+    std_fs_note(0);
+    return (int)(st.st_mode & 07777);
+}
+
+static inline int std_fs_modification_time(const char *path)
+{
+    struct stat st;
+
+    if (!path || !*path || stat(path, &st) != 0) {
+        std_fs_note(path && *path ? errno : EINVAL);
+        return -1;
+    }
+    if (st.st_mtime > (time_t)INT_MAX) {
+        std_fs_note(ERANGE);
+        return -1;
+    }
+    std_fs_note(0);
+    return (int)st.st_mtime;
+}
+
+static inline int std_fs_is_readable(const char *path)
+{
+    return (path && *path && access(path, R_OK) == 0) ? 1 : 0;
+}
+
+static inline int std_fs_is_writable(const char *path)
+{
+    return (path && *path && access(path, W_OK) == 0) ? 1 : 0;
+}
+
+/* Lexical absolute path: prepend getcwd() for relative input, then collapse
+   "//", "." and "..". Symlinks are not resolved (that is what readlink is for)
+   and the path does not have to exist. Kept lexical because realpath() is not
+   declared under strict -std=c99 on macOS and its NULL-destination extension
+   would need a feature macro this header cannot set after <stdlib.h>. */
+static inline int std_fs_resolve_path(const char *path, char *out, int cap)
+{
+    char joined[4096];
+    char norm[4096];
+    int jn;
+    int n;
+    int i;
+    int start;
+    int len;
+
+    if (!path || !*path || !out || cap <= 0) {
+        std_fs_note(EINVAL);
+        return -1;
+    }
+    if (path[0] == '/') {
+        jn = (int)strlen(path);
+        if (jn >= (int)sizeof joined) {
+            std_fs_note(ERANGE);
+            return -1;
+        }
+        memcpy(joined, path, (size_t)jn + 1);
+    } else {
+        if (!getcwd(joined, sizeof joined)) {
+            std_fs_note(errno);
+            return -1;
+        }
+        jn = (int)strlen(joined);
+        if (jn + 1 + (int)strlen(path) >= (int)sizeof joined) {
+            std_fs_note(ERANGE);
+            return -1;
+        }
+        joined[jn] = '/';
+        strcpy(joined + jn + 1, path);
+        jn = (int)strlen(joined);
+    }
+
+    n = 0;
+    norm[n++] = '/';
+    i = 0;
+    while (i < jn) {
+        while (i < jn && joined[i] == '/') i++;
+        start = i;
+        while (i < jn && joined[i] != '/') i++;
+        len = i - start;
+        if (len == 0) continue;
+        if (len == 1 && joined[start] == '.') continue;
+        if (len == 2 && joined[start] == '.' && joined[start + 1] == '.') {
+            if (n > 1) {
+                n--;
+                while (n > 1 && norm[n - 1] != '/') n--;
+                if (n > 1) n--;
+            }
+            continue;
+        }
+        if (n > 1) norm[n++] = '/';
+        if (n + len >= (int)sizeof norm) {
+            std_fs_note(ERANGE);
+            return -1;
+        }
+        memcpy(norm + n, joined + start, (size_t)len);
+        n += len;
+    }
+    norm[n] = 0;
+    if (n + 1 > cap) {
+        out[0] = 0;
+        std_fs_note(ERANGE);
+        return -1;
+    }
+    memcpy(out, norm, (size_t)n + 1);
+    std_fs_note(0);
+    return n;
+}
+
+static inline int std_fs_access_read(void) { return R_OK; }
+static inline int std_fs_access_write(void) { return W_OK; }
+static inline int std_fs_access_execute(void) { return X_OK; }
+static inline int std_fs_access_exists(void) { return F_OK; }
+
+/* A streaming scan: the callback sees each name (`.` and `..` skipped) and a
+   non-zero return stops the walk. No array is allocated; the count is the
+   number of callbacks that ran. */
+typedef int (*std_fs_scan_fn)(const char *, void *);
+
+static inline int std_fs_scan_directory(const char *path, void *callback, void *context)
+{
+    DIR *d;
+    struct dirent *e;
+    std_fs_scan_fn cb;
+    int count;
+
+    if (!path || !*path || !callback) {
+        std_fs_note(EINVAL);
+        return -1;
+    }
+    cb = (std_fs_scan_fn)callback;
+    d = opendir(path);
+    if (!d) {
+        std_fs_note(errno);
+        return -1;
+    }
+    count = 0;
+    while ((e = readdir(d)) != 0) {
+        if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0) continue;
+        count++;
+        if (cb(e->d_name, context) != 0) break;
+    }
+    closedir(d);
+    std_fs_note(0);
+    return count;
 }
 
 #endif

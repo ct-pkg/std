@@ -47,11 +47,12 @@ int main(int argc, char **argv)
     tp->check_eq_int(d->raw_file_desc(), -1, "a closed handle has fd -1");
     tp->check_eq_int(d->write("x", 1), -1, "write after close fails");
 
-    /* Own release: the scope exit closes the fd. */
+    /* The documented release: defer delete closes the fd and frees the struct. */
     {
-        own FileDesc *auto_desc = std::io::open_as_file_desc(path, std::io::open_read());
+        FileDesc *auto_desc = std::io::open_as_file_desc(path, std::io::open_read());
+        defer { delete auto_desc; }
         tp->check_true(auto_desc != 0, "the free factory returns a handle");
-        tp->check_eq_int(auto_desc->read(buf, 1), 1, "the own handle reads");
+        tp->check_eq_int(auto_desc->read(buf, 1), 1, "the deferred handle reads");
     }
 
     /* Exclusive create fails when the path already exists. */

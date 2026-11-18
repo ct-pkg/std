@@ -10,15 +10,15 @@
   自己保证串行。`LC_NUMERIC` 会影响 `std::num` / `std::math` 的浮点文本与解析。
 - **不做值拷贝**：`LocaleHandle` 持有名字指针，复制结构体值会产生两个“所有者”；只传指针，
   释放用一个 `delete`（或 `own` 自动释放）。
-- **句柄拥有名字**：`LocaleHandle` 是 CT struct + `use Drop`，`own LocaleHandle *l` 在出口
-  释放名字副本。字符串工厂返回同一类型；方法调用不能初始化 `own`（ct 0.65.1 限制），
-  需要自动释放时用自由函数 `std::locale::make_locale(name)`。
+- **句柄拥有名字**：`LocaleHandle` 是 CT struct + `use Drop`；拿到句柄后写
+  `defer { delete l; }`，出口释放名字副本。字符串工厂返回同一类型；方法调用不能初始化
+  `own`，而且 ct 0.65.1 会在方法返回值被局部捕获时丢掉 `own` 的释放，所以 `own` 只是可选糖。
 - **`conventions` 拷贝而不是返回借用指针**：`struct lconv *` 是静态对象，本包只暴露
   `decimal_point` 与 `thousands_sep` 两个字段，写调用方缓冲。
 
 ## 2. 依赖与安装
 
-依赖 C 的 `<locale.h>`；`requires ct >= 0.30.0`。
+依赖 C 的 `<locale.h>`；`requires ct >= 0.49.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -44,18 +44,19 @@ int main(void)
     char dp[8];
     char ts[8];
     LocaleHandle *c = "C".make_locale();
+    defer { delete c; }
 
     c->apply(std::locale::lc_all());
     c->conventions(dp, 8, ts, 8);   /* "." and "" in the C locale */
-    delete c;
     return 0;
 }
 ```
 
-自动释放：
+自由工厂（`own` 可选；默认仍是 `defer { delete }`）：
 
 ```ct
-own LocaleHandle *l = std::locale::make_locale("C");
+LocaleHandle *l = std::locale::make_locale("C");
+defer { delete l; }
 l->apply(std::locale::lc_numeric());
 ```
 
@@ -73,9 +74,8 @@ l->apply(std::locale::lc_numeric());
 
 分类常量：`lc_all` / `lc_numeric` / `lc_time` / `lc_collate` / `lc_ctype` / `lc_monetary`。
 
-**句柄释放**：`own LocaleHandle *l = ...` 在作用域出口、`return`、`break` 前自动 `Drop`；
-方法工厂得到的句柄用 `delete l;`（`Drop` 释放名字，`delete` 再释放结构体）。`Drop` 之后
-名字指针置 0，重复释放安全。
+**句柄释放**：`defer { delete l; }` 在正常落出、`return`、`break`、`continue` 前执行 `Drop`
+（释放名字）并回收结构体。两个工厂的句柄同一类型、同一协议。不要按值拷贝句柄。
 
 ## 5. 与相邻模块的关系
 
@@ -100,4 +100,4 @@ l->apply(std::locale::lc_numeric());
 | --- | --- | --- |
 | `0.6.0` | 本轮新增 | 新建模块：`LocaleHandle`（`own` / `Drop`）、字符串工厂、分类常量、`conventions` 拷贝式。 |
 
-编译器下限 `ct >= 0.30.0`。
+编译器下限 `ct >= 0.49.0`。

@@ -1,0 +1,131 @@
+/*
+ * Dir.h.ct - the owned directory stream behind std::fs.
+ *
+ * A `Dir` holds an opaque `DIR *` (as `void *`) plus a copy of the path, so
+ * `path(out, cap)` and `enter()` do not depend on the caller's string staying
+ * alive. `Drop` calls `closedir` and frees the path copy; `close()` is
+ * idempotent and nulls both fields.
+ *
+ * Two factories, one type: `std::fs::open_dir(path)` / `std::fs::current_dir()`
+ * are the own-able free functions; `"dir".open_dir()` in DirFactory.m.ct is the
+ * string spelling. The release protocol is `defer { delete d; }` after the
+ * factory (ct 0.65.1 drops `own` cleanup when a method result is captured in a
+ * local; see docs/design/decision-resource-ownership.md).
+ *
+ * `next(out, cap)` returns 1 for a name, 0 at the end, -1 on error or when the
+ * name does not fit; `.` and `..` are skipped. `tell()` / `seek()` expose
+ * `telldir` / `seekdir`, which are only valid within one open stream.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+import std::fs::DirFactory;
+
+namespace std::fs;
+
+pub struct Dir {
+    void *dp;
+    char *stored_path;
+} use Drop;
+
+impl Drop for Dir {
+    void drop()
+    {
+        std_fs_dir_close(self->dp);
+        free(self->stored_path);
+        self->dp = 0;
+        self->stored_path = 0;
+    }
+}
+
+pub struct Dir *open_dir(const char *path)
+{
+    struct Dir *d;
+    char *copy;
+
+    if (!path || !*path) return 0;
+    copy = std_fs_duplicate(path);
+    if (!copy) return 0;
+    d = malloc(sizeof(struct Dir));
+    if (!d) {
+        free(copy);
+        return 0;
+    }
+    d->dp = std_fs_dir_open(path);
+    if (!d->dp) {
+        free(copy);
+        free(d);
+        return 0;
+    }
+    d->stored_path = copy;
+    return d;
+}
+
+/* Open the process's current directory; the saved path is the absolute cwd. */
+pub struct Dir *current_dir()
+{
+    char buf[4096];
+
+    if (std_fs_getcwd(buf, (int)sizeof buf) < 0) return 0;
+    return open_dir(buf);
+}
+
+impl Dir {
+    /* 1 = a name was copied, 0 = end, -1 = error or the name does not fit. */
+    pub int next(char *out, int cap)
+    {
+        if (!self) return -1;
+        return std_fs_dir_next(self->dp, out, cap);
+    }
+
+    /* rewinddir: 0 on success. */
+    pub int rewind()
+    {
+        if (!self || !self->dp) return -1;
+        std_fs_dir_rewind(self->dp);
+        return 0;
+    }
+
+    /* Idempotent: 0 when already closed or NULL. */
+    pub int close()
+    {
+        int rc;
+
+        if (!self) return 0;
+        if (!self->dp) return 0;
+        rc = std_fs_dir_close(self->dp);
+        self->dp = 0;
+        free(self->stored_path);
+        self->stored_path = 0;
+        return rc;
+    }
+
+    /* telldir, or -1. Invalid after close. */
+    pub long tell()
+    {
+        if (!self || !self->dp) return -1;
+        return std_fs_dir_tell(self->dp);
+    }
+
+    /* seekdir: 0 on success. */
+    pub int seek(long position)
+    {
+        if (!self || !self->dp || position < 0) return -1;
+        std_fs_dir_seek(self->dp, position);
+        return 0;
+    }
+
+    /* Copy the saved path into the caller's buffer. */
+    pub int path(char *out, int cap)
+    {
+        if (!self) return -1;
+        return std_fs_copy_string(self->stored_path, out, cap);
+    }
+
+    /* chdir to the saved path: 0 on success. */
+    pub int enter()
+    {
+        if (!self || !self->stored_path) return -1;
+        return std_fs_dir_enter(self->stored_path);
+    }
+}

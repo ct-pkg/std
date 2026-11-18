@@ -12,6 +12,9 @@
 # (`pub type IoFile = struct ct_io_file;`), and type aliases only parse from
 # 0.20.3 on.
 #
+# 0.4.0 raised the floor to 0.30.0; 0.7.0 raises it to 0.49.0 because
+# the resource objects use cross-unit Drop (0.48.0) and own-able factory
+# calls (0.49.0). See docs/design/decision-resource-ownership.md.
 # 0.3.0 raises the floor to 0.30.0: `Vec<T>` / `Map<K,V>` / `MapEntry<K,V>`
 # became the compiler's built-in layer in v0.30.0 (ct-lang Phase 29, released
 # with v0.30.0; `lib/std/Vec.h.ct` plus the reserved-name check at
@@ -38,7 +41,7 @@
 name = std
 publisher = std
 ns-root = .
-version = 0.7.0
+version = 0.8.0
 licence = MIT
-requires = ct >= 0.30.0
+requires = ct >= 0.49.0
 ldflags = -lm

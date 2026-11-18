@@ -1,0 +1,85 @@
+/*
+ * Stat.h.ct - the file metadata value behind std::fs.
+ *
+ * The design asks for `struct stat` "as is". A `.m.ct` mapping unit cannot name
+ * a `.h.ct` type, so the receiver form `path.stat(&st)` cannot take a CT struct
+ * declared here. The package therefore offers the close equivalent:
+ *
+ *   Stat st;
+ *   std::fs::stat_path(path, &st);   // follows symlinks
+ *   std::fs::lstat_path(path, &st);  // does not
+ *
+ * `Stat` is a plain value (no methods with state, no Drop). The shim fills it
+ * field by field from `struct stat`; `kind` is the raw file type so the
+ * predicates below do not need a second call.
+ *
+ * The convenience methods on `char *` (`size`, `mode`, `modification_time`,
+ * `is_readable`, ...) stay in Fs.m.ct: they are one `stat` each and are allowed
+ * to repeat the syscall, while `stat_path` is the single-call form.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+namespace std::fs;
+
+pub struct Stat {
+    long size;
+    int mode;
+    int kind;
+    long modification_time;
+    long access_time;
+    long change_time;
+    int uid;
+    int gid;
+    int device;
+    long inode;
+    int links;
+    long block_size;
+    long blocks;
+}
+
+/* Fill `st` from `stat(2)`. 0 on success, -1 on failure (errno is left set). */
+pub int stat_path(const char *path, Stat *st)
+{
+    if (!st) return -1;
+    return std_fs_stat_fill(path, 1,
+                            &st->size, &st->mode, &st->kind,
+                            &st->modification_time, &st->access_time,
+                            &st->change_time, &st->uid, &st->gid,
+                            &st->device, &st->inode, &st->links,
+                            &st->block_size, &st->blocks);
+}
+
+/* The same without following a final symlink (`lstat(2)`). */
+pub int lstat_path(const char *path, Stat *st)
+{
+    if (!st) return -1;
+    return std_fs_stat_fill(path, 0,
+                            &st->size, &st->mode, &st->kind,
+                            &st->modification_time, &st->access_time,
+                            &st->change_time, &st->uid, &st->gid,
+                            &st->device, &st->inode, &st->links,
+                            &st->block_size, &st->blocks);
+}
+
+impl Stat {
+    pub int is_regular()
+    {
+        return self && self->kind == 0 ? 1 : 0;
+    }
+
+    pub int is_directory()
+    {
+        return self && self->kind == 1 ? 1 : 0;
+    }
+
+    pub int is_symlink()
+    {
+        return self && self->kind == 2 ? 1 : 0;
+    }
+
+    pub int is_other()
+    {
+        return self && self->kind == 3 ? 1 : 0;
+    }
+}

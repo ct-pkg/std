@@ -5,12 +5,15 @@
  * include <stdio.h>, so it does not name the C type) and uses `Drop` to close
  * it. Two factories, one type:
  *
- *   own File *f = std::io::open_file(path, mode);   // automatic close
- *   File *g = path.open_file(mode);                 // same type, delete/close
+ *   File *f = path.open_file(mode);                 // string factory
+ *   defer { delete f; }                             // the documented release
+ *   own File *g = std::io::open_file(path, mode);   // own-able free factory
  *
- * The second spelling lives in Path.m.ct. A method call cannot initialise `own`
- * (ct 0.65.1 rejects it), so automatic release is only available through the
- * free factory; the README states the difference once.
+ * The string spelling lives in Path.m.ct. A method call cannot initialise `own`
+ * (ct 0.65.1 rejects it), and ct 0.65.1 silently drops `own` cleanup when a
+ * method result is captured in a local (`int n = f->read(...)`); see
+ * docs/design/decision-resource-ownership.md. The portable release protocol is
+ * therefore `defer { delete f; }`, which also works for the free factory.
  *
  * `close()` is idempotent: it closes the stream once and nulls the field, and a
  * later `close()` or `Drop` is a no-op success. A NULL handle is accepted by

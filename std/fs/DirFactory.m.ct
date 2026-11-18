@@ -1,0 +1,25 @@
+/*
+ * DirFactory.m.ct - the string-start factory for std::fs::Dir.
+ *
+ * `"dir".open_dir()` returns the `Dir` type declared in Dir.h.ct; the alias
+ * names that unit's C tag because a mapping unit cannot import a `.h.ct` unit.
+ * The wrapper in DirFactory.shim.h calls the CT free factory `open_dir`.
+ *
+ * The release protocol is `defer { delete d; }`; `own` works only through the
+ * free factory and has the ct 0.65.1 capture bug documented in
+ * docs/design/decision-resource-ownership.md.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+namespace std::fs;
+
+pub type DirHandle = struct std_fs_Dir;
+
+pub trait PathDir {
+    DirHandle *open_dir();
+}
+
+map trait PathDir for type char * {
+    open_dir(path) -> std_fs_open_dir_path(path);
+}

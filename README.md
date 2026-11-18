@@ -27,9 +27,9 @@
 name = std
 publisher = std
 ns-root = .
-version = 0.7.0
+version = 0.8.0
 licence = MIT
-requires = ct >= 0.30.0
+requires = ct >= 0.49.0
 ldflags = -lm
 ```
 
@@ -74,7 +74,10 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 
 ### 当前发布状态
 
-`0.7.0` 是当前版本，待打 `v0.7.0`。`0.7.0`（P3）把 `std::io` 的资源句柄改成 CT struct：`File`（`FILE *`）
+`0.8.0` 是当前版本，待打 `v0.8.0`。`0.8.0`（P4）补全 `std::fs`：`access` / `read_link` / `resize` /
+`set_mode` / `size` / `mode` / `modification_time` / `is_readable` / `is_writable` / `resolve_path`、
+`scan_directory` 流式回调、`Dir` 目录流与 `Stat` 元数据镜像；`read_file` / `write_file` 改名
+`read` / `write`。`0.7.0`（P3）把 `std::io` 的资源句柄改成 CT struct：`File`（`FILE *`）
 与 `FileDesc`（fd）都带 `use Drop` 与幂等 `close()`；新增 `seek` / `tell` / `rewind_start` /
 `at_end_of_file` / `has_error` / `clear_error` / `read_char` / `write_char` / `unread_char` /
 `read_line` / `write_line` / `flush`、`adopt_file` / `adopt_file_desc` 与 FileDesc flag 常量；
@@ -115,8 +118,8 @@ int main(void)
     char *s = "ct-pkg";
     int n;
 
-    path.write_file(s);
-    n = path.read_file(buf, 64);
+    path.write(s);
+    n = path.read(buf, 64);
     buf.uppercase(word, 16);
     n.to_str(count, 16);
 
@@ -142,8 +145,8 @@ int main(void)
 file=ct-pkg bytes=6 upper=CT-PKG
 ```
 
-接收者必须写成变量（`path`、`buf`、`n`、`word`）。本包下限是 **ct 0.30.0**；字面量接收者
-`"abc".length()` 从 0.20.0 起可用，低于 0.30.0 的编译器不满足 `ct.pkg` 的 `requires`。
+接收者必须写成变量（`path`、`buf`、`n`、`word`）。本包下限是 **ct 0.49.0**（资源对象的 `Drop` 与 `own` 工厂需要 0.48 / 0.49）；字面量接收者
+`"abc".length()` 从 0.20.0 起可用，低于 0.49.0 的编译器不满足 `ct.pkg` 的 `requires`。
 
 ## 4. API 全表（按宿主分组）
 
@@ -153,7 +156,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | --- | --- | --- | --- | --- |
 | `std::str` | `std::str::String` | `char *` | 20 | [str/README.md](std/str/README.md) |
 | `std::io` | `std::io::File` / `FileDesc` / `Stdout` | namespace、`char *`、`File *`、`FileDesc *` | 6 + 1 + 15 + 8 | [io/README.md](std/io/README.md) |
-| `std::fs` | `std::fs::Fs` | `char *` | 7 | [fs/README.md](std/fs/README.md) |
+| `std::fs` | `std::fs::Fs` / `Dir` / `Stat` | `char *`、`Dir *`、`Stat *` | 17 + 10 + 4 | [fs/README.md](std/fs/README.md) |
 | `std::utf8` | `std::utf8::Utf8Ops` | `char *` | 3 | [utf8/README.md](std/utf8/README.md) |
 | `std::num` | `std::num::Num` | `int` / `long` / `long long` / `char` | 6 × 3 + 14 | [num/README.md](std/num/README.md) |
 | `std::math` | `std::math::Real`（`Float` / `Real`） | `float` / `double` | 34 + 38 | [math/README.md](std/math/README.md) |
@@ -163,7 +166,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 `Vec<T>` / `Map<K,V>` 不在表里，因为它们是编译器内置层，不属于本包（见 §1、§5.4）。
 
-### 4.2 `char *` 宿主（32 个方法，名字全局共享）
+### 4.2 `char *` 宿主（43 个方法，名字全局共享）
 
 同一接收者类型上，**方法名不能重复**：任意两个可见 trait 声明同名方法，调用点就报
 `ambiguous type-host map for method 'x' on type 'char *'`。按名字判定，不看参数个数。
@@ -172,12 +175,13 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | 模块 | 方法 |
 | --- | --- |
 | `CStrOps` | `length` `find` `find_char` `starts_with` `ends_with` `copy` `slice` `concat` `lowercase` `uppercase` `compare` `copy_from` `move_from` `fill` `compare_with` `find_byte` `compare_prefix` `split_into` `to_int` `to_double` |
-| `FsOps` | `exists` `read_file` `write_file` `list` `mkdir` `remove` `rename` |
+| `FsOps` | `exists` `read` `write` `list` `mkdir` `remove` `rename` `access` `read_link` `resize` `set_mode` `size` `mode` `modification_time` `is_readable` `is_writable` `resolve_path` |
+| `PathDir`（`std::fs`） | `open_dir` |
 | `Utf8Ops` | `decode` `count_codepoints` `encode` |
 | `Path`（`std::io`） | `open_file` |
 | `PathFileDesc`（`std::io`） | `open_as_file_desc` |
 
-合计 20 + 7 + 3 + 1 + 1 = **32**（`split_into` 是便利层，不是 libc 映射）。`errno` 访问器不在 `char *` 上：它是每翻译单元一份的全局值，
+合计 20 + 17 + 3 + 1 + 1 + 1 = **43**（`split_into` 是便利层，不是 libc 映射）。`errno` 访问器不在 `char *` 上：它是每翻译单元一份的全局值，
 挂在 namespace 宿主（`std::fs::FsEnv.get_last_error()`，见 §4.3）。`const char *` 也匹配同一宿主：
 类型键丢掉顶层 `const`，但 `CStrOps` 里已没有任何写接收者的方法，字面量接收者不会踩到只读内存。
 
@@ -189,6 +193,8 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | namespace `std::fs` | `FsEnv` | `get_last_error`（最近一次 `std::fs` 调用的 `errno` 快照，成功为 0） |
 | `File *` | `impl File`（CT struct + `Drop`） | `read` `write` `close` `seek` `tell` `rewind_start` `at_end_of_file` `has_error` `clear_error` `read_char` `write_char` `unread_char` `read_line` `write_line` `flush` |
 | `FileDesc *` | `impl FileDesc`（CT struct + `Drop`） | `read` `write` `seek` `tell` `close` `raw_file_desc` `send` `receive` |
+| `Dir *` | `impl Dir`（CT struct + `Drop`） | `next` `rewind` `close` `tell` `seek` `path` `enter` |
+| `Stat *` | `impl Stat`（纯值） | `is_regular` `is_directory` `is_symlink` `is_other` |
 | `int` | `Int` | `abs` `clamp` `max` `min` `to_str` `to_base` |
 | `long` | `Long` | 同上 6 个 |
 | `long long` | `LLong` | 同上 6 个 |
@@ -205,7 +211,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 - 缓冲区不够：`-1`，**不截断**（`num.to_str` 是唯一的例外，它按带容量的格式化语义静默截断；
   `num.to_base` 不截断，放不下返回 `NULL`）。
 - 查询未命中：`-1`（`fs.exists` 是 `0` / `1`）。
-- 路径是目录：`fs.read_file` 返回 `-1`，不会把目录当空文件给出 0 字节的「成功」。
+- 路径是目录：`fs.read` 返回 `-1`，不会把目录当空文件给出 0 字节的「成功」。
 - 打开失败：`NULL`（`path.open_file`）。
 - 出错不 abort，不设 `errno`。
 
@@ -294,7 +300,7 @@ int main(void)
 | 字符串转数字 | `s.to_int()` / `s.to_double()` | `std::str` |
 | 数字转文本 | `n.to_str(buf, cap)` | `std::num` |
 | 进制转换 | `n.to_base(16, buf, cap)` | `std::num` |
-| 读整个文件 | `path.read_file(buf, cap)` | `std::fs` |
+| 读整个文件 | `path.read(buf, cap)` | `std::fs` |
 | 流式读写 | `path.open_file("r")` → `f.read(...)` → `f.close()` | `std::io` |
 | 遍历码点 | `p.decode(&cp)` 返回步长 | `std::utf8` |
 | 编码码点 | `buf.encode(cp, cap)`，自己补 NUL | `std::utf8` |
@@ -320,7 +326,7 @@ main.ct:5:1: error: method receiver must be a variable, an element, a call or a 
 ```
 
 这个错误来自低于 0.20.0 的编译器（v0.19.1 只接受变量、元素、调用、字段链作接收者）；本包下限
-是 **ct 0.30.0**。先写 `char *s = "abc";` 再 `s.length()`。调用结果可以直接继续当接收者：
+是 **ct 0.49.0**。先写 `char *s = "abc";` 再 `s.length()`。调用结果可以直接继续当接收者：
 `s.length().to_str(buf, cap)` 合法（`s.length()` 是调用）。
 
 ### 7.2 忘了 import
@@ -373,7 +379,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 | `char *` | 全仓共享的映射宿主，任何模块都能往上挂 trait，代价是方法名全局唯一 | `CStrOps`、`FsOps`、`Utf8Ops` 和 `Path` 都映射到它上面；新增方法前先查 §4.2 |
 | `type key`（类型键） | 编译器给宿主去重的键，丢弃顶层 `const` | `const char *` 与 `char *` 是同一宿主；字面量能直接作接收者，因为 `CStrOps` 没有写接收者的方法 |
 | `borrow`（借用） | 只保存指针，不复制，也不负责释放 | 本包的 `str` / `fs` 只写调用方缓冲区、不保存指针；内建 `Vec` / `Map`（不属于本包）的元素与键是借用，`release` 不回收它们 |
-| `ownership`（所有权） | 资源由谁负责释放 | `own X *p = 自由工厂(...)` 在出口跑 `Drop`；方法工厂得到的句柄由调用方 `delete`。`Arena.free_all()` 与内建容器的 `release` 仍由调用方负责 |
+| `ownership`（所有权） | 资源由谁负责释放 | 资源句柄拿到后写 `defer { delete h; }`（覆盖落出 / return / break / continue）；`own` 是可选糖，0.65.1 在方法返回值被捕获时会丢掉释放（裁定见 [decision-resource-ownership.md](docs/design/decision-resource-ownership.md)）。`Arena.free_all()` 与内建容器的 `release` 仍由调用方负责 |
 | `cap` | 容量；单位随宿主而变 | `CStrOps` / `FsOps` 与 `num` / `math` 的文本化方法是缓冲区字节数（含结尾 NUL 的位置）；`Utf8Ops.encode` 的 `cap` 只是可用字节数，不写 NUL；`Arena` 的 `init` 参数是首块字节数 |
 | `length()` | 当前长度；单位随宿主而变 | `CStrOps.length()` 数字节（不含 NUL）；内建 `Vec` / `Map` 的长度查询数元素 / 条目 |
 | `n` | 结构体字段或方法参数里的计数值 | `read` / `write` / `copy_to` / `alloc` 的 `n` 参数是字节数 |
@@ -382,7 +388,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 | `codepoint`（码点） | UTF-8 里一个字符的编号；一个码点占 1..4 字节，码点数不等于字节数 | `Utf8Ops.count_codepoints()` 数码点，`decode()` 返回本次消耗的 1..4 字节，`encode()` 写 1..4 字节且不补 NUL；解码拒绝代理区（U+D800..U+DFFF）和超过 U+10FFFF 的值 |
 | `NUL` | 值为 0x00 的字节，C 字符串的终止符，不是 `NULL` 指针 | `length()` 不计 NUL，`cap` 必须给它留位置；`read` / `write` / `encode` 都不自动补 NUL |
 | `iterator`（迭代器） | 遍历容器的游标；本包没有实现 | 本包不提供容器；内建 `Vec` / `Map` 用 `foreach (v)` 的 `item` / `i` 绑定遍历，没有迭代器对象。最接近的失效规则是 `Arena.alloc()` 的指针在 `reset()` / `free_all()` 后作废 |
-| `literal receiver`（字面量接收者） | 直接拿字面量作方法接收者 | `"abc".length()`；0.20.0 起可用，本包下限 0.30.0。v0.19.1 报 `method receiver must be a variable, an element, a call or a field chain` |
+| `literal receiver`（字面量接收者） | 直接拿字面量作方法接收者 | `"abc".length()`；0.20.0 起可用，本包下限 0.49.0。v0.19.1 报 `method receiver must be a variable, an element, a call or a field chain` |
 | `chaining`（链式调用） | 把一个方法调用的结果继续当接收者 | `s.length().to_str(buf, cap)` 合法，因为 `s.length()` 是调用而不是字面量 |
 | `Drop` | 语言内建的析构钩子 | 包单元里的 `Drop` 发射为 `static`，消费者不可见，所以本包只提供显式 `free()` / `reset()` / `free_all()` / `clear()` |
 
@@ -390,9 +396,10 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 - **索引只收录最新 tag**：没有历史版本，老编译器取不到匹配的旧版 std。
 - **`requires` 只告警**：装得上不代表文档示例能编译。
-- **编译器下限 0.30.0**：本包不再提供容器，`Vec<T>` / `Map<K,V>` 要用编译器内置层，而内置层从
-  **0.30.0** 起才存在（见 §10.1）。历史下限：`pub type IoFile` 别名需要 0.20.3、字面量接收者需要
-  0.20.0，都已被 0.30.0 覆盖。低于 0.30.0 的编译器不满足 `requires`（只告警，不代表能编过）。
+- **编译器下限 0.49.0**：资源对象的跨单元 `Drop` 需要 0.48.0，`own` 工厂初始化需要 0.49.0；
+  本包只在 0.65.1 上完整验证。历史下限：`pub type IoFile` 别名需要 0.20.3、字面量接收者需要
+  0.20.0，内置容器需要 0.30.0，都已被 0.49.0 覆盖。低于 0.49.0 的编译器不满足 `requires`
+  （只告警，不代表能编过）。
 - **`char *` 方法名全局共享**：新增 trait 必须避开 25 个已有名字。
 - **`const` 不参与类型键**：字面量能直接当 `CStrOps` 接收者，因为该 trait 没有写接收者的方法。
 - **`num.to_str` 静默截断**：容量不够得到短文本，不报错。
@@ -403,7 +410,8 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.7.0` | 当前版本，待打 `v0.7.0` | **P3 stdio 资源化**：`IoFile` 退役，`File` / `FileDesc` 改为 CT struct + `use Drop`；补全 seek/tell/EOF/错误位/字符与行 IO/flush/adopt；方法调用改 `->`；`own` 只认自由工厂。 |
+| `0.8.0` | 当前版本，待打 `v0.8.0` | **P4 fs 补全**：路径方法补 10 个；`read_file`/`write_file` → `read`/`write`；新增 `Dir`（`own` 工厂 + 字符串工厂）与 `Stat` 字段镜像；`scan_directory` 流式回调；`resolve_path` 为词法绝对路径。 |
+| `0.7.0` | 待打 `v0.7.0` | **P3 stdio 资源化**：`IoFile` 退役，`File` / `FileDesc` 改为 CT struct + `use Drop`；补全 seek/tell/EOF/错误位/字符与行 IO/flush/adopt；方法调用改 `->`；`own` 只认自由工厂。 |
 | `0.6.0` | 待打 `v0.6.0` | **P2 五个新模块**：`std::env` / `std::process` / `std::errno` / `std::locale` / `std::wchar`；`LocaleHandle` 用 `own` + `Drop`，`apply` 明确为进程全局副作用。 |
 | `0.5.0` | 待打 `v0.5.0` | **P1 补齐**：`Char` 新增 7 个谓词；`CStrOps` 新增 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into`（`copy_to` 移除）；`Float` / `Real` 扩到完整 libm 方法族，七个生僻名改全称，`is_inf` → `is_infinite`，数学只保留方法形态；新增 `std::search`。 |
 | `0.4.0` | 已打 `v0.4.0` | **破坏性改名与删除**（P0）：`String` → `CStrOps`；`len` → `length`；`open` → `open_file`；`to_upper` / `to_lower` → `uppercase` / `lowercase`；删除 `to_string`（只剩 `to_str(out, cap)`）与 `std::io` 的变参 `printf`（`Io.h.ct` 移除，输出改用 `std::io::Stdout`）。 |
@@ -534,7 +542,7 @@ int get_last_error();             /* std::fs::FsEnv.get_last_error()，见 §10.
 | `0.x` 期间 | 破坏性改动走 minor（`0.1.0` → `0.2.0`），修复走 patch；不承诺向后兼容 |
 | `1.0.0` 之后 | 破坏性改动走 major |
 | tag | `v<version>`；索引只认 `v*` 且取最高一个 |
-| 编译器下限 | `ct >= 0.30.0`，写在 `ct.pkg` 的 `requires` |
+| 编译器下限 | `ct >= 0.49.0`，写在 `ct.pkg` 的 `requires` |
 
 打 tag 之后索引里的摘要会覆盖包目录下除 `.git`、`vendor`、`.ctcache` 外的所有文件，
 包括 `README.md`、`tests/`、`.github/`。所以打 tag 前必须让所有文件定稿；tag 之后任何文件改动

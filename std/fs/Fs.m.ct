@@ -2,7 +2,7 @@
  * Fs.m.ct - the method spellings for std::fs (std::fs::FsOps / std::fs::FsEnv).
  *
  * std::fs is a mapping module, not a type: it extends `char *` with file-system
- * verbs, so the path is the receiver (`path.exists()`, `path.read_file(out, cap)`)
+ * verbs, so the path is the receiver (`path.exists()`, `path.read(out, cap)`)
  * and there is no `Fs` struct and no `Fs.h.ct`. This unit plus `Fs.shim.h` is
  * the whole module.
  *
@@ -30,28 +30,60 @@ namespace std::fs;
 
 pub trait FsOps {
     int exists();
-    int read_file(char *out, int cap);
-    int write_file(const char *data);
+    int read(char *out, int cap);
+    int write(const char *data);
     int list(char *out, int cap);
     int mkdir(int mode);
     int remove();
     int rename(const char *to);
+
+    int access(int mode);
+    int read_link(char *out, int cap);
+    int resize(long length);
+    int set_mode(int mode);
+    int size();
+    int mode();
+    int modification_time();
+    int is_readable();
+    int is_writable();
+    int resolve_path(char *out, int cap);
 }
 
 pub trait FsEnv {
     int get_last_error();
+    int access_read();
+    int access_write();
+    int access_execute();
+    int access_exists();
+    int scan_directory(const char *path, void *callback, void *context);
 }
 
 map trait FsOps for type char * {
     exists(path) -> std_fs_exists(path);
-    read_file(path, out, cap) -> std_fs_read_file(path, out, cap);
-    write_file(path, data) -> std_fs_write_file(path, data);
+    read(path, out, cap) -> std_fs_read_file(path, out, cap);
+    write(path, data) -> std_fs_write_file(path, data);
     list(path, out, cap) -> std_fs_list(path, out, cap);
     mkdir(path, mode) -> std_fs_mkdir(path, mode);
     remove(path) -> std_fs_remove(path);
     rename(path, to) -> std_fs_rename(path, to);
+
+    access(path, mode) -> std_fs_access(path, mode);
+    read_link(path, out, cap) -> std_fs_read_link(path, out, cap);
+    resize(path, length) -> std_fs_resize(path, length);
+    set_mode(path, mode) -> std_fs_set_mode(path, mode);
+    size(path) -> std_fs_size(path);
+    mode(path) -> std_fs_mode(path);
+    modification_time(path) -> std_fs_modification_time(path);
+    is_readable(path) -> std_fs_is_readable(path);
+    is_writable(path) -> std_fs_is_writable(path);
+    resolve_path(path, out, cap) -> std_fs_resolve_path(path, out, cap);
 }
 
 map trait FsEnv for namespace std::fs {
     get_last_error() -> std_fs_get_last_error();
+    access_read() -> std_fs_access_read();
+    access_write() -> std_fs_access_write();
+    access_execute() -> std_fs_access_execute();
+    access_exists() -> std_fs_access_exists();
+    scan_directory(path, callback, context) -> std_fs_scan_directory(path, callback, context);
 }

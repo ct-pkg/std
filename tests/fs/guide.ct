@@ -37,14 +37,14 @@ int main(int argc, char **argv)
     tp->check_eq_int("".exists(), 0, "an empty string is not a path");
 
     /* 2. write then read; read reports BYTES written, not characters. */
-    tp->check_eq_int(file.write_file("hello\nworld"), 0, "write the file");
+    tp->check_eq_int(file.write("hello\nworld"), 0, "write the file");
     tp->check_true(file.exists(), "the file exists now");
-    n = file.read_file(buf, 64);
+    n = file.read(buf, 64);
     tp->check_eq_int(n, 11, "read returns the byte count");
     tp->check_eq_str(buf, "hello\nworld", "read value");
-    tp->check_eq_int(file.read_file(buf, 11), -1,
+    tp->check_eq_int(file.read(buf, 11), -1,
                    "read needs room for the terminating NUL");
-    tp->check_eq_int("/no/such/file".read_file(buf, 64), -1, "read a missing file");
+    tp->check_eq_int("/no/such/file".read(buf, 64), -1, "read a missing file");
 
     /* 3. list: entries joined with '\n', no trailing newline. */
     n = dir.list(listing, 128);
@@ -57,14 +57,14 @@ int main(int argc, char **argv)
     tp->check_eq_int("/no/such/dir".list(listing, 128), -1, "list a missing directory");
 
     /* 4. write_file replaces: the old contents do not survive. */
-    tp->check_eq_int(file.write_file("oo\n"), 0, "rewrite the file");
-    n = file.read_file(buf, 64);
+    tp->check_eq_int(file.write("oo\n"), 0, "rewrite the file");
+    n = file.read(buf, 64);
     tp->check_eq_int(n, 3, "read the rewritten file");
     tp->check_eq_str(buf, "oo\n", "rewritten value");
 
     /* 5. Bytes again: "é" is one character and two bytes on disk. */
-    tp->check_eq_int(file.write_file("é"), 0, "write a multi-byte character");
-    n = file.read_file(buf, 64);
+    tp->check_eq_int(file.write("é"), 0, "write a multi-byte character");
+    n = file.read(buf, 64);
     tp->check_eq_int(n, 2, "read counts bytes, not characters");
 
     return tp->report();

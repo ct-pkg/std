@@ -47,12 +47,13 @@ int main(void)
                      "apply of an unknown name fails");
     delete bad;
 
-    /* The own form releases the handle and its copied name automatically. */
+    /* The documented release: defer delete frees the handle and its name. */
     {
-        own LocaleHandle *auto_locale = std::locale::make_locale("C");
+        LocaleHandle *auto_locale = std::locale::make_locale("C");
+        defer { delete auto_locale; }
         tp->check_true(auto_locale != 0, "the free factory returns a handle");
         tp->check_eq_int(auto_locale->name_to_str(name, 64), 1,
-                         "the own handle is usable");
+                         "the deferred handle is usable");
     }
 
     tp->check_true(std::locale::make_locale("") == 0,

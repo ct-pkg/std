@@ -1,0 +1,90 @@
+/* std::fs::Dir - traversal, tell/seek, path, enter and the release protocol.
+ *
+ * The runner passes a directory with exactly two entries (a.txt, b.txt). */
+import std::fs::Dir;
+import std::str::String;
+import std::test::Test;
+
+int main(int argc, char **argv)
+{
+    Test t;
+    Test *tp = &t;
+    Dir *d;
+    Dir *missing;
+    char name[64];
+    char path[256];
+    char cwd[256];
+    int n;
+    int count;
+
+    tp->init();
+    tp->check_eq_int(argc, 3, "the runner passes a directory and a file");
+    if (argc < 3) return tp->report();
+
+    missing = "/no/such/directory".open_dir();
+    tp->check_true(missing == 0, "open_dir of a missing path returns NULL");
+    tp->check_eq_int(missing->close(), 0, "close(NULL) is a no-op success");
+    tp->check_eq_int(missing->next(name, 64), -1, "next on a NULL handle is -1");
+
+    d = argv[1].open_dir();
+    tp->check_true(d != 0, "the string factory opens the directory");
+    tp->check_true(d->path(path, 256) > 0, "path returns the saved path");
+    tp->check_eq_str(path, argv[1], "the saved path is the argument");
+
+    count = 0;
+    while (d->next(name, 64) == 1) {
+        if ("a.txt".compare(name) == 0 || "b.txt".compare(name) == 0) count++;
+    }
+    tp->check_eq_int(count, 2, "readdir exposes the two entries");
+
+    /* tell/seek: remember a position, read on, go back and read the same. */
+    tp->check_eq_int(d->rewind(), 0, "rewind");
+    n = d->next(name, 64);
+    tp->check_eq_int(n, 1, "the first entry is readable");
+    {
+        long pos = d->tell();
+        char first[64];
+        char again[64];
+
+        first[0] = 0;
+        d->next(first, 64);
+        tp->check_eq_int(d->seek(pos), 0, "seek back to the first entry");
+        again[0] = 0;
+        d->next(again, 64);
+        tp->check_eq_str(again, first, "seek restores the same entry");
+    }
+
+    /* A two-byte buffer cannot hold a name. */
+    tp->check_eq_int(d->rewind(), 0, "rewind before the short buffer");
+    tp->check_eq_int(d->next(name, 2), -1, "next refuses a short buffer");
+
+    /* enter(): change to the directory, then restore the cwd. */
+    {
+        Dir *here = std::fs::current_dir();
+        defer { delete here; }
+        tp->check_eq_int(here->path(cwd, 256) > 0, 1, "current_dir has a path");
+        tp->check_eq_int(d->enter(), 0, "enter succeeds");
+        tp->check_eq_int(here->enter(), 0, "restore the original directory");
+    }
+
+    tp->check_eq_int(d->close(), 0, "close succeeds");
+    tp->check_eq_int(d->close(), 0, "second close is idempotent");
+    tp->check_eq_int(d->next(name, 64), -1, "next after close fails");
+    delete d;
+
+    /* 1000 open/delete cycles: the deferred delete must run every time. */
+    {
+        int i;
+        int ok = 0;
+
+        for (i = 0; i < 1000; i++) {
+            Dir *loop = argv[1].open_dir();
+            if (!loop) break;
+            defer { delete loop; }
+            ok++;
+        }
+        tp->check_eq_int(ok, 1000, "1000 directory handles do not exhaust fds");
+    }
+
+    return tp->report();
+}

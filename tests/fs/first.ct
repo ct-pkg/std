@@ -21,8 +21,8 @@ int main(int argc, char **argv)
     if (argc < 3) return tp->report();
 
     tp->check_true(argv[1].exists(), "the directory exists");
-    tp->check_eq_int(argv[2].write_file("hi\n"), 0, "write the file");
-    tp->check_eq_int(argv[2].read_file(buf, 64), 3, "read returns the byte count");
+    tp->check_eq_int(argv[2].write("hi\n"), 0, "write the file");
+    tp->check_eq_int(argv[2].read(buf, 64), 3, "read returns the byte count");
     tp->check_eq_str(buf, "hi\n", "read value");
 
     return tp->report();

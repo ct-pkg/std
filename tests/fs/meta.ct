@@ -1,0 +1,114 @@
+/* std::fs - metadata, links, permissions and the scanning callback.
+ *
+ * argv[1] is a directory with exactly two entries, argv[2] is a file path
+ * outside it. The fixture restores the permissions it changes. */
+import std::fs::Dir;
+import std::fs::Fs;
+import std::fs::Stat;
+import std::str::String;
+import std::test::Test;
+
+int count_entry(const char *name, void *context)
+{
+    int *count = (int *)context;
+
+    (void)name;
+    *count = *count + 1;
+    return 0;
+}
+
+int stop_after_first(const char *name, void *context)
+{
+    int *seen = (int *)context;
+
+    (void)name;
+    *seen = *seen + 1;
+    return 1;
+}
+
+int main(int argc, char **argv)
+{
+    Test t;
+    Test *tp = &t;
+    Stat st;
+    char buf[256];
+    char link[256];
+    char resolved[256];
+    char *dir;
+    char *file;
+    int count;
+
+    tp->init();
+    tp->check_eq_int(argc, 3, "the runner passes a directory and a file");
+    if (argc < 3) return tp->report();
+
+    dir = argv[1];
+    file = argv[2];
+
+    /* ---- Stat ---------------------------------------------------------- */
+    tp->check_eq_int(file.write("hello"), 0, "write a file");
+    tp->check_eq_int(std::fs::stat_path(file, &st), 0, "stat_path succeeds");
+    tp->check_eq_int(st.is_regular(), 1, "the file is regular");
+    tp->check_eq_int(st.is_directory(), 0, "the file is not a directory");
+    tp->check_eq_int((int)st.size, 5, "stat size is five");
+    tp->check_eq_int(file.size(), 5, "the size convenience method agrees");
+    tp->check_eq_int((int)st.mode, file.mode(), "the mode convenience method agrees");
+    tp->check_true((int)st.modification_time > 0, "mtime is positive");
+    tp->check_eq_int((int)st.modification_time, file.modification_time(),
+                     "the modification_time method agrees");
+
+    tp->check_eq_int(std::fs::stat_path(dir, &st), 0, "stat_path on the directory");
+    tp->check_eq_int(st.is_directory(), 1, "the directory is a directory");
+    tp->check_eq_int(st.is_regular(), 0, "the directory is not regular");
+
+    tp->check_eq_int(std::fs::stat_path("/no/such/path", &st), -1,
+                     "stat_path of a missing path fails");
+    tp->check_eq_int("/no/such/path".size(), -1, "size of a missing path is -1");
+    tp->check_eq_int("/no/such/path".is_readable(), 0, "a missing path is not readable");
+    tp->check_eq_int("/no/such/path".access(std::fs::FsEnv.access_exists()), -1,
+                     "access(F_OK) on a missing path fails");
+
+    /* ---- resize / permissions ------------------------------------------ */
+    tp->check_eq_int(file.resize(2), 0, "resize truncates");
+    tp->check_eq_int(file.size(), 2, "the file is two bytes now");
+    tp->check_eq_int(file.read(buf, 64), 2, "read the truncated file");
+    tp->check_eq_str(buf, "he", "the truncated content");
+
+    tp->check_eq_int(file.set_mode(0600), 0, "set_mode");
+    tp->check_eq_int(file.mode(), 0600, "the mode round-trips");
+    tp->check_eq_int(file.is_readable(), 1, "the file is readable");
+    tp->check_eq_int(file.is_writable(), 1, "the file is writable");
+    tp->check_eq_int(file.access(std::fs::FsEnv.access_read()), 0, "access(R_OK)");
+    tp->check_eq_int(file.access(std::fs::FsEnv.access_write()), 0, "access(W_OK)");
+
+    /* ---- resolve_path --------------------------------------------------- */
+    tp->check_true(".".resolve_path(resolved, 256) > 0, "resolve_path succeeds");
+    tp->check_eq_int(resolved[0], '/', "the resolved path is absolute");
+    tp->check_eq_int(".".resolve_path(resolved, 1), -1,
+                     "a one-byte buffer is refused");
+
+    /* ---- read_link ------------------------------------------------------ */
+    link[0] = 0;
+    dir.concat("/ct-std-link.txt", link, 256);
+    link.remove();
+    /* symlink(2) is visible through the fs shim's <unistd.h>. */
+    tp->check_eq_int(symlink(file, link), 0, "create a symlink");
+    tp->check_eq_int(link.read_link(buf, 256), file.length(), "read_link returns the target");
+    tp->check_eq_str(buf, file, "the link target matches");
+
+    link.remove();
+
+    /* ---- scan_directory ------------------------------------------------- */
+    count = 0;
+    tp->check_eq_int(std::fs::FsEnv.scan_directory(dir, count_entry, &count), 2,
+                     "scan_directory visits two entries");
+    tp->check_eq_int(count, 2, "the callback ran twice");
+    count = 0;
+    tp->check_eq_int(std::fs::FsEnv.scan_directory(dir, stop_after_first, &count), 1,
+                     "a non-zero callback return stops the scan");
+    tp->check_eq_int(count, 1, "the callback ran once");
+    tp->check_eq_int(std::fs::FsEnv.scan_directory("/no/such/dir", count_entry, &count), -1,
+                     "scan_directory of a missing path fails");
+
+    return tp->report();
+}
