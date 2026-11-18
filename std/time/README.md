@@ -15,12 +15,12 @@
 - **平台差异**：有 POSIX 定时器的平台用 `timer_create`，到期发传入的信号；没有的平台
   （macOS）回退到 `setitimer(ITIMER_REAL)`，只能发 `SIGALRM`，且同一进程同时只有一个回退
   定时器准确。README 与测试都按 `SIGALRM` 写。
-- **释放协议**：`Timer *t = ...; defer { delete t; }`。`own` 是可选糖，ct 0.65.1 在方法返回值
+- **释放协议**：`Timer *t = ...; defer { delete t; }`。`own` 是可选糖，ct 0.67.0 在方法返回值
   被局部捕获时会丢掉释放（见 [`decision-resource-ownership.md`](../../docs/design/decision-resource-ownership.md)）。
 
 ## 2. 依赖与安装
 
-依赖 `<time.h>` / `<signal.h>` / `<sys/time.h>` / `<unistd.h>`；`requires ct >= 0.64.0`。
+依赖 `<time.h>` / `<signal.h>` / `<sys/time.h>` / `<unistd.h>`；`requires ct >= 0.67.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -128,4 +128,4 @@ int main(void)
 | --- | --- | --- |
 | `0.9.0` | 本轮新增 | 新建模块：`Time` namespace（时钟、日历、格式化、`from_parts`）与 `Timer`（周期/一次性、`own` 自由工厂 + 数字工厂、`defer delete`）。 |
 
-编译器下限 `ct >= 0.64.0`。
+编译器下限 `ct >= 0.67.0`。

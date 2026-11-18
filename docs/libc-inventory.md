@@ -1,5 +1,7 @@
 # libc 覆盖盘点与 std OO 化分档
 
+> **历史文档**：本文是 0.3.x 的 libc 盘点，结论已被 [roadmap](roadmap.md) 与 [资源裁定](design/decision-resource-ownership.md) 取代；保留作证据，不再更新。
+
 | 项 | 值 |
 | --- | --- |
 | 性质 | 只读盘点：不写实现、不动版本、不开相卡 |

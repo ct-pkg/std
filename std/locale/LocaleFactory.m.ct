@@ -7,7 +7,7 @@
  * (`std_locale_from_name`) is visible once LocaleHandle.h.ct has been included, which
  * is guaranteed for a consumer that imports LocaleHandle.h.ct.
  *
- * A method call cannot initialise `own` (ct 0.65.1: `'own' requires a malloc,
+ * A method call cannot initialise `own` (ct 0.67.0: `'own' requires a malloc,
  * calloc or factory call`), so the automatic-release spelling is the free
  * factory in LocaleHandle.h.ct: `own LocaleHandle *l = std::locale::make_locale(name);`.
  *

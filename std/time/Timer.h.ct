@@ -15,7 +15,7 @@
  * Two factories, one type: `std::time::make_timer(ms, sig)` /
  * `make_timer_once(ms, sig)` are the free functions; `(100).make_timer(sig)` /
  * `(250).make_timer_once(sig)` live in TimerFactory.m.ct. Release with
- * `defer { delete t; }` (ct 0.65.1 drops `own` cleanup when a method result is
+ * `defer { delete t; }` (ct 0.67.0 drops `own` cleanup when a method result is
  * captured; see docs/design/decision-resource-ownership.md).
  *
  * License: MIT (see LICENSE).

@@ -457,11 +457,11 @@ AI_ENGINEERING_SPEC=<主规范路径> ...                          # 覆盖默�
 - 包根内构建：`ct build -I . <file>.ct -o <out> --cflags "-Wall -Wextra"`。
 - 消费者安装：`ct get std@<range>` → `ct verify` → `ct install`；`ct install` 打印的 include 项是 `-I vendor/std`。
 - 测试门：`bash tests/run.sh`；可用 `CT=<ct 路径>`、`CC=<C 编译器>` 覆盖。
-- 本机实测：`ct v0.65.1`（`ct.pkg` 的 `requires` 为 `ct >= 0.64.0`）。
+- 本机实测：`ct v0.67.0`（`ct.pkg` 的 `requires` 为 `ct >= 0.67.0`）。
 
 ### 1.3 包定义位置
 
-- 包定义文件是仓库根的 `ct.pkg`；`name = std`、`publisher = std`、`ns-root = .`、`version = 0.11.0`、`licence = MIT`、`requires = ct >= 0.64.0`、`ldflags = -lm`。
+- 包定义文件是仓库根的 `ct.pkg`；`name = std`、`publisher = std`、`ns-root = .`、`version = 0.11.0`、`licence = MIT`、`requires = ct >= 0.67.0`、`ldflags = -lm`。
 
 ### 1.4 `docs/` 下现有文档
 

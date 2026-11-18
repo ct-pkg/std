@@ -1,6 +1,6 @@
 /* std::io - the own form on a statement-only handle.
  *
- * `own` is optional sugar; ct 0.65.1 keeps its cleanup only while every use is
+ * `own` is optional sugar; ct 0.67.0 keeps its cleanup only while every use is
  * a statement. The observable proof that Drop ran is that the stream was
  * flushed and closed before the file is read back. */
 import std::io::File;

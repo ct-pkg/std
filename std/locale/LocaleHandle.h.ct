@@ -11,7 +11,7 @@
  * `defer { delete l; }` after the factory, which frees the copied name on every
  * exit. The string-start factory (`"zh_CN.UTF-8".make_locale()`) lives in the
  * sibling LocaleFactory.m.ct and returns the same type; the free factory
- * `std::locale::make_locale(name)` is the `own`-able one. ct 0.65.1 drops
+ * `std::locale::make_locale(name)` is the `own`-able one. ct 0.67.0 drops
  * `own` cleanup when a method result is captured in a local, so `own` is not
  * the documented default (docs/design/decision-resource-ownership.md).
  *

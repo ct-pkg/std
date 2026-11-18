@@ -10,7 +10,7 @@
  *   own File *g = std::io::open_file(path, mode);   // own-able free factory
  *
  * The string spelling lives in Path.m.ct. A method call cannot initialise `own`
- * (ct 0.65.1 rejects it), and ct 0.65.1 silently drops `own` cleanup when a
+ * (ct 0.67.0 rejects it), and ct 0.67.0 silently drops `own` cleanup when a
  * method result is captured in a local (`int n = f->read(...)`); see
  * docs/design/decision-resource-ownership.md. The portable release protocol is
  * therefore `defer { delete f; }`, which also works for the free factory.

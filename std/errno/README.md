@@ -18,7 +18,7 @@
 
 ## 2. 依赖与安装
 
-依赖 C 的 `<errno.h>` / `<string.h>`；`requires ct >= 0.64.0`。
+依赖 C 的 `<errno.h>` / `<string.h>`；`requires ct >= 0.67.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -80,4 +80,4 @@ int main(void)
 | --- | --- | --- |
 | `0.6.0` | 本轮新增 | 新建模块：`get_last` / `set_last` / `error_message`（namespace 与 `int` 两种形式）。 |
 
-编译器下限 `ct >= 0.64.0`。
+编译器下限 `ct >= 0.67.0`。

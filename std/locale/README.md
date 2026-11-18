@@ -12,13 +12,13 @@
   释放用一个 `delete`（或 `own` 自动释放）。
 - **句柄拥有名字**：`LocaleHandle` 是 CT struct + `use Drop`；拿到句柄后写
   `defer { delete l; }`，出口释放名字副本。字符串工厂返回同一类型；方法调用不能初始化
-  `own`，而且 ct 0.65.1 会在方法返回值被局部捕获时丢掉 `own` 的释放，所以 `own` 只是可选糖。
+  `own`，而且 ct 0.67.0 会在方法返回值被局部捕获时丢掉 `own` 的释放，所以 `own` 只是可选糖。
 - **`conventions` 拷贝而不是返回借用指针**：`struct lconv *` 是静态对象，本包只暴露
   `decimal_point` 与 `thousands_sep` 两个字段，写调用方缓冲。
 
 ## 2. 依赖与安装
 
-依赖 C 的 `<locale.h>`；`requires ct >= 0.64.0`。
+依赖 C 的 `<locale.h>`；`requires ct >= 0.67.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -100,4 +100,4 @@ l->apply(std::locale::lc_numeric());
 | --- | --- | --- |
 | `0.6.0` | 本轮新增 | 新建模块：`LocaleHandle`（`own` / `Drop`）、字符串工厂、分类常量、`conventions` 拷贝式。 |
 
-编译器下限 `ct >= 0.64.0`。
+编译器下限 `ct >= 0.67.0`。

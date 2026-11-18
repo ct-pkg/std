@@ -5,13 +5,14 @@
 #
 # Version policy: 0.x means the surface may break in a minor bump. See README.md.
 #
-# `requires` is measured, not guessed. The floor is 0.64.0:
+# `requires` is measured, not guessed. The floor is 0.67.0:
 #   - literal receivers (0.20.0) and CT type aliases (0.20.3) are historical;
 #   - Vec<T> / Map<K,V> became the compiler's built-in layer in 0.30.0;
 #   - cross-unit Drop needs 0.48.0 and own-able factory calls need 0.49.0;
 #   - a .h.ct unit's own <base>.shim.h (auto-include + -I) is v0.64.0 (PH-65),
 #     and every resource unit here uses one.
-# The package is fully verified on ct 0.65.1; the resource-object protocol is
+# The floor is 0.67.0 because that is the only version fully verified; 0.64-0.66
+# are feature-compatible but untested. The resource-object protocol is
 # documented in docs/design/decision-resource-ownership.md.
 #
 # -lm rides in `ldflags` because std::math calls sqrt / fabs / isnan / isinf;
@@ -19,7 +20,7 @@
 #
 # `publisher` and `ns-root` are the two keys the replacement package mechanism
 # requires (SP-002 / SP-003 in ct-lang's ct-pkg-shared-store requirements).
-# Measured on ct v0.53.0: both are accepted with no diagnostic and silently
+# Measured on ct v0.53.0 and re-checked on v0.67.0: both are accepted with no diagnostic and silently
 # ignored, so `ct build` and `tests/run.sh` are unaffected. The include root is
 # the package root itself, hence `ns-root = .` (the `std/` segment of
 # `import std::<mod>::<Unit>` comes from the directory tree, not this key).
@@ -28,5 +29,5 @@ publisher = std
 ns-root = .
 version = 0.11.0
 licence = MIT
-requires = ct >= 0.64.0
+requires = ct >= 0.67.0
 ldflags = -lm

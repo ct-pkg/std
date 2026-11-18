@@ -31,7 +31,7 @@ publisher = std
 ns-root = .
 version = 0.11.0
 licence = MIT
-requires = ct >= 0.64.0
+requires = ct >= 0.67.0
 ldflags = -lm
 ```
 
@@ -40,7 +40,7 @@ ldflags = -lm
 
 `publisher` 与 `ns-root` 属于替换 `-I vendor/<包名>` 的新包机制（需求 SP-002 / SP-003）：
 发布方是 `std`，命名空间根就是包根自身（`import std::<mod>::<Unit>` 里的 `std/` 段来自目录树，
-不由这个键提供）。**实测 ct v0.53.0**：这两个键会被静默忽略——`read_manifest` 只认
+不由这个键提供）。**实测 ct v0.67.0**：这两个键会被静默忽略——`read_manifest` 只认
 `name` / `version` / `dep` / `requires` / `ldflags`，未知键直接跳过，`ct build` 与 `tests/run.sh`
 行为不变、无告警。也就是说现在写上它们是「为将来的工具准备好的声明」，不影响当前构建。
 
@@ -76,10 +76,12 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 
 ### 当前发布状态
 
-`0.11.0` 是当前版本，待打 `v0.11.0`。`0.11.0`（P7）补全 `std::net`：TCP/UDP 工厂、`bind_to` /
+`0.11.0` 是当前版本，待打 `v0.11.0`；`0.6.0`–`0.10.0` 是开发里程碑，**从未发布、没有 tag**。
+`0.11.0`（P7）补全 `std::net`：TCP/UDP 工厂、`bind_to` /
 `listen_backlog` / `accept`、`send_to` / `receive_from`、`send_message` / `receive_message`、
 `resolve_host` / `parse_ip`、超时与 `set_option`；`Socket` 仍是 `FileDesc` 别名。同时补齐 P1 漏项
-`std::str` 的 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`。至此
+`std::str` 的 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`、
+`reverse_find_char` / `compare_ignore_case`，以及 `Float` / `Real` 的 `exp2`。至此
 `docs/roadmap.md` 的 P0–P7 全部完成。`0.10.0`（P6）收口四个资源对象的 `Drop` 模板（统一经幂等
 `close()`），新增 `Timer.close()`，并把 `std::net::Socket` 声明为 `std::io::FileDesc` 的同义
 别名。`0.9.0`（P5）新增 `std::time`：`Time` namespace 的时钟、日历、
@@ -91,7 +93,7 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 与 `FileDesc`（fd）都带 `use Drop` 与幂等 `close()`；新增 `seek` / `tell` / `rewind_start` /
 `at_end_of_file` / `has_error` / `clear_error` / `read_char` / `write_char` / `unread_char` /
 `read_line` / `write_line` / `flush`、`adopt_file` / `adopt_file_desc` 与 FileDesc flag 常量；
-`own` 只能由自由工厂初始化（方法调用不行，ct 0.65.1 限制），方法形式用 `delete`。
+`own` 只能由自由工厂初始化（方法调用不行，ct 0.67.0 限制），方法形式用 `delete`。
 `0.6.0`（P2）新增五个模块：`std::env`（环境变量复制式读写）、
 `std::process`（身份、`fork` / `execute*` / `system` / `wait*`、信号、`pipe_open`）、
 `std::errno`（`errno` 与 `strerror`）、`std::locale`（`LocaleHandle` + `apply` / `conventions`）、
@@ -155,8 +157,8 @@ int main(void)
 file=ct-pkg bytes=6 upper=CT-PKG
 ```
 
-接收者必须写成变量（`path`、`buf`、`n`、`word`）。本包下限是 **ct 0.64.0**（资源对象的 `.h.ct` shim 从 0.64.0 起；`Drop` / `own` 工厂的 0.48 / 0.49 已覆盖）；字面量接收者
-`"abc".length()` 从 0.20.0 起可用，低于 0.64.0 的编译器不满足 `ct.pkg` 的 `requires`。
+接收者必须写成变量（`path`、`buf`、`n`、`word`）。本包下限是 **ct 0.67.0**（只承诺在这一版上验证；资源对象的 `.h.ct` shim 从 0.64.0 起，`Drop` / `own` 工厂的 0.48 / 0.49 已覆盖）；字面量接收者
+`"abc".length()` 从 0.20.0 起可用，低于 0.67.0 的编译器不满足 `ct.pkg` 的 `requires`。
 
 ## 4. API 全表（按宿主分组）
 
@@ -307,7 +309,7 @@ int main(void)
 
 `arena` / `test` 仍是本包的原生 OO：先声明值、取地址，再调方法，`Arena` 用 `reset()` /
 `free_all()`，`Test` 无资源。资源句柄 `File` / `FileDesc` / `Dir` / `Timer` 是 CT struct +
-`use Drop` + 幂等 `close()`，拿到句柄后写 `defer { delete h; }`；`own` 是可选糖（ct 0.65.1
+`use Drop` + 幂等 `close()`，拿到句柄后写 `defer { delete h; }`；`own` 是可选糖（ct 0.67.0
 在方法返回值被捕获时会丢掉释放，见[裁定](docs/design/decision-resource-ownership.md)）。
 有界实现溢出返回 `-1`。详见各自 README。
 
@@ -347,7 +349,7 @@ main.ct:5:1: error: method receiver must be a variable, an element, a call or a 
 ```
 
 这个错误来自低于 0.20.0 的编译器（v0.19.1 只接受变量、元素、调用、字段链作接收者）；本包下限
-是 **ct 0.64.0**。先写 `char *s = "abc";` 再 `s.length()`。调用结果可以直接继续当接收者：
+是 **ct 0.67.0**。先写 `char *s = "abc";` 再 `s.length()`。调用结果可以直接继续当接收者：
 `s.length().to_str(buf, cap)` 合法（`s.length()` 是调用）。
 
 ### 7.2 忘了 import
@@ -400,7 +402,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 | `char *` | 全仓共享的映射宿主，任何模块都能往上挂 trait，代价是方法名全局唯一 | `CStrOps`、`FsOps`、`Utf8Ops` 和 `Path` 都映射到它上面；新增方法前先查 §4.2 |
 | `type key`（类型键） | 编译器给宿主去重的键，丢弃顶层 `const` | `const char *` 与 `char *` 是同一宿主；字面量能直接作接收者，因为 `CStrOps` 没有写接收者的方法 |
 | `borrow`（借用） | 只保存指针，不复制，也不负责释放 | 本包的 `str` / `fs` 只写调用方缓冲区、不保存指针；内建 `Vec` / `Map`（不属于本包）的元素与键是借用，`release` 不回收它们 |
-| `ownership`（所有权） | 资源由谁负责释放 | 资源句柄拿到后写 `defer { delete h; }`（覆盖落出 / return / break / continue）；`own` 是可选糖，0.65.1 在方法返回值被捕获时会丢掉释放（裁定见 [decision-resource-ownership.md](docs/design/decision-resource-ownership.md)）。`Arena.free_all()` 与内建容器的 `release` 仍由调用方负责 |
+| `ownership`（所有权） | 资源由谁负责释放 | 资源句柄拿到后写 `defer { delete h; }`（覆盖落出 / return / break / continue）；`own` 是可选糖，0.67.0 在方法返回值被捕获时会丢掉释放（裁定见 [decision-resource-ownership.md](docs/design/decision-resource-ownership.md)）。`Arena.free_all()` 与内建容器的 `release` 仍由调用方负责 |
 | `cap` | 容量；单位随宿主而变 | `CStrOps` / `FsOps` 与 `num` / `math` 的文本化方法是缓冲区字节数（含结尾 NUL 的位置）；`Utf8Ops.encode` 的 `cap` 只是可用字节数，不写 NUL；`Arena` 的 `init` 参数是首块字节数 |
 | `length()` | 当前长度；单位随宿主而变 | `CStrOps.length()` 数字节（不含 NUL）；内建 `Vec` / `Map` 的长度查询数元素 / 条目 |
 | `n` | 结构体字段或方法参数里的计数值 | `read` / `write` / `copy_to` / `alloc` 的 `n` 参数是字节数 |
@@ -409,19 +411,19 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 | `codepoint`（码点） | UTF-8 里一个字符的编号；一个码点占 1..4 字节，码点数不等于字节数 | `Utf8Ops.count_codepoints()` 数码点，`decode()` 返回本次消耗的 1..4 字节，`encode()` 写 1..4 字节且不补 NUL；解码拒绝代理区（U+D800..U+DFFF）和超过 U+10FFFF 的值 |
 | `NUL` | 值为 0x00 的字节，C 字符串的终止符，不是 `NULL` 指针 | `length()` 不计 NUL，`cap` 必须给它留位置；`read` / `write` / `encode` 都不自动补 NUL |
 | `iterator`（迭代器） | 遍历容器的游标；本包没有实现 | 本包不提供容器；内建 `Vec` / `Map` 用 `foreach (v)` 的 `item` / `i` 绑定遍历，没有迭代器对象。最接近的失效规则是 `Arena.alloc()` 的指针在 `reset()` / `free_all()` 后作废 |
-| `literal receiver`（字面量接收者） | 直接拿字面量作方法接收者 | `"abc".length()`；0.20.0 起可用，本包下限 0.64.0。v0.19.1 报 `method receiver must be a variable, an element, a call or a field chain` |
+| `literal receiver`（字面量接收者） | 直接拿字面量作方法接收者 | `"abc".length()`；0.20.0 起可用，本包下限 0.67.0。v0.19.1 报 `method receiver must be a variable, an element, a call or a field chain` |
 | `chaining`（链式调用） | 把一个方法调用的结果继续当接收者 | `s.length().to_str(buf, cap)` 合法，因为 `s.length()` 是调用而不是字面量 |
-| `Drop` | 语言内建的析构钩子 | 包单元里的 `Drop` 发射为 `static`，消费者不可见，所以本包只提供显式 `free()` / `reset()` / `free_all()` / `clear()` |
+| `Drop` | 语言内建的析构钩子 | 资源句柄 `File` / `FileDesc` / `Dir` / `Timer` 用 `use Drop` + 显式 `impl Drop`（调幂等 `close()`）；`Arena` 仍用显式 `reset()` / `free_all()` |
 
 ## 9. 限制与未支持
 
 - **索引只收录最新 tag**：没有历史版本，老编译器取不到匹配的旧版 std。
 - **`requires` 只告警**：装得上不代表文档示例能编译。
-- **编译器下限 0.64.0**：`.h.ct` 单元自己的 `<base>.shim.h`（自动进公开头与 `-I`）从 0.64.0
-  起（ct-lang PH-65），资源对象全部依赖它；跨单元 `Drop` 需要 0.48.0、`own` 工厂初始化需要
-  0.49.0，都在 0.64.0 之下。本包只在 0.65.1 上完整验证；0.49.0 实测在 `.h.ct` shim 上失败，
-  所以下限不能写 0.49。历史下限：`pub type IoFile` 别名 0.20.3、字面量接收者 0.20.0、内置容器
-  0.30.0。低于 0.64.0 的编译器不满足 `requires`（只告警，不代表能编过）。
+- **编译器下限 0.67.0**：本包只承诺在 0.67.0 上验证。功能前提比它低：`.h.ct` 单元自己的
+  `<base>.shim.h`（自动进公开头与 `-I`）从 0.64.0 起（ct-lang PH-65），跨单元 `Drop` 0.48.0，
+  `own` 工厂 0.49.0；0.49.0 实测在 `.h.ct` shim 上失败。因为 0.64–0.66 没有实测，`requires`
+  只写到已验证的 0.67.0。历史下限：`pub type IoFile` 别名 0.20.3、字面量接收者 0.20.0、内置
+  容器 0.30.0。低于 0.67.0 的编译器不满足 `requires`（只告警，不代表能编过）。
 - **`char *` 方法名全局共享**：新增 trait 必须避开 51 个已有名字（§4.2）。
 - **`const` 不参与类型键**：字面量能直接当 `CStrOps` 接收者，因为该 trait 没有写接收者的方法。
 - **`num.to_str` 静默截断**：容量不够得到短文本，不报错。
@@ -432,12 +434,12 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.11.0` | 当前版本，待打 `v0.11.0` | **P7 net**：TCP/UDP 工厂与 `bind_to` / `listen_backlog` / `accept` / `local_address` / `local_port`；`send_to` / `receive_from` / `send_message` / `receive_message`；`shutdown_*`、`set_option` / `set_reuse_address` / `set_*_timeout`；`resolve_host` / `parse_ip`。`Socket` 保持 `FileDesc` 别名。同时补齐 `std::str` 的 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`、`reverse_find_char` 与 `compare_ignore_case`（P1 漏项）。 |
-| `0.10.0` | 待打 `v0.10.0` | **P6 资源模板收口**：`File` / `FileDesc` / `Dir` / `Timer` 的 `Drop` 统一调用幂等 `close()`；`Timer` 新增 `close`；`std::net::Socket` 声明为 `FileDesc` 别名（无新类型）。 |
-| `0.9.0` | 待打 `v0.9.0` | **P5 time**：`Time` namespace（`now_*` / `diff_seconds` / `sleep_milliseconds` / `get_cpu_ticks` / 日历字段 / `format` / `from_parts`）与 `Timer`（`make_timer` / `make_timer_once` + `start` / `stop` / `remaining`；无回调，到期走信号）。 |
-| `0.8.0` | 待打 `v0.8.0` | **P4 fs 补全**：路径方法补 10 个；`read_file`/`write_file` → `read`/`write`；新增 `Dir`（`own` 工厂 + 字符串工厂）与 `Stat` 字段镜像；`scan_directory` 流式回调；`resolve_path` 为词法绝对路径。 |
-| `0.7.0` | 待打 `v0.7.0` | **P3 stdio 资源化**：`IoFile` 退役，`File` / `FileDesc` 改为 CT struct + `use Drop`；补全 seek/tell/EOF/错误位/字符与行 IO/flush/adopt；方法调用改 `->`；`own` 只认自由工厂。 |
-| `0.6.0` | 待打 `v0.6.0` | **P2 五个新模块**：`std::env` / `std::process` / `std::errno` / `std::locale` / `std::wchar`；`LocaleHandle` 用 `own` + `Drop`，`apply` 明确为进程全局副作用。 |
+| `0.11.0` | 当前版本，待打 `v0.11.0` | **P7 net**：TCP/UDP 工厂与 `bind_to` / `listen_backlog` / `accept` / `local_address` / `local_port`；`send_to` / `receive_from` / `send_message` / `receive_message`；`shutdown_*`、`set_option` / `set_reuse_address` / `set_*_timeout`；`resolve_host` / `parse_ip`。`Socket` 保持 `FileDesc` 别名。同时补齐 `std::str` 的 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`、`reverse_find_char` 与 `compare_ignore_case`（P1 漏项），以及 `Float` / `Real` 的 `exp2`。 |
+| `0.10.0` | 未发布（开发里程碑，未打 tag） | **P6 资源模板收口**：`File` / `FileDesc` / `Dir` / `Timer` 的 `Drop` 统一调用幂等 `close()`；`Timer` 新增 `close`；`std::net::Socket` 声明为 `FileDesc` 别名（无新类型）。 |
+| `0.9.0` | 未发布（开发里程碑，未打 tag） | **P5 time**：`Time` namespace（`now_*` / `diff_seconds` / `sleep_milliseconds` / `get_cpu_ticks` / 日历字段 / `format` / `from_parts`）与 `Timer`（`make_timer` / `make_timer_once` + `start` / `stop` / `remaining`；无回调，到期走信号）。 |
+| `0.8.0` | 未发布（开发里程碑，未打 tag） | **P4 fs 补全**：路径方法补 10 个；`read_file`/`write_file` → `read`/`write`；新增 `Dir`（`own` 工厂 + 字符串工厂）与 `Stat` 字段镜像；`scan_directory` 流式回调；`resolve_path` 为词法绝对路径。 |
+| `0.7.0` | 未发布（开发里程碑，未打 tag） | **P3 stdio 资源化**：`IoFile` 退役，`File` / `FileDesc` 改为 CT struct + `use Drop`；补全 seek/tell/EOF/错误位/字符与行 IO/flush/adopt；方法调用改 `->`；`own` 只认自由工厂。 |
+| `0.6.0` | 未发布（开发里程碑，未打 tag） | **P2 五个新模块**：`std::env` / `std::process` / `std::errno` / `std::locale` / `std::wchar`；`LocaleHandle` 用 `own` + `Drop`，`apply` 明确为进程全局副作用。 |
 | `0.5.0` | 已打 `v0.5.0` | **P1 补齐**：`Char` 新增 7 个谓词；`CStrOps` 新增 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into`（`copy_to` 移除）；`Float` / `Real` 扩到完整 libm 方法族，七个生僻名改全称，`is_inf` → `is_infinite`，数学只保留方法形态；新增 `std::search`。 |
 | `0.4.0` | 已打 `v0.4.0` | **破坏性改名与删除**（P0）：`String` → `CStrOps`；`len` → `length`；`open` → `open_file`；`to_upper` / `to_lower` → `uppercase` / `lowercase`；删除 `to_string`（只剩 `to_str(out, cap)`）与 `std::io` 的变参 `printf`（`Io.h.ct` 移除，输出改用 `std::io::Stdout`）。 |
 | `0.3.2` | 已打 `v0.3.2` | 包身份与许可统一：`publisher` 改为 `std`，许可改为 MIT（`LICENSE`、README 与各单元头部表述一并更新）；`ns-root` 与 API 无变化。 |
@@ -567,7 +569,7 @@ int get_last_error();             /* std::fs::FsEnv.get_last_error()，见 §10.
 | `0.x` 期间 | 破坏性改动走 minor（`0.1.0` → `0.2.0`），修复走 patch；不承诺向后兼容 |
 | `1.0.0` 之后 | 破坏性改动走 major |
 | tag | `v<version>`；索引只认 `v*` 且取最高一个 |
-| 编译器下限 | `ct >= 0.64.0`，写在 `ct.pkg` 的 `requires` |
+| 编译器下限 | `ct >= 0.67.0`，写在 `ct.pkg` 的 `requires` |
 
 打 tag 之后索引里的摘要会覆盖包目录下除 `.git`、`vendor`、`.ctcache` 外的所有文件，
 包括 `README.md`、`tests/`、`.github/`。所以打 tag 前必须让所有文件定稿；tag 之后任何文件改动

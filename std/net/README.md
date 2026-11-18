@@ -28,7 +28,7 @@
 ## 2. 依赖与安装
 
 依赖 `<sys/socket.h>` / `<netinet/in.h>` / `<arpa/inet.h>` / `<netdb.h>` / `<sys/uio.h>`；
-`requires ct >= 0.64.0`。
+`requires ct >= 0.67.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -161,4 +161,4 @@ a->receive_from(buf, 32, ip, 32, &port, &n);
 | `0.11.0` | 本轮变更 | 补全 TCP + UDP：`connect` / `open_stream` / `open_datagram` / `accept_connection`，`bind_to` / `bind_to_address` / `listen_backlog` / `accept` / `local_address` / `local_port`，`shutdown_*`、`set_option` / `set_reuse_address` / `set_*_timeout`，`send_to` / `receive_from`、`send_message` / `receive_message`、`resolve_host`、`parse_ip`。 |
 | `0.10.0` | 已发布 | `Socket = FileDesc` 别名。 |
 
-编译器下限 `ct >= 0.64.0`。
+编译器下限 `ct >= 0.67.0`。

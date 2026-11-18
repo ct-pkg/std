@@ -24,7 +24,7 @@
 
 ## 2. 依赖与安装
 
-依赖 `<sys/stat.h>` / `<dirent.h>` / `<unistd.h>` / `<stdio.h>`；`requires ct >= 0.64.0`。
+依赖 `<sys/stat.h>` / `<dirent.h>` / `<unistd.h>` / `<stdio.h>`；`requires ct >= 0.67.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -154,4 +154,4 @@ int main(void)
 | `0.8.0` | 本轮变更 | 新增 `access` / `read_link` / `resize` / `set_mode` / `size` / `mode` / `modification_time` / `is_readable` / `is_writable` / `resolve_path`；新增 `Dir`（`own` 自由工厂 + 字符串工厂 + `defer delete`）；新增 `Stat` 字段镜像与 `stat_path` / `lstat_path`；新增 `scan_directory` 流式回调。 |
 | `0.6.0` | 已发布 | `exists` / `read_file` / `write_file` / `list` / `mkdir` / `remove` / `rename` 与 `FsEnv.get_last_error`。 |
 
-编译器下限 `ct >= 0.64.0`。
+编译器下限 `ct >= 0.67.0`。

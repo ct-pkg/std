@@ -9,7 +9,7 @@
  * Two factories, one type: `std::fs::open_dir(path)` / `std::fs::current_dir()`
  * are the own-able free functions; `"dir".open_dir()` in DirFactory.m.ct is the
  * string spelling. The release protocol is `defer { delete d; }` after the
- * factory (ct 0.65.1 drops `own` cleanup when a method result is captured in a
+ * factory (ct 0.67.0 drops `own` cleanup when a method result is captured in a
  * local; see docs/design/decision-resource-ownership.md).
  *
  * `next(out, cap)` returns 1 for a name, 0 at the end, -1 on error or when the

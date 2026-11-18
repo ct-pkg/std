@@ -247,9 +247,10 @@ conn.receive(buf, 1024, &n)
 
 ### 2.9 原排除项：除变参外全部纳入（① 底座直连 + 注意事项）
 
-判据改为「libc／POSIX 有没有对应函数」：以下原排除项除语言限制的变参函数外全部纳入，形态一律
-① 直连，不新增类型。内存操作已由 `char *` 方法层封装（§2.1）；其余 POSIX 接口（线程、异步 I/O、
-内存映射、多路复用等）除变参函数外同样按此判据纳入，归属按头文件就近，不新增类型。
+**2026-11-19 裁定（范围收口）**：本包的完成边界是 P0–P7 与下表能力。`pthread_*` / `aio_*` /
+`mmap` / `poll` / `select` 等其余 POSIX 接口**不包装**，消费者直接调 libc；本包不为它们新增
+单元或类型。下表列出已交付的 ① 直连能力，形态一律「直连、不新增类型」；内存操作已由
+`char *` 方法层封装（§2.1）。
 
 | 能力 | 形态 | 归属 | 注意事项 |
 | --- | --- | --- | --- |
@@ -267,7 +268,8 @@ conn.receive(buf, 1024, &n)
 | `scale_by_power_of_two` / `split_exponent` / `split_fraction` | ① 底座 | `std::math` | 出参形态；不建值类型 |
 | `send_message` / `receive_message` | ① 底座 | `std::net` | `iovec` 由调用方构造；边界与所有权写清 |
 
-全部 ① 直连项不新增类型；方法层只在 §1.2 的便利性判据成立时另加，不再以「CT 模型不支持」排除。
+上表的 ① 直连项不新增类型；方法层只在 §1.2 的便利性判据成立时另加。表外的 POSIX 长尾按上面的
+裁定直接调 libc，不再以「CT 模型不支持」或「全库覆盖」为由追加包装。
 
 **不封装：语言限制例外（与模型差异不同）**：CT 无变参声明机制，`scanf` 族、`sprintf`、`fprintf` 不做
 封装，也无法靠 shim 绕开。0.3.0 遗留的 `printf` 一并删除（破坏性变更）。成对替代：
@@ -539,15 +541,13 @@ import std::net::Socket;      // 同义别名，与 FileDesc 互相赋值
 
 | 宿主 | 现状 | 本版新增 | 合计（最坏） |
 | --- | --- | --- | --- |
-| `char *` | 25（`README.md:145-153`） | `reverse_find_char` `compare_ignore_case` `parse_long` `parse_long_long` `parse_unsigned_long` `parse_real` `open_dir` `make_locale` `read_link` `resize` `set_mode` `resolve_path` `is_readable` `is_writable` `access` `stat` `open_as_file_desc` `size` `mode` `modification_time` `parse_ip` `connect` `fill` `compare_with` `find_byte` `compare_prefix` `copy_from` `move_from` `split_into`（29 个新增名；`copy_from`/`move_from` 替代既有 `copy_to`，`length` 一换一替代 `len`，`open` 一换一改 `open_file`，删除 `get_dir`/`change_dir`，净增 28，即 25 − 1 + 29；名字均按 §5.1） | 53 |
+| `char *` | 25 | `reverse_find_char` `compare_ignore_case` `parse_long` `parse_long_long` `parse_unsigned_long` `parse_real` `open_dir` `make_locale` `read_link` `resize` `set_mode` `resolve_path` `is_readable` `is_writable` `access` `open_as_file_desc` `size` `mode` `modification_time` `parse_ip` `connect` `fill` `compare_with` `find_byte` `compare_prefix` `copy_from` `move_from` `split_into` | **51** |
 | `long` | 7 | 0（时间不挂 `long`，Q8 已定） | 7 |
-| `float`/`double` | 5 / 9 | math 新族（约 20；`abs`/`min`/`max` 只登记浮点宿主，不重复计数） | 25 / 29 |
-| `char` | 7 | 7 个 `is_*`（`is_alnum` / `is_punctuation` / `is_printable` / `is_graphical` / `is_control` / `is_blank` / `is_hex_digit`） | 14 |
+| `float`/`double` | 5 / 9 | math 新族；`abs`/`min`/`max` 只登记浮点宿主，不重复计数 | **35 / 39** |
+| `char` | 7 | 7 个 `is_*`（`is_alnum` / `is_punct` / `is_print` / `is_graph` / `is_cntrl` / `is_blank` / `is_xdigit`） | 14 |
 
-`char *` 合计 53：本版新增 `access`/`stat`/`open_as_file_desc`/`make_locale`，删除 `get_dir`/`change_dir`，把 `len` 换成
-`length`（一换一）、`open` 换成 `open_file`（一换一），并把 `memcpy`/`memmove` 拆成 `copy_from`/`move_from`、
-新增 `split_into`。换名本身不改变名字数量，`char` 仍为 14；展开名与既有同宿主名无冲突。`float`/`double` 合计以全名清单
-确认后复核（短名是别名，不重复计数）。
+`char *` 合计 **51**（逐个名字的当前清单以 `README.md` §4.2 为准；`stat` 不是 `char *` 方法，
+它是自由函数 `stat_path`）。`float`/`double` 的当前数量是 35/39（含 0.11.0 补的 `exp2`）。
 
 冲突处理：`open` 已被 `Path` 占用 → 目录用 `open_dir`；`read`/`write`/`close` 不再占 `char *`；
 `copy_from`/`move_from` 取代既有 `copy_to`（`src.copy_to(dst, n)` → `dst.copy_from(src, n)` 或
@@ -654,7 +654,9 @@ API 表新增 **层** 列：① 映射 / ② 便利 / ③ OO。读者不用翻 s
 
 原则：先铺 ①②，再补 ③；③ 只给真正持有资源且无法寄生基本类型的类型（`File`/`Dir`/`FileDesc`/`Timer` 均已定为 ③，`Socket` 为 `FileDesc` 别名）；每个模块整块交付（§1.7），不做半截。
 
-P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验收，最终以 §2 能力面（含 §2.9 的 ① 直连能力）全库覆盖为完成，不以任一相的交付为完成；全库完成后再统一发布 `0.4.0`。
+P0–P7 是施工顺序，逐期交付到 `0.6.0`–`0.11.0`；最终统一发布 `v0.11.0`。完成判据是
+**P0–P7 表内能力 + §2 的已交付能力面**，不含 §2.9 表外的 POSIX 长尾（2026-11-19 裁定）。
+表中判据只作阶段验收。
 
 | 序 | 内容 | 层 | 依赖 | 阶段验收 |
 | --- | --- | --- | --- | --- |
@@ -670,7 +672,9 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 「暂不排期」状态不再存在：`File`、`Dir`、`FileDesc`、`Timer` 均按 ③ 资源对象纳入交付面，形态已定；
 `FileStat`、`TimeParts` 只补能力、不建值类型。
 
-其余 POSIX 接口（`pthread_*`、`aio_*`、`mmap`、`poll`/`select` 等）随所属模块的施工序完成，不单列相位；归属按头文件就近，形态一律 ① 直连。
+**落地时的两处形态变更**（详见 §10）：P3 的 `File` 不再是 `FILE *` 宿主，而是 CT struct +
+`use Drop`；P4 的 `stat(&st)` 不再原样暴露 `struct stat`，而是 `Stat` 字段镜像 + `stat_path`。
+表内其余交付项按原样落地。表外的 `pthread_*` / `aio_*` / `mmap` / `poll` / `select` 等不包装。
 
 ## 8. 风险与未决
 
@@ -678,40 +682,40 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 
 | 风险 | 说明 | 缓解 |
 | --- | --- | --- |
-| 便利层铺宽 → 名字通胀 | `char *` 25 → 53；`long` 保持 7（Q8 已定不挂时间） | 每个名字必须给出「比函数式省多少」；同宿主查表 |
+| 便利层铺宽 → 名字通胀 | `char *` 25 → 51（含 P1 补的 4 个 parse 与 2 个查找/比较）；`long` 保持 7（Q8 已定不挂时间） | 每个名字必须给出「比函数式省多少」；同宿主查表 |
 | 宿主污染 | 领域方法挂基础类型会让所有同类型值获得该方法（如 `size.year()`） | Q8 已定：时间不挂 `long`，走 `Time` namespace；其他宿主按 §5.2 查表 |
 | 时区/线程安全 | `localtime_r` 无时区参数；`strerror` 静态缓冲 | 文档写明「本地时区」与 `strerror` 非线程安全 |
-| `own` 初始化式很窄 | 只认 `malloc`/`calloc`/`struct X *` 工厂；强转与别名不认（实测） | 工厂返回类型写 `struct X *`；每个新类型加 `own` 样例 |
+| `own` 初始化式很窄 | 只认 `malloc`/`calloc`/自由函数工厂；方法调用与别名不认；0.67.0 仍在方法返回值被局部捕获时静默丢掉释放 | 自由工厂 + `defer { delete h; }` 作为文档默认；`own` 只作可选糖；裁定见 [decision-resource-ownership.md](decision-resource-ownership.md) |
 | 栈上值不触发 `Drop` | 实测值不释放，只有 `own` 指针会 | 句柄必须指针 + `own` |
-| `File` 释放 | 旧 `IoFile` 包装体不释放；现已定 `own` + `Drop` + 幂等 `close()` | 0.4.0 破坏性变更；`stdout` 等裸 `FILE *` 不归包管 |
-| 多次 `stat` | `size`/`mode`/`modification_time` 各一次 | `stat(&st)` 原样暴露；三个便捷方法不替代 `stat`，重复代价写进 README |
+| `File` 释放 | 0.7.0 起 `File` 是 CT struct + `use Drop` + 幂等 `close()`；释放协议 `defer { delete h; }` | `stdout` / `stderr` 走 `std::io::Stdout`，裸 `FILE *` 不归包管 |
+| 多次 `stat` | `size`/`mode`/`modification_time` 各一次 | `stat_path`/`lstat_path` 一次拿全部字段；三个便捷方法不替代它，重复代价写进 README |
 | 借用指针生命周期 | `getenv` / `strerror` 可能被覆盖 | 方法层提供带 `out` 的复制版；文档写死 |
-| 表达力注意 | 回调、`iovec`、`struct stat` 布局 | ① 直连并在 README 写使用边界；不排除 |
+| 表达力注意 | 回调、`iovec`、`struct stat` 布局 | 回调走 `void *`；`iovec` 由调用方构造；`stat` 用 `Stat` 字段镜像 |
 | 变参限制 | CT 无变参声明机制；`scanf`/`sprintf`/`fprintf` 等不做 | 不做封装；按 §2.9 成对替代（`to_str`/`concat`、`parse_*`、格式化+`write`）；`printf` 按破坏性变更删除 |
-| `Socket` 别名依赖语言侧 | `Socket` 与 `FileDesc` 是同一类型、可互相赋值，依赖语言侧别名能力 | 方案只记这一依赖；未提供前不造第二套类型 |
-| 数学全名清单 | 全名为主、短名为别名，全名清单尚未确认 | 清单确认后再并入正文；短名保持可用 |
+| `Socket` 别名 | 已具备：`pub type Socket = FileDesc;` 在同一 C tag 上，0.10.0 落地 | 不造第二套类型；`own Socket` 仍受别名限制，退回 `FileDesc` |
+| 数学全名清单 | 已定稿；`exp2` 在 0.11.0 补齐，`Float`/`Real` 为 35/39 个方法 | 短名是别名，不重复计数 |
 | 阻塞模型 | `Socket` 阻塞、DNS 无超时控制 | P7 写明阻塞语义与超时行为 |
-| 版本节奏 | 全库完成后统一发布 `0.4.0`，不按相发 minor | 以全库覆盖为完成判据（§7） |
+| 版本节奏 | 逐期交付 `0.6.0`–`0.11.0`；`0.6.0`–`0.10.0` 是开发里程碑（未打 tag），唯一发布点是 `v0.11.0` | 完成判据见 §7；§2.9 表外长尾不包装 |
 
 ### 8.2 未决
 
 - **Q1（已定）**：`std/io/File.m.ct` 不拆编译单元，一张映射表放一处。
 - **Q2（已定）**：`File` 按 ③ 资源对象：`own` 离开作用域由包内关闭；显式 `close()` 供提前关闭，关后失效、重复调用是空操作；`stdout` 等裸 `FILE *` 不归包管。
-- **Q3（已定）**：不设方法名长度上限，也不设 `char *` 名字数量上限（当前 53）；保留准入判据与软阈值复审。
+- **Q3（已定）**：不设方法名长度上限，也不设 `char *` 名字数量上限（当前 51）；保留准入判据与软阈值复审。
 - **Q4（已定）**：`env`/`process`/`errno` **不合并**为 `std::sys`，三者各自成模块，目录与 libc／POSIX 原有头文件一一对应。依据：降低 C 程序员的心智成本——做的是 OO 封装，不引入新的分类法。
 - **Q5（不再适用）**：P0–P7 改为施工顺序，不按相发布；合并相邻相发布的讨论随之取消，版本节奏见 §7 / §8.1。
 - **Q6（已定）**：`net` 一次做全，UDP、`resolve_host`、`set_option` 全部纳入，不再留在暂不排期。依据：不做半截模块——只封一半会让使用者不知道到底该用封装还是退回 libc。`Address` 不建类型（已定）：主机用 `char *`、端口用 `int`，方法寄生在这两个宿主上；`receive_from(buf, len, ipbuf, &port)` 以出参回报来源。依据：静态映射优先、能力寄生在基本类型上，不引入值类型。
-- **Q7（已定）**：`stat(&st)` 原样暴露 `struct stat`；`size`/`mode`/`modification_time` 为基于 `stat` 的便捷方法，不建 `FileStat` 包装。
+- **Q7（已定，落地形态调整）**：`stat` 暴露 `Stat` 字段镜像 + 自由函数 `stat_path`/`lstat_path`（CT 看不到 C 结构体字段）；`size`/`mode`/`modification_time` 为基于 `stat` 的便捷方法，不建 `FileStat` 包装。
 - **Q8（已定）**：时间方法不挂 `long`——宿主语义不相合（`size.year()` 会返回 2023）；时间只做 ① 底座 + `Time` namespace 静态方法，「迁就 `long`」正式否掉。
 - **Q9（已定）**：删除 `Math` namespace；数学函数只提供方法形态，全名为主、短名为别名（全名清单待确认）。
 - **Q10（已定）**：`Str` 归语言侧内置类型，本仓完全删除——不定义、不提供、不提供方法层，只作消费方。此前「允许在 `Str` 上挂方法」的结论作废；`char *` 与 `Str` 的分工由语言侧决定，本仓不再制定。
 - **Q11（已定）**：`Dir` / `File` / `FileDesc` 均接受 struct 对等类型（③）；`Socket` 为 `FileDesc` 同义别名，不用裸类型宿主。
 - **Q12（已定）**：不引入列表 struct；数组、动态列表、`Map` 归语言侧，std 不涉及。
-- 评审项均已关闭；`Socket` 别名能力为唯一外部依赖（待语言侧）。
+- 评审项均已关闭；`Socket` 别名能力已在 0.10.0 落地（`pub type Socket = FileDesc;`），不再是外部依赖。
 
 ### 8.3 本文可被证伪的假设
 
-1. 「便利层铺宽是净收益」——若评审认为 53 个 `char *` 名字的维护成本过高，需按 Q3 收缩。
+1. 「便利层铺宽是净收益」——若评审认为 51 个 `char *` 名字的维护成本过高，需按 Q3 收缩。
 2. 「时间方法可以挂 `long`」——Q8 已定否掉；时间走 `Time` namespace，不再作为假设。
 3. 「`FileDesc` / `Timer` 可以先不做」——已定按 ③ 资源对象落地，本条不再作为假设。
 4. 「`Address` 不建类型，多地址回退由调用方在 `resolve_host` 结果上自行处理」——若统一地址表示成为硬需求，需重开该裁定。
@@ -722,3 +726,25 @@ P0–P7 是施工顺序，不是分批发布节奏。表中判据只作阶段验
 1. 本文定稿 → 交负责人过目。
 2. 负责人点头后才进入实现；未点头前只改文档，不动代码、不起版本号、不打 tag。
 3. 实现阶段按 §7 施工顺序独立提交；表中判据只作阶段验收，最终以全库覆盖为完成；跨仓能力只记为依赖，不向 ct-lang 提排期安排，也不引用外部仓路径。
+
+## 10. 实现裁定与已接受偏离（2026-11-19）
+
+P0–P7 的交付物已全部落地，但下列实现与正文的早期写法不同。语言强制的项没有第二条路；
+选择项在现有 API 下更合理，故接受并在此登记，不再逐项改实现。
+
+| # | 正文写法 | 实际落地 | 性质 / 依据 |
+| --- | --- | --- | --- |
+| D-1 | P3 `File` 是 `FILE *` 宿主 | `File` 是 CT struct（`void *fp`）+ `use Drop`，方法用 `->` | 语言强制：`FILE *` 宿主无法挂 `Drop`/`own`；资源裁定见 [decision-resource-ownership.md](decision-resource-ownership.md) |
+| D-2 | P4 `stat(&st)` 原样暴露 `struct stat` | `Stat` 字段镜像 + 自由函数 `stat_path`/`lstat_path` | 语言强制：CT 看不到 C 结构体字段，`.m.ct` 也不能命名 `.h.ct` 类型 |
+| D-3 | `Dir.current()` 类型静态工厂 | 自由函数 `std::fs::current_dir()` | 语言强制：CT 没有类型静态工厂；`"dir".open_dir()` 保留 |
+| D-4 | `Locale` 类型 + `conventions` 借出 `struct lconv *` | `LocaleHandle`；`conventions` 拷贝 decimal_point / thousands_sep | 命名受大小写不敏感文件系统限制（`Locale.h` 会顶替 `<locale.h>`）；借用 `lconv` 会把 libc 静态所有权漏出去 |
+| D-5 | `own File *f = "p".open_file(...)` | 方法工厂不能 `own`；释放协议为 `defer { delete h; }` | 编译器限制：`own` 只接自由函数；0.67.0 仍在方法返回值被捕获时静默丢掉释放 |
+| D-6 | `resolve_path` 对应 `realpath(3)` | 词法绝对路径（`getcwd` + 折叠 `.`/`..`），不解析符号链接 | 选择：strict `-std=c99` 下 `realpath` 声明不可靠；语义已在 fs/README 写明 |
+| D-7 | `scan_directory` 返回数组并规定释放责任 | 流式回调，不分配数组 | 选择：无所有权、无大目录缓冲问题；回调返回非 0 提前停止 |
+| D-8 | `receive_from(buf, len, ipbuf, &port)` | 多一个字节数出参 `&n` | 选择：与 `receive` 的字节数出参一致 |
+| D-9 | `parse_*` 的 issue 契约是「返回值 + errno」 | 出参 + `0/-1`；允许前后空白；unsigned 拒绝前导 `-` | 已裁定：设计 D4「失败必须可报，链式返回值无法同时表达」；见 [issue 0002](../../issues/0002-str-parse-failure-semantics.md) |
+| D-10 | ctype 长名（`is_punctuation` 等，§2.2） | 短名（`is_punct` 等，§5.1 的 snake_case 化） | 口径冲突，取 §5.1；方法清单见 num/README |
+| D-11 | §2.9「其余 POSIX 除变参外全部纳入」 | 表外长尾不包装，直接调 libc | 2026-11-19 范围裁定（见 §2.9） |
+| D-12 | `Timer` 用 `timer_create` | 有 POSIX 定时器的平台走 `timer_create`；macOS 回退 `setitimer`/`SIGALRM` | 平台强制：macOS 没有 `timer_t`；回调仍是信号，不含回调层 |
+
+`exp2` 曾是设计保留名清单里的漏项，已在 0.11.0 补齐，不再列为偏离。

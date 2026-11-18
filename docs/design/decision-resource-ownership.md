@@ -3,7 +3,7 @@
 | 项 | 值 |
 | --- | --- |
 | 性质 | 裁定记录；解决 P2–P7 施工中「`own` 能不能作为资源释放协议」的争议 |
-| 依据 | 正席 / 反席两轮对抗实测（ct v0.65.1，macOS arm64），探针分别在 `/tmp/battle-pro`、`/tmp/battle-con` |
+| 依据 | 正席 / 反席两轮对抗实测（ct v0.67.0，macOS arm64），探针分别在 `/tmp/battle-pro`、`/tmp/battle-con` |
 | 结论 | 资源类型用 **CT struct + `use Drop` + 幂等 `close()` + 双工厂**；**释放协议定为 `defer { delete h; }`**，`own` 不再是文档默认 |
 | 影响 | P2 `LocaleHandle`、P3 `File` / `FileDesc`、P4 `Dir`、P5 `Timer`、P7 `Socket`（`FileDesc` 别名） |
 
@@ -11,8 +11,8 @@
 
 设计正文（[§2.4 / §2.7 / §2.8 / §5.4](std-scope-and-presentation.md)）把 `File` / `Dir` / `FileDesc` /
 `Timer` / `Socket` 定为 ③ 资源对象；`own X *h = "path".open_file(...)` 是设计里的默认写法。
-反证文档（[§2.3](../review/std-scope-con-argument.md)）在 ct v0.53.0 上记录过 `own` 不接受方法调用（F6）、
-`Drop` 不关 C 资源（F7）、拷贝/逃逸重复释放（F8）。两条结论必须在 v0.65.1 上重新实测后裁定。
+反证文档（[§2.3](../review/std-scope-con-argument.md)）在 ct v0.67.0 上记录过 `own` 不接受方法调用（F6）、
+`Drop` 不关 C 资源（F7）、拷贝/逃逸重复释放（F8）。两条结论必须在 v0.67.0 上重新实测后裁定。
 
 ## 2. 实测（两席独立，命令与结果都保留在探针目录）
 
@@ -22,7 +22,7 @@
 | F-2 | `.h.ct` 可以 `import` 同目录 `.m.ct`；反向（`.m.ct` import `.h.ct`）是循环导入硬错。`.m.ct` 用 `pub type H = struct <ns>_<T>;` 命名 `.h.ct` 生成的 C tag，方法工厂与自由工厂返回**同一类型**、双向可赋值 | 正席 probe 5/6；本仓 probe `/tmp/ownprobe3` |
 | F-3 | `use Drop` + 固有 `impl X` **不加 vptr**、不改变 `sizeof`（8 字节仍是 8 字节）；只有 `use Trait` 才追加 vptr（8 → 16） | 正席 probe 7 |
 | F-4 | 正确使用时 `own` 在正常落出、`return`、`break` 前都会 `Drop`；`delete` 取消 autodrop，不重复释放；`own` 循环 200 次 0 leak | 正席 probe 1/8；反席 probe 17 |
-| F-5 | **v0.65.1 的编译器缺陷**：`own` 句柄一旦作为方法接收者且返回值被局部初始化/赋值捕获（`int n = f->read(...)`、`int rc = f->close()`、`File *p = f;`），生成的 C **完全不插入** Drop/释放，且无任何告警 | 正席「Critical extra finding」；本仓 `/tmp/ownbug/m.c` 复现：只有 `open_file`，没有 `Drop_drop`/`free` |
+| F-5 | **v0.67.0 的编译器缺陷**：`own` 句柄一旦作为方法接收者且返回值被局部初始化/赋值捕获（`int n = f->read(...)`、`int rc = f->close()`、`File *p = f;`），生成的 C **完全不插入** Drop/释放，且无任何告警 | 正席「Critical extra finding」；本仓 `/tmp/ownbug/m.c` 复现：只有 `open_file`，没有 `Drop_drop`/`free` |
 | F-6 | 值拷贝 `File g = *f;` 会取消 `own f` 的 autodrop，`g` 从不 Drop（0 次、静默泄漏）；字段拷贝进另一个 `use Drop` struct 会 2 次 Drop/双 close；`delete &g`（栈值）编过但 abort | 反席 probe 5/6/7 |
 | F-7 | `goto` 跳出 `own` 作用域、对 `own` 重新赋值：静默泄漏；把 `own` 句柄作为函数实参传走：Drop 后全局悬垂（F8 未修） | 反席 probe 9/10 |
 | F-8 | `defer { delete h; }` 在正常落出、`return`、`break`、`continue` 都执行；1000 次循环 0 leak（`leaks` 报告 0）；`goto` 跨 defer 是编译期硬错 | 正席 probe 4/8；反席 probe 13；本仓 `/tmp/ownbug/loop.ct` 1000 次通过 |
@@ -49,7 +49,7 @@
    （`path.open_file`、`path.open_as_file_desc`、`"d".open_dir`、`(100).make_timer`、
    `"host:80".connect`、`"zh".make_locale`）保持 CT 的「字符串起头」写法。
 3. **释放协议（文档默认）**：拿到句柄后**下一行**写 `defer { delete h; }`。它覆盖正常落出、
-   `return`、`break`、`continue`，在 v0.65.1 上 0 leak；`close()` 幂等，提前 close 后 defer 的
+   `return`、`break`、`continue`，在 v0.67.0 上 0 leak；`close()` 幂等，提前 close 后 defer 的
    `delete` 仍是安全的两步（Drop 看到已关闭的句柄直接返回）。
 4. **`own` 的地位**：保留双工厂，使 `own` 在「只用语句形式调用」时可用；但 README 不把它写成
    默认，也不承诺「`own` 一定释放」——F-5 是编译器缺陷，修复前 `own` 只是可选糖。
@@ -70,10 +70,10 @@
 
 ## 6. 版本下限
 
-`ct.pkg` 的 `requires` 从 `ct >= 0.30.0` 抬到 `ct >= 0.64.0`：`.h.ct` 单元自己的
-`<base>.shim.h`（自动进公开头与 `-I`）从 0.64.0 起（ct-lang PH-65），资源对象全部依赖它；
-跨单元 `Drop` 需要 0.48.0、`own` 工厂初始化需要 0.49.0，都在 0.64.0 之下。本仓在 0.65.1 上
-完整验证；0.49.0 实测在 `.h.ct` shim 上失败，因此不能写成 0.49。
+`ct.pkg` 的 `requires` 从 `ct >= 0.30.0` 抬到 `ct >= 0.67.0`，因为 0.67.0 是本仓唯一完整
+验证的版本。功能前提更低：`.h.ct` 单元自己的 `<base>.shim.h`（自动进公开头与 `-I`）从
+0.64.0 起（ct-lang PH-65），跨单元 `Drop` 需要 0.48.0、`own` 工厂初始化需要 0.49.0；
+0.49.0 实测在 `.h.ct` shim 上失败，因此不能写成 0.49。0.64–0.66 没有实测，不写进 `requires`。
 
 ## 7. 复核
 

@@ -13,7 +13,7 @@
   - 自由函数 `std::io::open_file(path, mode)` 返回同一个 `File *`，可写 `own File *f = ...`。
   释放协议一律是拿到句柄后写 `defer { delete f; }`：覆盖正常落出 / `return` / `break` /
   `continue`，`delete` 先跑 `Drop`（关闭）再释放结构体。
-  **`own` 只是可选糖**：ct 0.65.1 在方法返回值被局部捕获时会静默跳过 `own` 的释放
+  **`own` 只是可选糖**：ct 0.67.0 在方法返回值被局部捕获时会静默跳过 `own` 的释放
   （`int n = f->read(...)` 就触发），所以 README 不把它当默认；详见
   [资源对象裁定](../../docs/design/decision-resource-ownership.md)。
   `FileDesc` 同理：`path.open_as_file_desc(flags)` 与 `std::io::open_as_file_desc(path, flags)`。
@@ -31,7 +31,7 @@
 ## 2. 依赖与安装
 
 依赖 C 的 `<stdio.h>` / `<fcntl.h>` / `<unistd.h>` / `<sys/socket.h>`；
-`requires ct >= 0.64.0`。
+`requires ct >= 0.67.0`。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -134,7 +134,7 @@ f->close();                    /* idempotent; the deferred delete still frees */
 
 ## 6. 限制与未支持
 
-- **`own` 只认自由函数，且在 0.65.1 上有缺陷**：`own File *f = path.open_file(mode)` 编译不过；
+- **`own` 只认自由函数，且在 0.67.0 上有缺陷**：`own File *f = path.open_file(mode)` 编译不过；
   即使 `own` 编译通过，方法返回值被局部捕获时释放会被丢掉。默认用 `defer { delete }`。
 - **不要值拷贝句柄**：`File g = *f;` 会产生两个所有者；只传指针。
 - **`read_line` 行太长会消费到超限处**：返回 `-1` 时该行剩余字节仍在流里，下一次读会接着读。
@@ -151,4 +151,4 @@ f->close();                    /* idempotent; the deferred delete still frees */
 | `0.7.0` | 本轮变更 | `IoFile` 不透明句柄退役：`File` 改为 CT struct + `use Drop` + 自由工厂；新增 `seek` / `tell` / `rewind_start` / `at_end_of_file` / `has_error` / `clear_error` / `read_char` / `write_char` / `unread_char` / `read_line` / `write_line` / `flush`；新增 `FileDesc`、`adopt_file` / `adopt_file_desc` 与 flag 常量；`Stdout` 增加 `write` / `write_line`。 |
 | `0.4.0` | 已发布 | 变参 `printf` 删除。 |
 
-编译器下限 `ct >= 0.64.0`。
+编译器下限 `ct >= 0.67.0`。
