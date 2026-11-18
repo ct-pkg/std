@@ -1,0 +1,39 @@
+/* std::io - the own form on a statement-only handle.
+ *
+ * `own` is optional sugar; ct 0.65.1 keeps its cleanup only while every use is
+ * a statement. The observable proof that Drop ran is that the stream was
+ * flushed and closed before the file is read back. */
+import std::io::File;
+import std::str::String;
+import std::test::Test;
+
+int main(int argc, char **argv)
+{
+    Test t;
+    Test *tp = &t;
+    File *f;
+    char buf[16];
+    char *path;
+    int n;
+
+    tp->init();
+    path = (argc > 1) ? argv[1] : "std-io-own.txt";
+
+    {
+        own File *owned = std::io::open_file(path, "w");
+        tp->check_true(owned != 0, "the free factory returns a handle");
+        if (owned) {
+            owned->write("owned", 5);
+            owned->close();
+        }
+    }
+
+    f = path.open_file("r");
+    n = f->read(buf, 16);
+    buf[n] = 0;
+    tp->check_eq_str(buf, "owned", "the own handle wrote and closed");
+    f->close();
+    delete f;
+
+    return tp->report();
+}

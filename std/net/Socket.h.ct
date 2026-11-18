@@ -1,0 +1,72 @@
+/*
+ * Socket.h.ct - std::net's socket type and its free factories.
+ *
+ * `Socket` is `FileDesc`: same C tag, same methods, same Drop. This unit only
+ * adds the process-level entry points that create or adopt a socket fd:
+ *
+ *   Socket *s = std::net::connect("host:80");   // TCP, own-able
+ *   Socket *u = std::net::open_datagram();      // UDP, own-able
+ *   Socket *c = std::net::accept_connection(s); // server side, own-able
+ *
+ * The string method `"host:80".connect()` and the `accept()` method live in
+ * Net.m.ct; they return the same type and use `defer { delete s; }`.
+ *
+ * `own Socket *s` is not usable (the alias does not satisfy own's literal
+ * struct-name check); use `own FileDesc *s = std::net::connect(...)`, or the
+ * documented `defer { delete s; }`.
+ *
+ * All sockets are blocking. Timeouts are set with SO_RCVTIMEO / SO_SNDTIMEO
+ * (`set_receive_timeout` / `set_send_timeout`); a timed-out send/receive
+ * returns -1 with EAGAIN.
+ *
+ * License: MIT (see LICENSE).
+ */
+
+import std::io::FileDesc;
+import std::net::Net;
+
+namespace std::net;
+
+pub type Socket = FileDesc;
+
+/* TCP connect. `host:port` is split at the last ':'; the host may be a name or
+   an IPv4 literal. NULL on any failure. */
+pub Socket *connect(const char *host_port)
+{
+    int fd;
+
+    fd = std_net_connect_fd(host_port);
+    if (fd < 0) return 0;
+    return std::io::adopt_file_desc(fd);
+}
+
+/* An unbound TCP socket, for bind_to / listen_backlog / accept. */
+pub Socket *open_stream()
+{
+    int fd;
+
+    fd = std_net_stream_fd();
+    if (fd < 0) return 0;
+    return std::io::adopt_file_desc(fd);
+}
+
+/* An unbound UDP socket, for bind_to / send_to / receive_from. */
+pub Socket *open_datagram()
+{
+    int fd;
+
+    fd = std_net_datagram_fd();
+    if (fd < 0) return 0;
+    return std::io::adopt_file_desc(fd);
+}
+
+/* Accept one connection from a listening socket (the free form of accept). */
+pub Socket *accept_connection(Socket *server)
+{
+    int fd;
+
+    if (!server) return 0;
+    fd = std_net_accept_fd(server);
+    if (fd < 0) return 0;
+    return std::io::adopt_file_desc(fd);
+}

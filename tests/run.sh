@@ -61,14 +61,14 @@ echo
 
 echo "== layout (the package must not be empty) =="
 layout_bad=""
-for mod in str io fs utf8 arena test num math search env process errno locale wchar time; do
+for mod in str io fs utf8 arena test num math search env process errno locale wchar time net; do
     [ -d "std/$mod" ] || layout_bad="$layout_bad std/$mod(missing)"
 done
 if [ -z "$(find tests -mindepth 2 -name '*.ct' 2>/dev/null | head -1)" ]; then
     layout_bad="$layout_bad tests/*/*.ct(no fixtures)"
 fi
 if [ -z "$layout_bad" ]; then
-    ok "fifteen modules and at least one fixture per package"
+    ok "sixteen modules and at least one fixture per package"
 else
     bad "layout" "$layout_bad"
 fi
@@ -82,8 +82,9 @@ for f in $(find std -name '*.h.ct' | sort); do
     if ! grep -qE "^namespace std::$mod;" "$f"; then
         unit_bad="$unit_bad $f(namespace)"
     fi
-    if ! grep -qE "^(pub )?struct $base( |$)" "$f"; then
-        unit_bad="$unit_bad $f(type)"
+    if ! grep -qE "^(pub )?struct $base( |$)" "$f" &&
+       ! grep -qE "^pub type $base = " "$f"; then
+        unit_bad="$unit_bad $f(type-or-alias)"
     fi
 done
 if [ -z "$unit_bad" ]; then

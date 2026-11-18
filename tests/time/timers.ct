@@ -71,6 +71,16 @@ int main(void)
         tp->check_eq_int(g_hits, 1, "the numeric factory timer fires once");
     }
 
+    /* ---- close is idempotent ------------------------------------------- */
+    {
+        Timer *closed = std::time::make_timer(10, sig);
+        defer { delete closed; }
+        tp->check_eq_int(closed->close(), 0, "Timer.close");
+        tp->check_eq_int(closed->close(), 0, "Timer.close is idempotent");
+        tp->check_eq_int(closed->start(), -1, "start after close fails");
+        tp->check_eq_int(closed->remaining(), 0, "a closed timer has no remainder");
+    }
+
     /* ---- refusals ------------------------------------------------------ */
     tp->check_true(std::time::make_timer(0, sig) == 0, "zero interval is refused");
     tp->check_true(std::time::make_timer(10, 0) == 0, "zero signal is refused");

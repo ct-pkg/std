@@ -33,14 +33,6 @@ pub struct File {
     void *fp;
 } use Drop;
 
-impl Drop for File {
-    void drop()
-    {
-        std_io_close_stream(self->fp);
-        self->fp = 0;
-    }
-}
-
 /* The own-able factory: NULL on failure. The mode string is the C `fopen`
    mode, unchanged. */
 pub struct File *open_file(const char *path, const char *mode)
@@ -198,5 +190,14 @@ impl File {
     {
         if (!self) return -1;
         return std_io_stream_flush(self->fp);
+    }
+}
+
+/* Placed after the inherent `impl` because ct resolves method names in
+   declaration order: `close` must already be visible here. */
+impl Drop for File {
+    void drop()
+    {
+        self->close();
     }
 }

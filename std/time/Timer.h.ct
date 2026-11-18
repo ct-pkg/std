@@ -29,14 +29,6 @@ pub struct Timer {
     void *native;
 } use Drop;
 
-impl Drop for Timer {
-    void drop()
-    {
-        std_time_timer_delete(self->native);
-        self->native = 0;
-    }
-}
-
 pub struct Timer *make_timer(int milliseconds, int signal_number)
 {
     struct Timer *t;
@@ -84,7 +76,27 @@ impl Timer {
     /* Milliseconds until the next expiry, 0 when stopped, -1 on error. */
     pub int remaining()
     {
-        if (!self) return -1;
+        if (!self || !self->native) return 0;
         return std_time_timer_remaining(self->native);
+    }
+
+    /* Idempotent: disarms and deletes the native timer. 0 when already closed
+       or NULL; `start`/`stop`/`remaining` fail with -1 afterwards. */
+    pub int close()
+    {
+        if (!self) return 0;
+        if (!self->native) return 0;
+        std_time_timer_delete(self->native);
+        self->native = 0;
+        return 0;
+    }
+}
+
+/* Placed after the inherent `impl` because ct resolves method names in
+   declaration order: `close` must already be visible here. */
+impl Drop for Timer {
+    void drop()
+    {
+        self->close();
     }
 }

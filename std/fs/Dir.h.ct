@@ -28,16 +28,6 @@ pub struct Dir {
     char *stored_path;
 } use Drop;
 
-impl Drop for Dir {
-    void drop()
-    {
-        std_fs_dir_close(self->dp);
-        free(self->stored_path);
-        self->dp = 0;
-        self->stored_path = 0;
-    }
-}
-
 pub struct Dir *open_dir(const char *path)
 {
     struct Dir *d;
@@ -127,5 +117,14 @@ impl Dir {
     {
         if (!self || !self->stored_path) return -1;
         return std_fs_dir_enter(self->stored_path);
+    }
+}
+
+/* Placed after the inherent `impl` because ct resolves method names in
+   declaration order: `close` must already be visible here. */
+impl Drop for Dir {
+    void drop()
+    {
+        self->close();
     }
 }

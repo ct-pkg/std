@@ -1,0 +1,42 @@
+/* std::net::Socket - the FileDesc alias: same type, same methods, same Drop. */
+import std::io::FileDesc;
+import std::net::Socket;
+import std::test::Test;
+
+int main(int argc, char **argv)
+{
+    Test t;
+    Test *tp = &t;
+    FileDesc *desc;
+    Socket *sock;
+    char buf[8];
+    char *path;
+
+    tp->init();
+    path = (argc > 1) ? argv[1] : "std-net-alias.txt";
+
+    desc = path.open_as_file_desc(std::io::open_update());
+    tp->check_true(desc != 0, "open a FileDesc");
+    sock = desc;                             /* no cast: the alias is the type */
+    tp->check_true(sock->raw_file_desc() >= 0, "the alias exposes raw_file_desc");
+    tp->check_eq_int(sock->write("alias", 5), 5, "the alias writes");
+    tp->check_eq_int(sock->seek(0, std::io::desc_seek_start()), 0, "the alias seeks");
+    tp->check_eq_int(sock->read(buf, 5), 5, "the alias reads");
+    buf[5] = 0;
+    tp->check_eq_str(buf, "alias", "the bytes round-trip through the alias");
+
+    /* Assignment the other way is just as direct. */
+    desc = sock;
+    tp->check_eq_int(desc->close(), 0, "close through the FileDesc spelling");
+    tp->check_eq_int(desc->close(), 0, "close is idempotent");
+    delete desc;
+
+    /* The documented release also works through the alias variable. */
+    {
+        Socket *auto_sock = std::io::open_as_file_desc(path, std::io::open_read());
+        defer { delete auto_sock; }
+        tp->check_true(auto_sock != 0, "the alias can hold the factory result");
+    }
+
+    return tp->report();
+}

@@ -30,14 +30,6 @@ pub struct FileDesc {
     int fd;
 } use Drop;
 
-impl Drop for FileDesc {
-    void drop()
-    {
-        std_io_desc_close(self->fd);
-        self->fd = -1;
-    }
-}
-
 /* `open(2)` with mode 0644 when the flags create the file. NULL on failure. */
 pub struct FileDesc *open_as_file_desc(const char *path, int flags)
 {
@@ -187,5 +179,14 @@ impl FileDesc {
         }
         if (count) *count = std_io_desc_receive(self->fd, buf, cap);
         return self;
+    }
+}
+
+/* Placed after the inherent `impl` because ct resolves method names in
+   declaration order: `close` must already be visible here. */
+impl Drop for FileDesc {
+    void drop()
+    {
+        self->close();
     }
 }
