@@ -164,7 +164,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 | 模块 | 入口 import | 宿主 | 方法数 | 文档 |
 | --- | --- | --- | --- | --- |
-| `std::str` | `std::str::String` | `char *` | 24 | [str/README.md](std/str/README.md) |
+| `std::str` | `std::str::String` | `char *` | 26 | [str/README.md](std/str/README.md) |
 | `std::io` | `std::io::File` / `FileDesc` / `Stdout` | namespace、`char *`、`File *`、`FileDesc *` | 6 + 1 + 15 + 8 | [io/README.md](std/io/README.md) |
 | `std::fs` | `std::fs::Fs` / `Dir` / `Stat` | `char *`、`Dir *`、`Stat *` | 17 + 7 + 4 | [fs/README.md](std/fs/README.md) |
 | `std::utf8` | `std::utf8::Utf8Ops` | `char *` | 3 | [utf8/README.md](std/utf8/README.md) |
@@ -178,7 +178,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 `Vec<T>` / `Map<K,V>` 不在表里，因为它们是编译器内置层，不属于本包（见 §1、§5.4）。
 
-### 4.2 `char *` 宿主（49 个方法，名字全局共享）
+### 4.2 `char *` 宿主（51 个方法，名字全局共享）
 
 同一接收者类型上，**方法名不能重复**：任意两个可见 trait 声明同名方法，调用点就报
 `ambiguous type-host map for method 'x' on type 'char *'`。按名字判定，不看参数个数。
@@ -186,7 +186,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 | 模块 | 方法 |
 | --- | --- |
-| `CStrOps` | `length` `find` `find_char` `starts_with` `ends_with` `copy` `slice` `concat` `lowercase` `uppercase` `compare` `copy_from` `move_from` `fill` `compare_with` `find_byte` `compare_prefix` `split_into` `to_int` `to_double` `parse_long` `parse_long_long` `parse_unsigned_long` `parse_real` |
+| `CStrOps` | `length` `find` `find_char` `reverse_find_char` `starts_with` `ends_with` `copy` `slice` `concat` `lowercase` `uppercase` `compare` `compare_ignore_case` `copy_from` `move_from` `fill` `compare_with` `find_byte` `compare_prefix` `split_into` `to_int` `to_double` `parse_long` `parse_long_long` `parse_unsigned_long` `parse_real` |
 | `FsOps` | `exists` `read` `write` `list` `mkdir` `remove` `rename` `access` `read_link` `resize` `set_mode` `size` `mode` `modification_time` `is_readable` `is_writable` `resolve_path` |
 | `PathDir`（`std::fs`） | `open_dir` |
 | `ConnectText`（`std::net`） | `connect` |
@@ -195,7 +195,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 | `Path`（`std::io`） | `open_file` |
 | `PathFileDesc`（`std::io`） | `open_as_file_desc` |
 
-合计 24 + 17 + 3 + 1 + 1 + 1 + 1 + 1 = **49**（`split_into` 是便利层，不是 libc 映射）。`errno` 访问器不在 `char *` 上：它是每翻译单元一份的全局值，
+合计 26 + 17 + 3 + 1 + 1 + 1 + 1 + 1 = **51**（`split_into` 是便利层，不是 libc 映射）。`errno` 访问器不在 `char *` 上：它是每翻译单元一份的全局值，
 挂在 namespace 宿主（`std::fs::FsEnv.get_last_error()`，见 §4.3）。`const char *` 也匹配同一宿主：
 类型键丢掉顶层 `const`，但 `CStrOps` 里已没有任何写接收者的方法，字面量接收者不会踩到只读内存。
 
@@ -422,7 +422,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
   0.49.0，都在 0.64.0 之下。本包只在 0.65.1 上完整验证；0.49.0 实测在 `.h.ct` shim 上失败，
   所以下限不能写 0.49。历史下限：`pub type IoFile` 别名 0.20.3、字面量接收者 0.20.0、内置容器
   0.30.0。低于 0.64.0 的编译器不满足 `requires`（只告警，不代表能编过）。
-- **`char *` 方法名全局共享**：新增 trait 必须避开 49 个已有名字（§4.2）。
+- **`char *` 方法名全局共享**：新增 trait 必须避开 51 个已有名字（§4.2）。
 - **`const` 不参与类型键**：字面量能直接当 `CStrOps` 接收者，因为该 trait 没有写接收者的方法。
 - **`num.to_str` 静默截断**：容量不够得到短文本，不报错。
 - **容器不在这里**：本包的自有类型是 `Arena` / `Test` 与资源句柄 `File` / `FileDesc` / `Dir` / `LocaleHandle` / `Timer`（`Socket` 为别名）；泛型容器是编译器的内置层，
@@ -432,7 +432,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
-| `0.11.0` | 当前版本，待打 `v0.11.0` | **P7 net**：TCP/UDP 工厂与 `bind_to` / `listen_backlog` / `accept` / `local_address` / `local_port`；`send_to` / `receive_from` / `send_message` / `receive_message`；`shutdown_*`、`set_option` / `set_reuse_address` / `set_*_timeout`；`resolve_host` / `parse_ip`。`Socket` 保持 `FileDesc` 别名。同时补齐 `std::str` 的 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`（P1 漏项）。 |
+| `0.11.0` | 当前版本，待打 `v0.11.0` | **P7 net**：TCP/UDP 工厂与 `bind_to` / `listen_backlog` / `accept` / `local_address` / `local_port`；`send_to` / `receive_from` / `send_message` / `receive_message`；`shutdown_*`、`set_option` / `set_reuse_address` / `set_*_timeout`；`resolve_host` / `parse_ip`。`Socket` 保持 `FileDesc` 别名。同时补齐 `std::str` 的 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`、`reverse_find_char` 与 `compare_ignore_case`（P1 漏项）。 |
 | `0.10.0` | 待打 `v0.10.0` | **P6 资源模板收口**：`File` / `FileDesc` / `Dir` / `Timer` 的 `Drop` 统一调用幂等 `close()`；`Timer` 新增 `close`；`std::net::Socket` 声明为 `FileDesc` 别名（无新类型）。 |
 | `0.9.0` | 待打 `v0.9.0` | **P5 time**：`Time` namespace（`now_*` / `diff_seconds` / `sleep_milliseconds` / `get_cpu_ticks` / 日历字段 / `format` / `from_parts`）与 `Timer`（`make_timer` / `make_timer_once` + `start` / `stop` / `remaining`；无回调，到期走信号）。 |
 | `0.8.0` | 待打 `v0.8.0` | **P4 fs 补全**：路径方法补 10 个；`read_file`/`write_file` → `read`/`write`；新增 `Dir`（`own` 工厂 + 字符串工厂）与 `Stat` 字段镜像；`scan_directory` 流式回调；`resolve_path` 为词法绝对路径。 |

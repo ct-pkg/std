@@ -23,6 +23,8 @@ int main(void)
     l = 0;
     tp->check_eq_int("  -7".parse_long(&l), 0, "leading space is accepted");
     tp->check_eq_int((int)l, -7, "negative value");
+    tp->check_eq_int("42 ".parse_long(&l), 0, "trailing space is accepted");
+    tp->check_eq_int((int)l, 42, "trailing space value");
     tp->check_eq_int(bad.parse_long(&l), -1, "trailing garbage is refused");
     tp->check_eq_int(empty.parse_long(&l), -1, "empty text is refused");
     tp->check_eq_int(nullstr.parse_long(&l), -1, "a null receiver is refused");
@@ -39,8 +41,8 @@ int main(void)
     tp->check_eq_int("18446744073709551615".parse_unsigned_long(&ul), 0,
                      "parse_unsigned_long succeeds");
     tp->check_true(ul > 0, "the unsigned value is positive");
-    tp->check_eq_int("-1".parse_unsigned_long(&ul), 0,
-                     "strtoul accepts the minus sign and wraps");
+    tp->check_eq_int("-1".parse_unsigned_long(&ul), -1,
+                     "the unsigned form rejects a leading minus");
 
     d = 0.0;
     tp->check_eq_int("2.5".parse_real(&d), 0, "parse_real succeeds");

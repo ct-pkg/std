@@ -103,6 +103,7 @@ Hello, ct
 | `length()` | `int length()` | 字节数，不含 NUL；`NULL` 返回 0 |
 | `find(needle)` | `int find(const char *needle)` | 首次出现的字节偏移；找不到或入参 `NULL` 返回 `-1` |
 | `find_char(c)` | `int find_char(int c)` | 字符首次出现的字节偏移；找不到返回 `-1` |
+| `reverse_find_char(c)` | `int reverse_find_char(int c)` | 字符最后一次出现的字节偏移；找不到返回 `-1` |
 | `starts_with(prefix)` | `int starts_with(const char *prefix)` | 是 1 / 否 0；入参 `NULL` 返回 0 |
 | `ends_with(suffix)` | `int ends_with(const char *suffix)` | 是 1 / 否 0；后缀比原串长返回 0 |
 | `copy(out, cap)` | `int copy(char *out, int cap)` | 成功 0；放不下（含 NUL）返回 `-1` |
@@ -111,6 +112,7 @@ Hello, ct
 | `lowercase(out, cap)` | `int lowercase(char *out, int cap)` | 结果写 `out`，成功 0；放不下或 `NULL` 返回 `-1` |
 | `uppercase(out, cap)` | `int uppercase(char *out, int cap)` | 结果写 `out`，成功 0；放不下或 `NULL` 返回 `-1` |
 | `compare(other)` | `int compare(const char *other)` | 字典序，负 / 0 / 正；`NULL` 当空串 |
+| `compare_ignore_case(other)` | `int compare_ignore_case(const char *other)` | ASCII 忽略大小写比较，负 / 0 / 正；`NULL` 当空串 |
 | `copy_from(src, n)` | `void copy_from(const char *src, int n)` | `memcpy` 形状：把 `src` 的恰好 `n` 字节写进接收者；源与目标不得重叠 |
 | `move_from(src, n)` | `void move_from(const char *src, int n)` | `memmove` 形状：同上，允许重叠 |
 | `fill(c, n)` | `void fill(int c, int n)` | `memset` 形状：把接收者的前 `n` 字节都设成 `c` |
@@ -120,9 +122,9 @@ Hello, ct
 | `split_into(sep, out, cap, slot_size)` | `int split_into(const char *sep, char *out, int cap, int slot_size)` | 按 `sep` 中任一字节切分，每段写进 `out` 的一个 `slot_size` 槽；返回段数；放不下时返回所需段数且不写入；源串不改 |
 | `to_int()` | `int to_int()` | `atoi`；`NULL` 返回 0，溢出是 C 的未定义行为 |
 | `to_double()` | `double to_double()` | `atof`；`NULL` 返回 0.0 |
-| `parse_long(out)` | `int parse_long(long *out)` | `strtol`；0 成功 / `-1` 失败（空串、尾随垃圾、`ERANGE`） |
+| `parse_long(out)` | `int parse_long(long *out)` | `strtol`；0 成功 / `-1` 失败（空串、尾随非空字符、`ERANGE`）；允许前后空白 |
 | `parse_long_long(out)` | `int parse_long_long(long long *out)` | `strtoll`，失败语义同上 |
-| `parse_unsigned_long(out)` | `int parse_unsigned_long(unsigned long *out)` | `strtoul`，失败语义同上 |
+| `parse_unsigned_long(out)` | `int parse_unsigned_long(unsigned long *out)` | `strtoul`，失败语义同上；拒绝前导 `-` |
 | `parse_real(out)` | `int parse_real(double *out)` | `strtod`，失败语义同上 |
 
 `cap` 一律包含结尾 NUL 的位置：`"abc"` 需要 `cap >= 4`。
@@ -429,9 +431,11 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 - **大小写只覆盖 ASCII**：`lowercase` / `uppercase` 按 `A-Z` / `a-z` 逐字节转换，不做 locale。
 - **`char *` 上的方法名全局共享**：同一接收者上两个可见 trait 声明同名方法，调用点报
   `ambiguous type-host map for method 'x' on type 'char *'`。本模块占用
-  `length` / `find` / `find_char` / `starts_with` / `ends_with` / `copy` / `copy_from` /
-  `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into` /
-  `slice` / `concat` / `lowercase` / `uppercase` / `compare` / `to_int` / `to_double`；
+  `length` / `find` / `find_char` / `reverse_find_char` / `starts_with` / `ends_with` / `copy` /
+  `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` /
+  `split_into` / `slice` / `concat` / `lowercase` / `uppercase` / `compare` /
+  `compare_ignore_case` / `to_int` / `to_double` / `parse_long` / `parse_long_long` /
+  `parse_unsigned_long` / `parse_real`；
   新增 `char *` trait 前先 grep。
 - **字面量接收者从 0.20.0 起可用**（本包下限 0.64.0）；0.19.1 只接受变量、元素、调用和字段链。
 - **多给实参不报错**（SH-56）：`s.copy(buf, 8, 9)` 编译通过，`9` 被丢弃；少给才报
@@ -443,8 +447,9 @@ main.ct:7:1: error: a map call has fewer arguments than its binding
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
+| `0.11.0` | 待打 `v0.11.0` | 补齐 P1 漏项：`reverse_find_char` / `compare_ignore_case` 与严格解析 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`（出参 + 0/-1，允许前后空白，unsigned 拒绝前导 `-`）。 |
 | `0.5.0` | 待发布 | 新增内存形状 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` 与缓冲式 `split_into`；`copy_to` 移除。 |
 | `0.1.0` | 已打 `v0.1.0` | `lowercase` / `uppercase` 改为 out 缓冲（`s.uppercase(out, cap)`）；移除写接收者的 `copyFrom`，`dst.copyFrom(src, n)` 改成 `src.copy_to(dst, n)`。 |
 
-编译器下限 `ct >= 0.64.0`。本文所有程序都有对应夹具，由 `bash tests/run.sh` 在 ct v0.53.0 上跑过；
+编译器下限 `ct >= 0.64.0`。本文所有程序都有对应夹具，由 `bash tests/run.sh` 在 ct v0.65.1 上跑过；
 字面量接收者写法从 0.20.0 起可用。

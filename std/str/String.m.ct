@@ -53,6 +53,7 @@ pub trait CStrOps {
     int length();
     int find(const char *needle);
     int find_char(int c);
+    int reverse_find_char(int c);
     int starts_with(const char *prefix);
     int ends_with(const char *suffix);
     int copy(char *out, int cap);
@@ -61,6 +62,7 @@ pub trait CStrOps {
     int lowercase(char *out, int cap);
     int uppercase(char *out, int cap);
     int compare(const char *other);
+    int compare_ignore_case(const char *other);
     void copy_from(const char *src, int n);
     void move_from(const char *src, int n);
     void fill(int c, int n);
@@ -80,6 +82,7 @@ map trait CStrOps for type char * {
     length(s) -> std_str_len(s);
     find(s, needle) -> std_str_find(s, needle);
     find_char(s, c) -> std_str_find_char(s, c);
+    reverse_find_char(s, c) -> std_str_reverse_find_char(s, c);
     starts_with(s, prefix) -> std_str_starts_with(s, prefix);
     ends_with(s, suffix) -> std_str_ends_with(s, suffix);
     copy(s, out, cap) -> std_str_copy(s, out, cap);
@@ -88,6 +91,7 @@ map trait CStrOps for type char * {
     lowercase(s, out, cap) -> std_str_lower(s, out, cap);
     uppercase(s, out, cap) -> std_str_upper(s, out, cap);
     compare(s, other) -> std_str_compare(s, other);
+    compare_ignore_case(s, other) -> std_str_compare_ignore_case(s, other);
     copy_from(dst, src, n) -> std_str_copy_from(dst, src, n);
     move_from(dst, src, n) -> std_str_move_from(dst, src, n);
     fill(dst, c, n) -> std_str_fill(dst, c, n);

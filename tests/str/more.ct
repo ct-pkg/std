@@ -1,0 +1,30 @@
+/* std::str - the last two P1 entries from the design: reverse_find_char and
+   compare_ignore_case. */
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    int i;
+
+    tp->init();
+
+    tp->check_eq_int("a/b/c".find_char('/'), 1, "find_char finds the first");
+    tp->check_eq_int("a/b/c".reverse_find_char('/'), 3, "reverse_find_char finds the last");
+    tp->check_eq_int("abc".reverse_find_char('/'), -1, "reverse_find_char miss is -1");
+    tp->check_eq_int("".reverse_find_char('/'), -1, "empty receiver is -1");
+
+    tp->check_eq_int("abc".compare_ignore_case("ABC"), 0, "case-insensitive equal");
+    tp->check_eq_int("abc".compare_ignore_case("abd") < 0, 1,
+                     "case-insensitive ordering is by the folded bytes");
+    tp->check_eq_int("ABC".compare_ignore_case("abc") == 0, 1, "the other direction");
+    tp->check_eq_int("a".compare_ignore_case(0) > 0, 1, "NULL other is the empty string");
+
+    /* Both names are unique on the shared char * host. */
+    i = "x".length();
+    tp->check_eq_int(i, 1, "the other CStrOps methods still resolve");
+
+    return tp->report();
+}

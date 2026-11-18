@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <errno.h>
 
 /* Length in bytes (0 when `s` is NULL). */
@@ -306,9 +307,29 @@ static inline double std_str_to_double(const char *s)
 
 
 /* Parsing with an error report. Each returns 0 and writes `out` on success;
-   -1 on a NULL/empty receiver, trailing garbage, a missing out pointer, or a
-   range error (ERANGE from the strto* family). The value is not written on
-   failure. Unlike `to_int`/`to_double`, these never silently return 0. */
+   -1 on a NULL/empty receiver, a missing out pointer, trailing non-blank text,
+   a leading '-' for the unsigned form, or a range error (ERANGE from the
+   strto* family). Leading and trailing whitespace are allowed; the value is
+   not written on failure. Unlike `to_int`/`to_double`, these never silently
+   return 0. */
+static inline int std_str_only_blank_after(const char *end)
+{
+    if (!end) return 0;
+    while (*end == ' ' || *end == '\t' || *end == '\n' ||
+           *end == '\r' || *end == '\f' || *end == '\v') {
+        end++;
+    }
+    return *end == 0;
+}
+
+static inline int std_str_has_leading_minus(const char *s)
+{
+    while (*s == ' ' || *s == '\t' || *s == '\n' ||
+           *s == '\r' || *s == '\f' || *s == '\v') {
+        s++;
+    }
+    return *s == '-';
+}
 static inline int std_str_parse_long(const char *s, long *out)
 {
     char *end;
@@ -317,7 +338,7 @@ static inline int std_str_parse_long(const char *s, long *out)
     if (!s || !*s || !out) return -1;
     errno = 0;
     value = strtol(s, &end, 10);
-    if (errno == ERANGE || end == s || *end != 0) return -1;
+    if (errno == ERANGE || end == s || !std_str_only_blank_after(end)) return -1;
     *out = value;
     return 0;
 }
@@ -330,7 +351,7 @@ static inline int std_str_parse_long_long(const char *s, long long *out)
     if (!s || !*s || !out) return -1;
     errno = 0;
     value = strtoll(s, &end, 10);
-    if (errno == ERANGE || end == s || *end != 0) return -1;
+    if (errno == ERANGE || end == s || !std_str_only_blank_after(end)) return -1;
     *out = value;
     return 0;
 }
@@ -340,10 +361,10 @@ static inline int std_str_parse_unsigned_long(const char *s, unsigned long *out)
     char *end;
     unsigned long value;
 
-    if (!s || !*s || !out) return -1;
+    if (!s || !*s || !out || std_str_has_leading_minus(s)) return -1;
     errno = 0;
     value = strtoul(s, &end, 10);
-    if (errno == ERANGE || end == s || *end != 0) return -1;
+    if (errno == ERANGE || end == s || !std_str_only_blank_after(end)) return -1;
     *out = value;
     return 0;
 }
@@ -356,9 +377,30 @@ static inline int std_str_parse_real(const char *s, double *out)
     if (!s || !*s || !out) return -1;
     errno = 0;
     value = strtod(s, &end);
-    if (errno == ERANGE || end == s || *end != 0) return -1;
+    if (errno == ERANGE || end == s || !std_str_only_blank_after(end)) return -1;
     *out = value;
     return 0;
+}
+
+
+/* Byte offset of the last `c`, or -1 when absent (strrchr). */
+static inline int std_str_reverse_find_char(const char *s, int c)
+{
+    const char *p;
+
+    if (!s) return -1;
+    p = strrchr(s, c);
+    if (!p) return -1;
+    return (int)(p - s);
+}
+
+/* ASCII case-insensitive compare; NULL is treated as the empty string, like
+   `compare`. The sign of the result is all that is specified. */
+static inline int std_str_compare_ignore_case(const char *a, const char *b)
+{
+    if (!a) a = "";
+    if (!b) b = "";
+    return strcasecmp(a, b);
 }
 
 #endif
