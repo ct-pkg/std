@@ -1,3 +1,5 @@
+> **历史路线图**：P0–P7 的交付记录；新路线图见 [docs/planning/roadmap.md](planning/roadmap.md)。
+
 # `std` Roadmap
 
 | 项 | 值 |

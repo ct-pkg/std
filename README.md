@@ -17,7 +17,9 @@
     （无 vptr）。
 - 容器不在本包：`Vec<T>` / `Map<K,V>` 自 ct 0.30.0 起是编译器的内置层（`lib/std/Vec.h.ct`，
   自动加载，不需要 import、不需要 `-I`）。`0.3.0` 删掉了与内置名冲突的 `std::vec` / `std::map`。
-- 不提供：堆字符串类型、Unicode 规范化 / 字素簇、正则。
+- 范围已扩到 **ISO C17 + POSIX.1-2017**（变参除外）；新 phase 与逐项清单见
+  [`docs/planning/roadmap.md`](docs/planning/roadmap.md)。正则只做不透明句柄，不做 CT 语法糖。
+- 不提供：堆字符串类型、Unicode 规范化 / 字素簇、变参 `scanf`/`printf` 族。
 - 不分配内存的模块（`str` / `fs` / `utf8` / `num` / `math` 的文本化）一律写调用方缓冲区，
   容量不足返回 `-1`。
 

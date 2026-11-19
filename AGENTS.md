@@ -424,22 +424,40 @@ AI_ENGINEERING_SPEC=<主规范路径> ...                          # 覆盖默�
 
 | 项 | 值 |
 | --- | --- |
-| 对话清单 | 留空：本仓尚未登记常驻对话名 |
-| 任务-对话映射 | 留空：`docs/session-map.md` 尚不存在 |
-| 门禁入口 | 留空：本仓无 `tools/check.sh`；现有测试门为 `bash tests/run.sh` |
-| 文档 snippet | 留空：`docs/snippets/` 尚不存在 |
-| Issue 台账 | `issues/<id>.md`（本仓 `issues/` 目录） |
-| 决策记录 | `docs/design/decision-resource-ownership.md`（本仓现有唯一一份决策记录） |
-| 版本落点 | `ct.pkg` 的 `version =` 行（第 29 行）；`README.md` 第 32 行（`ct.pkg` 代码块）、第 79 行（当前发布状态）、第 435 行（版本表）（6.7） |
-| 偏离项 | 无 |
+| 对话清单 | 常驻：`lead`（EDITOR/协调）、`verify`（VERIFY）、`review`（REVIEW）；phase 对话：`v0-PH-<n>-dev` / `-verify` / `-review` |
+| 任务-对话映射 | `docs/session-map.md` |
+| 门禁入口 | `bash tools/check.sh all`（g0–g9；PH-8 逐项实现） |
+| 文档 snippet | `docs/snippets/`（PH-8 T4 起使用） |
+| Issue 台账 | `issues/<id>.md`；存量 4 份按 D-001 豁免 front-matter，新 issue 按 5.4 |
+| 决策记录 | `docs/decisions/D-001-spec-adoption-legacy-exemption.md`、`D-002-scope-iso-c-posix.md`、`docs/design/decision-resource-ownership.md` |
+| 版本落点 | `ct.pkg` 的 `version =`；`README.md` 的 `ct.pkg` 代码块、当前发布状态、版本表；`docs/planning/roadmap.md` 的「当前版本」（6.7） |
+| 偏离项 | 见 0.3：存量豁免、版本偏移 `-4` |
 
 ### 0.2 话术路由
 
-留空：本仓尚未登记话术路由；规范模板见主规范 §1.1 的 0.2 节。
+| 触发话术 | 动作 | 产物 |
+| --- | --- | --- |
+| “开个新 phase” / “开始 v0-PH-n” | 先出卡再开工：目标、范围、任务清单、退出判据、`version-minor`；派发任务时给三要素 | `docs/phases/v0-PH-<n>/card.md`、`docs/session-map.md` |
+| “收口” / “发版” | 跑 `tools/check.sh all`，核退出判据，更新 roadmap/CHANGELOG，打 annotated tag 并推送 | 收口对照表、`CHANGELOG.md`、`v<版本>` tag |
+| “修这个 issue” | 先复现并立红证（`baseline: <sha>` + 原始输出），再修复、再回归 | `issues/<id>.md`、`test(...) 红` 与实现提交 |
+| “评审” / “battle” | 三席隔离、证据 E1–E5、判决落 `docs/decisions/D-<n>.md` | `battle/<id>/`、`D-<n>` |
+| “跑门禁” | `bash tools/check.sh all`；失败按门禁编号回到对应角色 | 门禁输出 |
 
 ### 0.3 偏离项
 
-无。
+- deviation: 存量文档 / issue / 历史提交豁免（D-001）
+  - 生效日期: 2026-11-19
+  - 范围: `v0.11.0`（`8689082`）及之前已存在的 README、`docs/**`、`std/*/README.md`、`issues/*.md`、`P0`–`P7` 历史提交
+  - 放宽: G4 的 300 行 / snippet / `applies-to`；5.4 的 issue front-matter；G8 的 T-7 红绿提交与一提交一事
+  - 收敛: 新文档、新 issue、`v0-PH-8` 起的新任务全部按规范；存量被实质性改动（新增章节或重写 >30%）时转为适用
+  - 签字: USER 2026-11-19（会话指令“存量豁免”）
+- deviation: 版本号永久偏移 `d = -4`（D-001）
+  - 生效日期: 2026-11-19
+  - 范围: `v0-PH-8` 及之后的新 phase
+  - 理由: 历史 `P0`–`P7` 对应 `0.4.0`–`0.11.0`，与 `v0-PH-<n>` 的 `MINOR == n` 错位；已发布 tag 不可回改
+  - 规则: `MINOR = n − d = n + 4`；`v0-PH-8` → `0.12.0`
+  - 收敛: 永久偏移，不重编号、不回填 tag
+  - 签字: USER 2026-11-19（会话指令“工程规范要遵守，正规化吧”）
 
 ## 1. 本仓事实
 
@@ -448,8 +466,8 @@ AI_ENGINEERING_SPEC=<主规范路径> ...                          # 覆盖默�
 - 仓库根就是包根，`std/` 是命名空间根（`import std::<mod>::<Unit>`）。
 - `std/` 下 16 个模块目录：`arena`、`env`、`errno`、`fs`、`io`、`locale`、`math`、`net`、`num`、`process`、`search`、`str`、`test`、`time`、`utf8`、`wchar`。
 - `tests/` 与模块一一对应（另有 `tests/all/`），`tests/run.sh` 是测试门。
-- `docs/`：`backlog.md`、`coding-prerequisites-std.md`、`libc-inventory.md`、`roadmap.md`、`design/`、`review/`。
-- `tools/`：`bootstrap-ct.sh`、`migrate-from-ct.sh`。
+- `docs/`：`planning/`、`phases/`、`requirements/`、`decisions/`、`snippets/`、`design/`、`review/`、`backlog.md`、`coding-prerequisites-std.md`、`libc-inventory.md`、`roadmap.md`（历史）。
+- `tools/`：`bootstrap-ct.sh`、`migrate-from-ct.sh`、`check.sh`（G0–G9；g0/g3/g9 已实现）。
 - `issues/`：Issue 台账。
 
 ### 1.2 构建与测试
