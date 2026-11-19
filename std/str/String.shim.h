@@ -414,4 +414,46 @@ static inline int std_str_compare_ignore_case(const char *a, const char *b)
     return strcasecmp(a, b);
 }
 
+/* strspn: length of the leading run made only of bytes in `accept`. */
+static inline int std_str_span_of(const char *s, const char *accept)
+{
+    if (!s || !accept) return -1;
+    return (int)strspn(s, accept);
+}
+
+/* strcspn: length of the leading run with no byte from `reject`. */
+static inline int std_str_span_not_of(const char *s, const char *reject)
+{
+    if (!s || !reject) return -1;
+    return (int)strcspn(s, reject);
+}
+
+/* strpbrk as an offset; -1 when no byte from `accept` occurs. */
+static inline int std_str_find_any(const char *s, const char *accept)
+{
+    const char *p;
+    if (!s || !accept) return -1;
+    p = strpbrk(s, accept);
+    return p ? (int)(p - s) : -1;
+}
+
+/* strcoll: locale-dependent ordering; the sign is all that is specified. */
+static inline int std_str_compare_locale(const char *a, const char *b)
+{
+    if (!a) a = "";
+    if (!b) b = "";
+    return strcoll(a, b);
+}
+
+/* strxfrm: write the locale transform; -1 when `cap` is too small. */
+static inline int std_str_transform_locale(const char *s, char *out, int cap)
+{
+    size_t n;
+    if (!s || !out || cap <= 0) return -1;
+    n = strxfrm(out, s, (size_t)cap);
+    return n >= (size_t)cap ? -1 : (int)n;
+}
+
+
+
 #endif

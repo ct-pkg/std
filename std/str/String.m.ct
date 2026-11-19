@@ -62,6 +62,11 @@ pub trait CStrOps {
     int lowercase(char *out, int cap);
     int uppercase(char *out, int cap);
     int compare(const char *other);
+    int span_of(const char *accept);
+    int span_not_of(const char *reject);
+    int find_any(const char *accept);
+    int compare_locale(const char *other);
+    int transform_locale(char *out, int cap);
     int compare_ignore_case(const char *other);
     void copy_from(const char *src, int n);
     void move_from(const char *src, int n);
@@ -91,6 +96,11 @@ map trait CStrOps for type char * {
     lowercase(s, out, cap) -> std_str_lower(s, out, cap);
     uppercase(s, out, cap) -> std_str_upper(s, out, cap);
     compare(s, other) -> std_str_compare(s, other);
+    span_of(s, accept) -> std_str_span_of(s, accept);
+    span_not_of(s, reject) -> std_str_span_not_of(s, reject);
+    find_any(s, accept) -> std_str_find_any(s, accept);
+    compare_locale(s, other) -> std_str_compare_locale(s, other);
+    transform_locale(s, out, cap) -> std_str_transform_locale(s, out, cap);
     compare_ignore_case(s, other) -> std_str_compare_ignore_case(s, other);
     copy_from(dst, src, n) -> std_str_copy_from(dst, src, n);
     move_from(dst, src, n) -> std_str_move_from(dst, src, n);

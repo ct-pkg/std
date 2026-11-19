@@ -1,0 +1,16 @@
+import std::str::String;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    char buf[32];
+    tp->init();
+    tp->check_eq_int("xyabc".span_of("xy"), 2, "strspn");
+    tp->check_eq_int("abc123".span_not_of("0123456789"), 3, "strcspn");
+    tp->check_eq_int("abc,def".find_any(",;"), 3, "strpbrk hit");
+    tp->check_eq_int("abc".find_any(",;"), -1, "strpbrk miss");
+    tp->check_eq_int("abc".compare_locale("abd") < 0, 1, "strcoll sign");
+    tp->check_eq_int("abc".transform_locale(buf, 32) >= 0, 1, "strxfrm");
+    return tp->report();
+}
