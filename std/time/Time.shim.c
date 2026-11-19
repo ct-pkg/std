@@ -10,6 +10,12 @@
  */
 
 #define _POSIX_C_SOURCE 200809L
+#ifndef _DARWIN_C_SOURCE
+#define _DARWIN_C_SOURCE 1
+#endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE 1
+#endif
 
 #include "Time.shim.h"
 #include <time.h>
@@ -85,6 +91,60 @@ int std_time_hour(long when) { return std_time_field(when, 3); }
 int std_time_minute(long when) { return std_time_field(when, 4); }
 int std_time_second(long when) { return std_time_field(when, 5); }
 int std_time_day_of_week(long when) { return std_time_field(when, 6); }
+
+static int std_time_utc_field(long when, int which)
+{
+    struct tm parts;
+    time_t t = (time_t)when;
+
+    if (!gmtime_r(&t, &parts)) return -1;
+    switch (which) {
+    case 0: return parts.tm_year + 1900;
+    case 1: return parts.tm_mon + 1;
+    case 2: return parts.tm_mday;
+    case 3: return parts.tm_hour;
+    case 4: return parts.tm_min;
+    case 5: return parts.tm_sec;
+    default: return parts.tm_wday;
+    }
+}
+
+int std_time_utc_year(long when) { return std_time_utc_field(when, 0); }
+int std_time_utc_month(long when) { return std_time_utc_field(when, 1); }
+int std_time_utc_day(long when) { return std_time_utc_field(when, 2); }
+int std_time_utc_hour(long when) { return std_time_utc_field(when, 3); }
+int std_time_utc_minute(long when) { return std_time_utc_field(when, 4); }
+int std_time_utc_second(long when) { return std_time_utc_field(when, 5); }
+int std_time_utc_day_of_week(long when) { return std_time_utc_field(when, 6); }
+
+long std_time_from_utc_parts(int year, int month, int day,
+                             int hour, int minute, int second)
+{
+    struct tm parts;
+    time_t t;
+
+    parts.tm_year = year - 1900;
+    parts.tm_mon = month - 1;
+    parts.tm_mday = day;
+    parts.tm_hour = hour;
+    parts.tm_min = minute;
+    parts.tm_sec = second;
+    parts.tm_isdst = 0;
+    t = timegm(&parts);
+    if (t == (time_t)-1) return -1;
+    return (long)t;
+}
+
+int std_time_now_timespec(long *seconds, long *nanoseconds)
+{
+    struct timespec ts;
+
+    if (!seconds || !nanoseconds) return -1;
+    if (clock_gettime(CLOCK_REALTIME, &ts) != 0) return -1;
+    *seconds = (long)ts.tv_sec;
+    *nanoseconds = (long)ts.tv_nsec;
+    return 0;
+}
 
 int std_time_format(long when, const char *pattern, char *out, int cap)
 {

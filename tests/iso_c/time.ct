@@ -1,0 +1,17 @@
+import std::time::Time;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    long sec = 0; long nsec = 0;
+    tp->init();
+    tp->check_eq_int(std::time::Time.utc_year(0), 1970, "utc year");
+    tp->check_eq_int(std::time::Time.utc_month(0), 1, "utc month");
+    tp->check_eq_int(std::time::Time.utc_day(0), 1, "utc day");
+    tp->check_eq_int(std::time::Time.utc_hour(0), 0, "utc hour");
+    tp->check_eq_int(std::time::Time.from_utc_parts(1970, 1, 1, 0, 0, 0), 0, "timegm epoch");
+    tp->check_eq_int(std::time::Time.now_timespec(&sec, &nsec), 0, "timespec_get");
+    tp->check_true(sec > 0 && nsec >= 0, "timespec values");
+    return tp->report();
+}

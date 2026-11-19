@@ -66,7 +66,8 @@ applies-to: v0.12.0
 | --- | --- | --- |
 | T1 | done | `docs/iso-c-gap.md` |
 | T2 | done | `tests/iso_c/string.ct` 6 checks |
-| T3–T8 | pending | 18:05 继续 |
+| T3 / T4 / T6 / T7 / T8 | pending | 18:05 继续 |
+| T5 | done | `tests/iso_c/time.ct` 7 checks |
 
 ## 已知风险
 

@@ -32,7 +32,7 @@ applies-to: v0.12.0
 | `string.h` | `covered` | T2 已补 `strspn` / `strcspn` / `strpbrk` / `strcoll` / `strxfrm`；`strtok_r` 是 POSIX，归 PH-10 |
 | `tgmath.h` | `na` | 泛型宏；只写直调说明 |
 | `threads.h` | `missing` | T8 探针；C11 可选，`deferred: v0-PH-10` 若平台不提供 |
-| `time.h` | `partial` | 缺 UTC（`gmtime` / `timegm`）、`timespec_get`、`asctime` / `ctime`（T5） |
+| `time.h` | `partial` | T5 已补 UTC 字段、`timegm`、`now_timespec`；`asctime` / `ctime` 仍缺 |
 | `uchar.h` | `missing` | UTF-16/32 转换（T6） |
 | `wchar.h` | `partial` | 有转换；缺宽字符 I/O（T6 视成本） |
 | `wctype.h` | `missing` | 宽字符分类/大小写（T6） |

@@ -23,6 +23,15 @@ int std_time_sleep_milliseconds(int milliseconds);
 long std_time_cpu_ticks(void);
 
 int std_time_year(long when);
+int std_time_utc_year(long when);
+int std_time_utc_month(long when);
+int std_time_utc_day(long when);
+int std_time_utc_hour(long when);
+int std_time_utc_minute(long when);
+int std_time_utc_second(long when);
+int std_time_utc_day_of_week(long when);
+long std_time_from_utc_parts(int year, int month, int day, int hour, int minute, int second);
+int std_time_now_timespec(long *seconds, long *nanoseconds);
 int std_time_month(long when);
 int std_time_day(long when);
 int std_time_hour(long when);
