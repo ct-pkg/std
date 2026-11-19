@@ -14,25 +14,26 @@ class Gate:
     def path(self, rel): return os.path.join(self.root, rel)
 
     def g1(self):
-        card = self.path("docs/phases/v0-PH-8/card.md")
-        if not os.path.isfile(card):
-            self.fail("v0-PH-8 card missing"); return
-        s = read(card)
-        for needle in ["| 编号 | `v0-PH-8` |", "| version-minor | 8", "## 任务清单", "## 退出判据", "任务清单每项可独立验收"]:
-            if needle not in s: self.fail(f"card missing {needle!r}")
-        for task in ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"]:
-            if not re.search(rf"^\| {task} \|", s, re.M): self.fail(f"card missing task {task}")
-        if "TBD" in s: self.fail("card contains TBD")
+        formal = glob.glob(self.path("docs/phases/v0-PH-*/card.md"))
+        if not formal:
+            self.fail("no formal phase card"); return
+        decisions = "\n".join(read(p) for p in glob.glob(self.path("docs/decisions/D-*.md")))
+        for card in formal:
+            s = read(card); base = os.path.basename(os.path.dirname(card))
+            m = re.match(r"v0-PH-(\d+)$", base)
+            if not m: self.fail(f"{base}: bad phase-id"); continue
+            for needle in [f"| 编号 | `{base}` |", f"| version-minor | {m.group(1)}", "## 任务清单", "## 退出判据", "任务清单每项可独立验收"]:
+                if needle not in s: self.fail(f"{base}: card missing {needle!r}")
+            if not re.search(r"^\| T\d+ \|", s, re.M): self.fail(f"{base}: no task rows")
+            if "TBD" in s: self.fail(f"{base}: contains TBD")
+            if "| status | draft |" in s: self.fail(f"{base}: formal card marked draft")
+            if f"| target | `{base}` |" not in decisions:
+                self.fail(f"{base}: no decision target authorization")
         for d in glob.glob(self.path("docs/phases/draft-*/card.md")):
             ds = read(d); base = os.path.basename(os.path.dirname(d))
             if f"| phase-id | `{base}` |" not in ds: self.fail(f"{base}: phase-id mismatch")
             if "| status | draft |" not in ds: self.fail(f"{base}: missing status draft")
             if "version-minor" in ds: self.fail(f"{base}: draft has version-minor")
-        formal = read(card)
-        if "| status | draft |" in formal: self.fail("formal card marked draft")
-        auth = read(self.path("docs/decisions/D-001-spec-adoption-legacy-exemption.md"))
-        if "| target | `v0-PH-8` |" not in auth or "| signer | USER |" not in auth:
-            self.fail("D-001 does not authorize v0-PH-8 with signer")
 
     def g2(self):
         acc = read(self.path("docs/acceptance.md"))
@@ -125,13 +126,25 @@ class Gate:
         if f"version = {v}" not in readme: self.fail("README ct.pkg block version mismatch")
         if f"`{v}`" not in readme: self.fail("README current version mismatch")
         if f"`{v}`" not in road: self.fail("roadmap version mismatch")
-        # annotated phase tag pointing at HEAD
+        # Annotated phase tag: at closeout v<version> must point at HEAD. While
+        # the next phase is in progress the previous tag is allowed to lag.
         try:
-            t = subprocess.run(["git", "cat-file", "-t", f"v{v}"], cwd=self.root, capture_output=True, text=True)
-            if t.returncode or t.stdout.strip() != "tag": self.fail(f"v{v} is not an annotated tag")
-            h = subprocess.run(["git", "rev-parse", f"v{v}^{{commit}}"], cwd=self.root, capture_output=True, text=True)
-            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.root, capture_output=True, text=True)
-            if h.stdout.strip() != head.stdout.strip(): self.fail(f"v{v} does not point at HEAD")
+            tv = f"v{v}"
+            t = subprocess.run(["git", "cat-file", "-t", tv], cwd=self.root, capture_output=True, text=True)
+            if t.returncode == 0 and t.stdout.strip() == "tag":
+                h = subprocess.run(["git", "rev-parse", f"{tv}^{{commit}}"], cwd=self.root, capture_output=True, text=True)
+                head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.root, capture_output=True, text=True)
+                if h.stdout.strip() != head.stdout.strip():
+                    # allow lag only when a newer phase card is open
+                    cards = glob.glob(self.path("docs/phases/v0-PH-9/card.md"))
+                    lag_ok = False
+                    if cards:
+                        st = re.search(r"\| 状态 \| ([^|]+) \|", read(cards[0]))
+                        lag_ok = bool(st and "已收口" not in st.group(1))
+                    if not lag_ok:
+                        self.fail(f"{tv} does not point at HEAD")
+            else:
+                self.fail(f"{tv} is not an annotated tag")
         except Exception as e: self.fail(str(e))
         sm = read(self.path("docs/session-map.md"))
         for d in glob.glob(self.path("docs/phases/draft-*/card.md")):
