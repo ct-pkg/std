@@ -1,0 +1,27 @@
+import std::posix::Posix;
+import std::mmap::Mmap;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    int fd; char *p; int flags;
+    tp->init();
+    std::posix::Posix.shm_unlink("/std-shm-ct");
+    fd = std::posix::Posix.shm_open("/std-shm-ct", std::posix::Posix.o_creat() | std::posix::Posix.o_rdwr(), 384);
+    tp->check_true(fd >= 0, "shm_open");
+    if (fd >= 0) {
+        tp->check_eq_int(std::posix::Posix.shm_truncate(fd, 4096), 0, "ftruncate");
+        flags = std::mmap::Mmap.shared();
+        p = std::mmap::Mmap.map(fd, 4096, std::mmap::Mmap.prot_read() | std::mmap::Mmap.prot_write(), flags, 0);
+        tp->check_true(p != 0, "mmap shm");
+        if (p) {
+            p[0] = 'S';
+            tp->check_eq_int(p[0], 'S', "shm write");
+            std::mmap::Mmap.unmap(p, 4096);
+        }
+        std::posix::Posix.shm_close(fd);
+        tp->check_eq_int(std::posix::Posix.shm_unlink("/std-shm-ct"), 0, "shm_unlink");
+    }
+    return tp->report();
+}

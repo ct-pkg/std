@@ -27,6 +27,24 @@ pub trait Posix {
     int sched_other();
     int sched_fifo();
     int sched_rr();
+    int shm_open(const char *name, int flags, int mode);
+    int shm_unlink(const char *name);
+    int shm_truncate(int fd, long length);
+    int shm_close(int fd);
+    int o_creat();
+    int o_rdwr();
+    void *glob_new();
+    int glob_run(void *handle, const char *pattern);
+    int glob_count(void *handle);
+    const char *glob_path(void *handle, int index);
+    void glob_free(void *handle);
+    int isatty(int fd);
+    void *tty_new();
+    int tty_get(int fd, void *handle);
+    int tty_set(int fd, void *handle);
+    int tty_echo(void *handle);
+    int tty_set_echo(void *handle, int on);
+    void tty_free(void *handle);
 }
 
 map trait Posix for namespace std::posix {
@@ -55,4 +73,22 @@ map trait Posix for namespace std::posix {
     sched_other() -> std_posix_sched_other();
     sched_fifo() -> std_posix_sched_fifo();
     sched_rr() -> std_posix_sched_rr();
+    shm_open(name, flags, mode) -> std_posix_shm_open(name, flags, mode);
+    shm_unlink(name) -> std_posix_shm_unlink(name);
+    shm_truncate(fd, length) -> std_posix_shm_truncate(fd, length);
+    shm_close(fd) -> std_posix_shm_close(fd);
+    o_creat() -> std_posix_o_creat();
+    o_rdwr() -> std_posix_o_rdwr();
+    glob_new() -> std_posix_glob_new();
+    glob_run(handle, pattern) -> std_posix_glob_run(handle, pattern);
+    glob_count(handle) -> std_posix_glob_count(handle);
+    glob_path(handle, index) -> std_posix_glob_path(handle, index);
+    glob_free(handle) -> std_posix_glob_free(handle);
+    isatty(fd) -> std_posix_isatty(fd);
+    tty_new() -> std_posix_tty_new();
+    tty_get(fd, handle) -> std_posix_tty_get(fd, handle);
+    tty_set(fd, handle) -> std_posix_tty_set(fd, handle);
+    tty_echo(handle) -> std_posix_tty_echo(handle);
+    tty_set_echo(handle, on) -> std_posix_tty_set_echo(handle, on);
+    tty_free(handle) -> std_posix_tty_free(handle);
 }

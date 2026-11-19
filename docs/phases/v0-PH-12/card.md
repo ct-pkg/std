@@ -9,7 +9,7 @@ applies-to: v0.15.0
 | 规范版本 | 1.17.0 |
 | version-minor | 12（收口 `0.16.0`，含永久偏移 `+4`） |
 | 依赖 | `v0-PH-11` 已收口；D-002 |
-| 状态 | 进行中（T1–T3 完成） |
+| 状态 | 已收口（2026-11-19，`v0.16.0`） |
 
 ## 范围
 
@@ -38,11 +38,11 @@ applies-to: v0.15.0
 
 ## 退出判据
 
-- [ ] T2–T7 的测试/结论齐全；`bash tests/run.sh` 全绿。
-- [ ] `bash tools/check.sh all` 退出码 0；`ct pkg check .` 通过。
-- [ ] 版本落点全部为 `0.16.0`；annotated tag `v0.16.0` 指向收口提交并推送。
-- [ ] **任务清单每项可独立验收（6.6 T-6）**：收口对照表逐项贴 verify 输出。
-- [ ] 无法做的项在 `design.md` 标 `deferred: <phase>` 或拒绝理由。
+- [x] T2–T7 的测试/结论齐全；`bash tests/run.sh` 全绿。
+- [x] `bash tools/check.sh all` 退出码 0；`ct pkg check .` 通过。
+- [x] 版本落点全部为 `0.16.0`；annotated tag `v0.16.0` 指向收口提交并推送。
+- [x] **任务清单每项可独立验收（6.6 T-6）**：收口对照表逐项贴 verify 输出。
+- [x] 无法做的项在 `design.md` 标 `deferred: <phase>` 或拒绝理由。
 
 ## 进度
 
@@ -51,7 +51,10 @@ applies-to: v0.15.0
 | T1 | done | `docs/phases/v0-PH-12/design.md` |
 | T2 | done | `tests/posix/pwd.ct` 3 checks |
 | T3 | done | `tests/posix/sched.ct` 3 checks |
-| T4–T7 | pending | 18:05 继续 |
+| T4 | done | `tests/posix/shm.ct` 5 checks |
+| T5 | done | `tests/posix/termios.ct` 2 checks |
+| T6 | done | `tests/posix/glob.ct` 3 checks |
+| T7 | done | `docs/phases/v0-PH-12/design.md`；aio/mq/spawn deferred PH-13 |
 
 ## 已知风险
 

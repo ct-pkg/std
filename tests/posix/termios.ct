@@ -1,0 +1,14 @@
+import std::posix::Posix;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    void *h;
+    tp->init();
+    tp->check_true(std::posix::Posix.isatty(0) >= 0, "isatty");
+    h = std::posix::Posix.tty_new();
+    tp->check_true(h != 0, "tty alloc");
+    if (h) std::posix::Posix.tty_free(h);
+    return tp->report();
+}

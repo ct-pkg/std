@@ -7,4 +7,4 @@ applies-to: v0.15.0
 - shm：`shm_open` 返回 fd，交给 `std::mmap` 映射。
 - termios：`struct termios` 用 `void *` 句柄，`tcgetattr`/`tcsetattr` 拷贝。
 - glob：`glob_t` 用 `void *` 句柄，访问器读出路径与数量。
-- aio/mq/spawn：先探针，平台不完整则 deferred 到 PH-13。
+- aio / mq / posix_spawn：C 结构体与回调多，探针结论为 `deferred: v0-PH-13`；PH-13 草案见 `docs/phases/draft-posix-async/`。

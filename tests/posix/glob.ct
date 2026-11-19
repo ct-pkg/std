@@ -1,0 +1,14 @@
+import std::posix::Posix;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    void *g = std::posix::Posix.glob_new();
+    tp->init();
+    tp->check_true(g != 0, "glob alloc");
+    tp->check_eq_int(std::posix::Posix.glob_run(g, "*"), 0, "glob run");
+    tp->check_true(std::posix::Posix.glob_count(g) > 0, "glob count");
+    std::posix::Posix.glob_free(g);
+    return tp->report();
+}

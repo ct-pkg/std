@@ -1,6 +1,11 @@
-applies-to: v0.15.0
+applies-to: v0.16.0
 
 # Changelog
+
+## 0.16.0 — 2026-11-19
+
+`v0-PH-12` POSIX 服务续：pwd/grp、sched、shm、termios、glob；aio/mq/posix_spawn
+归 PH-13。
 
 ## 0.15.0 — 2026-11-19
 

@@ -21,8 +21,14 @@
 #include <pwd.h>
 #include <grp.h>
 #include <sched.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <termios.h>
+#include <glob.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 static inline int std_posix_uname_field(int field, char *out, int cap)
 {
@@ -126,6 +132,72 @@ static inline int std_posix_sched_min(int policy) { return sched_get_priority_mi
 static inline int std_posix_sched_other(void) { return SCHED_OTHER; }
 static inline int std_posix_sched_fifo(void) { return SCHED_FIFO; }
 static inline int std_posix_sched_rr(void) { return SCHED_RR; }
+
+
+static inline int std_posix_shm_open(const char *name, int flags, int mode)
+{
+    if (!name) return -1;
+    return shm_open(name, flags, (mode_t)mode);
+}
+static inline int std_posix_shm_unlink(const char *name)
+{
+    return name && shm_unlink(name) == 0 ? 0 : -1;
+}
+static inline int std_posix_shm_truncate(int fd, long length)
+{
+    return fd >= 0 && length >= 0 && ftruncate(fd, (off_t)length) == 0 ? 0 : -1;
+}
+static inline int std_posix_shm_close(int fd) { return fd >= 0 && close(fd) == 0 ? 0 : -1; }
+static inline int std_posix_o_creat(void) { return O_CREAT; }
+static inline int std_posix_o_rdwr(void) { return O_RDWR; }
+
+static inline void *std_posix_glob_new(void) { return calloc(1, sizeof(glob_t)); }
+static inline int std_posix_glob_run(void *handle, const char *pattern)
+{
+    if (!handle || !pattern) return -1;
+    return glob(pattern, 0, 0, (glob_t *)handle) == 0 ? 0 : -1;
+}
+static inline int std_posix_glob_count(void *handle)
+{
+    return handle ? (int)((glob_t *)handle)->gl_pathc : -1;
+}
+static inline const char *std_posix_glob_path(void *handle, int index)
+{
+    glob_t *g = (glob_t *)handle;
+    if (!g || index < 0 || index >= (int)g->gl_pathc) return 0;
+    return g->gl_pathv[index];
+}
+static inline void std_posix_glob_free(void *handle)
+{
+    if (!handle) return;
+    globfree((glob_t *)handle);
+    free(handle);
+}
+
+static inline int std_posix_isatty(int fd) { return isatty(fd) ? 1 : 0; }
+static inline void *std_posix_tty_new(void) { return calloc(1, sizeof(struct termios)); }
+static inline int std_posix_tty_get(int fd, void *handle)
+{
+    if (fd < 0 || !handle) return -1;
+    return tcgetattr(fd, (struct termios *)handle) == 0 ? 0 : -1;
+}
+static inline int std_posix_tty_set(int fd, void *handle)
+{
+    if (fd < 0 || !handle) return -1;
+    return tcsetattr(fd, TCSANOW, (struct termios *)handle) == 0 ? 0 : -1;
+}
+static inline int std_posix_tty_echo(void *handle)
+{
+    return handle && (((struct termios *)handle)->c_lflag & ECHO) ? 1 : 0;
+}
+static inline int std_posix_tty_set_echo(void *handle, int on)
+{
+    struct termios *t = (struct termios *)handle;
+    if (!t) return -1;
+    if (on) t->c_lflag |= ECHO; else t->c_lflag &= ~ECHO;
+    return 0;
+}
+static inline void std_posix_tty_free(void *handle) { free(handle); }
 
 
 #endif
