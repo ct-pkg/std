@@ -26,6 +26,9 @@
 #include <unistd.h>
 #include <termios.h>
 #include <glob.h>
+#if defined(__linux__)
+#include <mqueue.h>
+#endif
 #include <aio.h>
 #include <spawn.h>
 #include <sys/wait.h>
@@ -244,6 +247,38 @@ static inline int std_posix_spawn_wait(const char *path)
     if (waitpid(pid, &status, 0) < 0) return -1;
     return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
+
+
+#if defined(__linux__)
+static inline int std_posix_mq_supported(void) { return 1; }
+static inline int std_posix_mq_open(const char *name, int flags, int mode, int maxmsg, int msgsize)
+{
+    struct mq_attr attr;
+    attr.mq_flags = 0; attr.mq_maxmsg = maxmsg; attr.mq_msgsize = msgsize; attr.mq_curmsgs = 0;
+    if (!name) return -1;
+    return (int)mq_open(name, flags | O_CREAT, (mode_t)mode, &attr);
+}
+static inline int std_posix_mq_send(int q, const char *buf, int len, int prio)
+{
+    return q >= 0 && buf && len >= 0 && mq_send((mqd_t)q, buf, (size_t)len, (unsigned)prio) == 0 ? 0 : -1;
+}
+static inline int std_posix_mq_receive(int q, char *buf, int len, int *prio)
+{
+    ssize_t n;
+    if (q < 0 || !buf || len <= 0 || !prio) return -1;
+    n = mq_receive((mqd_t)q, buf, (size_t)len, (unsigned *)prio);
+    return n < 0 ? -1 : (int)n;
+}
+static inline int std_posix_mq_close(int q) { return q >= 0 && mq_close((mqd_t)q) == 0 ? 0 : -1; }
+static inline int std_posix_mq_unlink(const char *name) { return name && mq_unlink(name) == 0 ? 0 : -1; }
+#else
+static inline int std_posix_mq_supported(void) { return 0; }
+static inline int std_posix_mq_open(const char *name, int flags, int mode, int maxmsg, int msgsize) { (void)name; (void)flags; (void)mode; (void)maxmsg; (void)msgsize; return -1; }
+static inline int std_posix_mq_send(int q, const char *buf, int len, int prio) { (void)q; (void)buf; (void)len; (void)prio; return -1; }
+static inline int std_posix_mq_receive(int q, char *buf, int len, int *prio) { (void)q; (void)buf; (void)len; (void)prio; return -1; }
+static inline int std_posix_mq_close(int q) { (void)q; return -1; }
+static inline int std_posix_mq_unlink(const char *name) { (void)name; return -1; }
+#endif
 
 
 #endif

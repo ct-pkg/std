@@ -1,0 +1,23 @@
+import std::posix::Posix;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    int q; int prio = 0; char buf[64];
+    tp->init();
+    if (std::posix::Posix.mq_supported()) {
+        std::posix::Posix.mq_unlink("/std-mq-test");
+        q = std::posix::Posix.mq_open("/std-mq-test", std::posix::Posix.o_creat() | std::posix::Posix.o_rdwr(), 384, 4, 64);
+        tp->check_true(q >= 0, "mq_open");
+        if (q >= 0) {
+            tp->check_eq_int(std::posix::Posix.mq_send(q, "hi", 2, 1), 0, "mq_send");
+            tp->check_eq_int(std::posix::Posix.mq_receive(q, buf, 64, &prio), 2, "mq_receive");
+            std::posix::Posix.mq_close(q);
+            std::posix::Posix.mq_unlink("/std-mq-test");
+        }
+    } else {
+        tp->check_eq_int(std::posix::Posix.mq_open("/std-mq-test", 1, 384, 4, 64), -1, "mq stub");
+    }
+    return tp->report();
+}

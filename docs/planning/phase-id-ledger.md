@@ -14,4 +14,4 @@ window: W3
 | `draft-posix-services` | `v0-PH-11` | `docs/phases/draft-posix-services/card.md` | `docs/phases/v0-PH-11/card.md` | `0.15.0` | migrated |
 | `draft-posix-remaining` | `v0-PH-12` | `docs/phases/draft-posix-remaining/card.md` | `docs/phases/v0-PH-12/card.md` | `0.16.0` | migrated |
 | `draft-posix-async` | `v0-PH-13` | `docs/phases/draft-posix-async/card.md` | `docs/phases/v0-PH-13/card.md` | `0.17.0` | migrated |
-| — | `draft-posix-mq` | — | `docs/phases/draft-posix-mq/card.md` | — | planned |
+| `draft-posix-mq` | `v0-PH-14` | `docs/phases/draft-posix-mq/card.md` | `docs/phases/v0-PH-14/card.md` | `0.18.0` | migrated |

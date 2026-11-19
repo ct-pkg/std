@@ -1,6 +1,10 @@
-applies-to: v0.17.0
+applies-to: v0.18.0
 
 # Changelog
+
+## 0.18.0 — 2026-11-19
+
+`v0-PH-14` POSIX mqueue：Linux 真实 mqueue，macOS stub。
 
 ## 0.17.0 — 2026-11-19
 

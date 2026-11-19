@@ -58,6 +58,12 @@ pub trait Posix {
     void aio_free(void *h);
     int spawn_pid(const char *path);
     int spawn_wait(const char *path);
+    int mq_supported();
+    int mq_open(const char *name, int flags, int mode, int maxmsg, int msgsize);
+    int mq_send(int q, const char *buf, int len, int prio);
+    int mq_receive(int q, char *buf, int len, int *prio);
+    int mq_close(int q);
+    int mq_unlink(const char *name);
 }
 
 map trait Posix for namespace std::posix {
@@ -117,4 +123,10 @@ map trait Posix for namespace std::posix {
     aio_free(h) -> std_posix_aio_free(h);
     spawn_pid(path) -> std_posix_spawn_pid(path);
     spawn_wait(path) -> std_posix_spawn_wait(path);
+    mq_supported() -> std_posix_mq_supported();
+    mq_open(name, flags, mode, maxmsg, msgsize) -> std_posix_mq_open(name, flags, mode, maxmsg, msgsize);
+    mq_send(q, buf, len, prio) -> std_posix_mq_send(q, buf, len, prio);
+    mq_receive(q, buf, len, prio) -> std_posix_mq_receive(q, buf, len, prio);
+    mq_close(q) -> std_posix_mq_close(q);
+    mq_unlink(name) -> std_posix_mq_unlink(name);
 }

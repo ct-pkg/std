@@ -25,6 +25,9 @@ applies-to: v0.12.0
 | `v0-PH-13-dev` | DEV | 实现 PH-13 任务、先红后绿 | `v0-PH-13` |
 | `v0-PH-13-verify` | VERIFY | PH-13 红证与退出判据 | `v0-PH-13` |
 | `v0-PH-13-review` | REVIEW | PH-13 评审 | `v0-PH-13` |
+| `v0-PH-14-dev` | DEV | 实现 PH-14 任务、先红后绿 | `v0-PH-14` |
+| `v0-PH-14-verify` | VERIFY | PH-14 红证与退出判据 | `v0-PH-14` |
+| `v0-PH-14-review` | REVIEW | PH-14 评审 | `v0-PH-14` |
 
 ## 规则
 
