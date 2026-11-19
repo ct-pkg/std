@@ -1,0 +1,21 @@
+import std::io::File;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    char name[256];
+    File *f;
+    tp->init();
+    tp->check_eq_int(std::io::temp_name(name, 256), 0, "tmpnam");
+    tp->check_true(name[0] != 0, "tmpnam value");
+    f = std::io::open_temp_file();
+    tp->check_true(f != 0, "tmpfile");
+    if (f) {
+        tp->check_eq_int(f->write("x", 1), 1, "tmpfile write");
+        tp->check_eq_int(f->set_buffer(0, std::io::buffer_full(), 0), 0, "setvbuf");
+        tp->check_eq_int(f->close(), 0, "tmpfile close");
+        delete f;
+    }
+    return tp->report();
+}

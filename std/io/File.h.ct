@@ -51,6 +51,35 @@ pub struct File *open_file(const char *path, const char *mode)
 
 /* Adopt an already open `FILE *` (the inverse of `drop`): the caller gives up
    ownership, `close`/`Drop` will close it. NULL is returned for NULL. */
+/* tmpfile(3): a stream that disappears on close. NULL on failure. */
+pub struct File *open_temp_file()
+{
+    struct File *f;
+    void *fp = std_io_open_temp_c();
+    if (!fp) return 0;
+    f = malloc(sizeof(struct File));
+    if (!f) return 0;
+    f->fp = fp;
+    return f;
+}
+
+/* tmpnam(3) into the caller's buffer; 0 on success, -1 on failure. */
+pub int temp_name(char *out, int cap)
+{
+    return std_io_tmpnam_c(out, cap);
+}
+
+/* perror(3): write the last errno text to stderr. */
+pub void print_error(const char *prefix)
+{
+    std_io_perror_c(prefix);
+}
+
+/* setvbuf modes. */
+pub int buffer_full() { return 0; }
+pub int buffer_line() { return 1; }
+pub int buffer_none() { return 2; }
+
 pub struct File *adopt_file(void *fp)
 {
     struct File *f;
@@ -183,6 +212,20 @@ impl File {
     {
         if (!self) return -1;
         return std_io_stream_write_line(self->fp, text);
+    }
+
+    /* setvbuf: 0 on success, -1 on failure. */
+    pub int set_buffer(char *buf, int mode, int size)
+    {
+        if (!self) return -1;
+        return std_io_set_buffer_c(self->fp, buf, mode, size);
+    }
+
+    /* freopen: 0 on success, -1 on failure. */
+    pub int reopen(const char *path, const char *mode)
+    {
+        if (!self) return -1;
+        return std_io_reopen_c(self->fp, path, mode);
     }
 
     /* fflush: 0 on success, -1 on failure. */

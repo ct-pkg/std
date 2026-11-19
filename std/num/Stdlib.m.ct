@@ -1,0 +1,20 @@
+/* Stdlib.m.ct - ISO C stdlib functions with no natural type host. */
+#include <stdlib.h>
+
+namespace std::num;
+
+pub trait Stdlib {
+    int rand();
+    void srand(unsigned int seed);
+    int div_quot(int a, int b);
+    int div_rem(int a, int b);
+    void *aligned_alloc(int alignment, int size);
+}
+
+map trait Stdlib for namespace std::num {
+    rand() -> std_stdlib_rand();
+    srand(seed) -> std_stdlib_srand(seed);
+    div_quot(a, b) -> std_stdlib_div_quot(a, b);
+    div_rem(a, b) -> std_stdlib_div_rem(a, b);
+    aligned_alloc(alignment, size) -> std_stdlib_aligned_alloc(alignment, size);
+}

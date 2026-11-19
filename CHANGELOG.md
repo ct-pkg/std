@@ -1,6 +1,11 @@
-applies-to: v0.12.0
+applies-to: v0.13.0
 
 # Changelog
+
+## 0.13.0 — 2026-11-19
+
+`v0-PH-9` ISO C17 补全：string（5）、stdio（5）、stdlib（4）、time（UTC/timespec）、
+wctype、fenv；complex/atomic/threads/uchar 探针后 deferred 到 PH-10。
 
 ## 0.12.0 — 2026-11-19
 

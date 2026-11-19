@@ -1,0 +1,15 @@
+import std::math::Fenv;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    int old;
+    tp->init();
+    old = std::math::Fenv.round_mode();
+    tp->check_eq_int(std::math::Fenv.set_round_mode(std::math::Fenv.upward()), 0, "set upward");
+    tp->check_eq_int(std::math::Fenv.round_mode(), std::math::Fenv.upward(), "round mode");
+    tp->check_eq_int(std::math::Fenv.set_round_mode(old), 0, "restore");
+    tp->check_eq_int(std::math::Fenv.clear_exceptions(std::math::Fenv.inexact()), 0, "clear");
+    return tp->report();
+}

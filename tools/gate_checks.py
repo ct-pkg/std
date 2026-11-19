@@ -99,8 +99,11 @@ class Gate:
                 self.fail(f"{rel}: invalid/missing status")
         # every version mismatch must have an issue: PH-8 checks its own release
         v = self.version()
-        if v and not re.match(r"0\.12\.\d+$", v):
-            self.fail(f"version {v} is not 0.12.x for v0-PH-8")
+        cards = sorted(glob.glob(self.path("docs/phases/v0-PH-*/card.md")))
+        if v and cards:
+            n = max(int(re.search(r"v0-PH-(\d+)", c).group(1)) for c in cards)
+            if not re.match(rf"0\.{n + 4}\.\d+$", v):
+                self.fail(f"version {v} does not match v0-PH-{n} (0.{n+4}.x)")
 
     def version(self):
         m = re.search(r"^version\s*=\s*(\S+)", read(self.path("ct.pkg")), re.M)

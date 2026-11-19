@@ -1,0 +1,17 @@
+import std::num::Stdlib;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    void *p;
+    tp->init();
+    std::num::Stdlib.srand(7);
+    tp->check_true(std::num::Stdlib.rand() >= 0, "rand");
+    tp->check_eq_int(std::num::Stdlib.div_quot(7, 3), 2, "div quot");
+    tp->check_eq_int(std::num::Stdlib.div_rem(7, 3), 1, "div rem");
+    p = std::num::Stdlib.aligned_alloc(16, 32);
+    tp->check_true(p != 0, "aligned_alloc");
+    if (p) free(p);
+    return tp->report();
+}

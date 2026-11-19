@@ -1,0 +1,36 @@
+/* Fenv.m.ct - ISO C fenv.h; namespace host because there is no receiver. */
+namespace std::math;
+
+pub trait Fenv {
+    int round_mode();
+    int set_round_mode(int mode);
+    int clear_exceptions(int excepts);
+    int test_exceptions(int excepts);
+    int raise_exceptions(int excepts);
+    int nearest();
+    int upward();
+    int downward();
+    int toward_zero();
+    int inexact();
+    int invalid();
+    int divide_by_zero();
+    int overflow();
+    int underflow();
+}
+
+map trait Fenv for namespace std::math {
+    round_mode() -> std_fenv_round();
+    set_round_mode(mode) -> std_fenv_set_round(mode);
+    clear_exceptions(excepts) -> std_fenv_clear(excepts);
+    test_exceptions(excepts) -> std_fenv_test(excepts);
+    raise_exceptions(excepts) -> std_fenv_raise(excepts);
+    nearest() -> std_fenv_nearest();
+    upward() -> std_fenv_upward();
+    downward() -> std_fenv_downward();
+    toward_zero() -> std_fenv_toward_zero();
+    inexact() -> std_fenv_inexact();
+    invalid() -> std_fenv_invalid();
+    divide_by_zero() -> std_fenv_divide_by_zero();
+    overflow() -> std_fenv_overflow();
+    underflow() -> std_fenv_underflow();
+}

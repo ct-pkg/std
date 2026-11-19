@@ -31,7 +31,7 @@
 name = std
 publisher = std
 ns-root = .
-version = 0.12.0
+version = 0.13.0
 licence = MIT
 requires = ct >= 0.67.0
 ldflags = -lm
@@ -80,8 +80,8 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 
 ### 当前发布状态
 
-`0.12.0` 是当前版本，已打 `v0.12.0`；`0.11.0` 及更早的 `0.6.0`–`0.10.0` 是开发里程碑（只有 `v0.11.0` 打了 tag）。
-`0.12.0`（`v0-PH-8`）只做工程规范纳管，不改 API；`0.11.0`（P7）补全 `std::net`：TCP/UDP 工厂、`bind_to` /
+`0.13.0` 是当前版本，已打 `v0.13.0`；`0.11.0` 及更早的 `0.6.0`–`0.10.0` 是开发里程碑（只有 `v0.11.0` 打了 tag）。
+`0.13.0`（`v0-PH-9`）补 ISO C17 的 string/stdio/stdlib/time/wctype/fenv 缺口；`0.12.0`（`v0-PH-8`）只做工程规范纳管；`0.11.0`（P7）补全 `std::net`：TCP/UDP 工厂、`bind_to` /
 `listen_backlog` / `accept`、`send_to` / `receive_from`、`send_message` / `receive_message`、
 `resolve_host` / `parse_ip`、超时与 `set_option`；`Socket` 仍是 `FileDesc` 别名。同时补齐 P1 漏项
 `std::str` 的 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`、
@@ -438,6 +438,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
+| `0.13.0` | 已打 `v0.13.0` | **`v0-PH-9` ISO C17**：`strspn`/`strcspn`/`strpbrk`/`strcoll`/`strxfrm`、`tmpfile`/`tmpnam`/`setvbuf`/`freopen`/`perror`、`rand`/`srand`/`div`/`aligned_alloc`、UTC/`timegm`/`timespec`、宽字符分类、`fenv`；complex/atomic/threads/uchar 按探针 deferred 到 PH-10。 |
 | `0.12.0` | 已打 `v0.12.0` | **`v0-PH-8` 工程规范纳管**：G0–G9 门禁脚本、phase/验收/决策/台账、D-001 存量豁免与版本偏移、ISO C + POSIX 范围与 PH-9…PH-11 路线图。API 无变化。 |
 | `0.11.0` | 已打 `v0.11.0` | **P7 net**：TCP/UDP 工厂与 `bind_to` / `listen_backlog` / `accept` / `local_address` / `local_port`；`send_to` / `receive_from` / `send_message` / `receive_message`；`shutdown_*`、`set_option` / `set_reuse_address` / `set_*_timeout`；`resolve_host` / `parse_ip`。`Socket` 保持 `FileDesc` 别名。同时补齐 `std::str` 的 `parse_long` / `parse_long_long` / `parse_unsigned_long` / `parse_real`、`reverse_find_char` 与 `compare_ignore_case`（P1 漏项），以及 `Float` / `Real` 的 `exp2`。 |
 | `0.10.0` | 未发布（开发里程碑，未打 tag） | **P6 资源模板收口**：`File` / `FileDesc` / `Dir` / `Timer` 的 `Drop` 统一调用幂等 `close()`；`Timer` 新增 `close`；`std::net::Socket` 声明为 `FileDesc` 别名（无新类型）。 |

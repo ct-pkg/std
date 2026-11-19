@@ -30,6 +30,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <wchar.h>
+#include <wctype.h>
 
 typedef char std_wchar_size_must_match_int[(sizeof(wchar_t) == sizeof(int)) ? 1 : -1];
 
@@ -66,5 +67,16 @@ static inline int std_wchar_wide_to_mb(const int *ws, char *out, int cap)
     wcstombs(out, (const wchar_t *)ws, (size_t)cap);
     return (int)need;
 }
+
+static inline int std_wchar_isw_alpha(int c) { return iswalpha((wint_t)c) != 0; }
+static inline int std_wchar_isw_digit(int c) { return iswdigit((wint_t)c) != 0; }
+static inline int std_wchar_isw_space(int c) { return iswspace((wint_t)c) != 0; }
+static inline int std_wchar_isw_upper(int c) { return iswupper((wint_t)c) != 0; }
+static inline int std_wchar_isw_lower(int c) { return iswlower((wint_t)c) != 0; }
+static inline int std_wchar_isw_punct(int c) { return iswpunct((wint_t)c) != 0; }
+static inline int std_wchar_isw_alnum(int c) { return iswalnum((wint_t)c) != 0; }
+static inline int std_wchar_tow_upper(int c) { return (int)towupper((wint_t)c); }
+static inline int std_wchar_tow_lower(int c) { return (int)towlower((wint_t)c); }
+
 
 #endif

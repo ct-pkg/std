@@ -183,4 +183,40 @@ static inline int std_io_origin_start(void) { return SEEK_SET; }
 static inline int std_io_origin_current(void) { return SEEK_CUR; }
 static inline int std_io_origin_end(void) { return SEEK_END; }
 
+static inline void *std_io_open_temp_c(void)
+{
+    return (void *)tmpfile();
+}
+
+static inline int std_io_tmpnam_c(char *out, int cap)
+{
+    char *p;
+    if (!out || cap <= 0) return -1;
+    p = tmpnam(NULL);
+    if (!p) return -1;
+    if ((int)strlen(p) + 1 > cap) return -1;
+    strcpy(out, p);
+    return 0;
+}
+
+static inline int std_io_set_buffer_c(void *handle, char *buf, int mode, int size)
+{
+    FILE *fp = (FILE *)handle;
+    if (!fp || size < 0) return -1;
+    return setvbuf(fp, buf, mode, (size_t)size) == 0 ? 0 : -1;
+}
+
+static inline int std_io_reopen_c(void *handle, const char *path, const char *mode)
+{
+    FILE *fp = (FILE *)handle;
+    if (!fp || !path || !mode) return -1;
+    return freopen(path, mode, fp) ? 0 : -1;
+}
+
+static inline void std_io_perror_c(const char *prefix)
+{
+    perror(prefix ? prefix : "std::io");
+}
+
+
 #endif

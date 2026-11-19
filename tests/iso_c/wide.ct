@@ -1,0 +1,14 @@
+import std::wchar::Wchar;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    tp->init();
+    tp->check_true(std::wchar::Wchar.is_wide_alpha('a'), "wide alpha");
+    tp->check_true(std::wchar::Wchar.is_wide_digit('7'), "wide digit");
+    tp->check_true(std::wchar::Wchar.is_wide_space(' '), "wide space");
+    tp->check_eq_int(std::wchar::Wchar.to_wide_upper('a'), 'A', "towupper");
+    tp->check_eq_int(std::wchar::Wchar.to_wide_lower('A'), 'a', "towlower");
+    return tp->report();
+}

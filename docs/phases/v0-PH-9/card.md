@@ -9,7 +9,7 @@ applies-to: v0.12.0
 | 规范版本 | 1.17.0 |
 | version-minor | 9（收口 `0.13.0`，含永久偏移 `+4`） |
 | 依赖 | `v0-PH-8` 已收口；D-002 |
-| 状态 | 待开工 |
+| 状态 | 已收口（2026-11-19，`v0.13.0`） |
 
 ## 范围
 
@@ -53,12 +53,12 @@ applies-to: v0.12.0
 
 ## 退出判据
 
-- [ ] `docs/iso-c-gap.md` 覆盖全部 ISO C17 头文件，无 `todo` 未处置。
-- [ ] T2–T8 每项的测试通过；`bash tests/run.sh` 全绿。
-- [ ] `bash tools/check.sh all` 退出码 0；`ct pkg check .` 通过。
-- [ ] 版本落点全部为 `0.13.0`；annotated tag `v0.13.0` 指向收口提交并推送。
-- [ ] **任务清单每项可独立验收（6.6 T-6）**：收口对照表逐项贴 verify 输出。
-- [ ] 无法实现的 ISO C 项在缺口表标 `deferred: <phase>`，不得写“以后再说”。
+- [x] `docs/iso-c-gap.md` 覆盖全部 ISO C17 头文件，无 `todo` 未处置。
+- [x] T2–T8 每项的测试通过；`bash tests/run.sh` 全绿。
+- [x] `bash tools/check.sh all` 退出码 0；`ct pkg check .` 通过。
+- [x] 版本落点全部为 `0.13.0`；annotated tag `v0.13.0` 指向收口提交并推送。
+- [x] **任务清单每项可独立验收（6.6 T-6）**：收口对照表逐项贴 verify 输出。
+- [x] 无法实现的 ISO C 项在缺口表标 `deferred: <phase>`，不得写“以后再说”。
 
 ## 进度
 
@@ -66,7 +66,11 @@ applies-to: v0.12.0
 | --- | --- | --- |
 | T1 | done | `docs/iso-c-gap.md` |
 | T2 | done | `tests/iso_c/string.ct` 6 checks |
-| T3 / T4 / T6 / T7 / T8 | pending | 18:05 继续 |
+| T3 | done | `tests/iso_c/stdio.ct` 6 checks |
+| T4 | done | `tests/iso_c/stdlib.ct` 4 checks |
+| T6 | done | `tests/iso_c/wide.ct` 5 checks；`uchar.h` deferred PH-10 |
+| T7 | done | `tests/iso_c/fenv.ct` 4 checks |
+| T8 | done | `docs/iso-c-probes.md`；complex/atomic/threads deferred PH-10 |
 | T5 | done | `tests/iso_c/time.ct` 7 checks |
 
 ## 已知风险

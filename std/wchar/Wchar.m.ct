@@ -26,12 +26,30 @@ pub trait Wchar {
     int wide_string_length(int *ws);
     int multibyte_to_wide_string(const char *text, int *out, int cap);
     int wide_to_multibyte_string(int *ws, char *out, int cap);
+    int is_wide_alpha(int c);
+    int is_wide_digit(int c);
+    int is_wide_space(int c);
+    int is_wide_upper(int c);
+    int is_wide_lower(int c);
+    int is_wide_punct(int c);
+    int is_wide_alnum(int c);
+    int to_wide_upper(int c);
+    int to_wide_lower(int c);
 }
 
 map trait Wchar for namespace std::wchar {
     wide_string_length(ws) -> std_wchar_wide_length(ws);
     multibyte_to_wide_string(text, out, cap) -> std_wchar_mb_to_wide(text, out, cap);
     wide_to_multibyte_string(ws, out, cap) -> std_wchar_wide_to_mb(ws, out, cap);
+    is_wide_alpha(c) -> std_wchar_isw_alpha(c);
+    is_wide_digit(c) -> std_wchar_isw_digit(c);
+    is_wide_space(c) -> std_wchar_isw_space(c);
+    is_wide_upper(c) -> std_wchar_isw_upper(c);
+    is_wide_lower(c) -> std_wchar_isw_lower(c);
+    is_wide_punct(c) -> std_wchar_isw_punct(c);
+    is_wide_alnum(c) -> std_wchar_isw_alnum(c);
+    to_wide_upper(c) -> std_wchar_tow_upper(c);
+    to_wide_lower(c) -> std_wchar_tow_lower(c);
 }
 
 pub trait WideText {
