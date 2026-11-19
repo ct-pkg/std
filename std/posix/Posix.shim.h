@@ -18,6 +18,9 @@
 #include <sys/statvfs.h>
 #include <fnmatch.h>
 #include <dlfcn.h>
+#include <pwd.h>
+#include <grp.h>
+#include <sched.h>
 #include <string.h>
 #include <stddef.h>
 
@@ -94,4 +97,35 @@ static inline int std_posix_dlerror(char *out, int cap)
 }
 static inline int std_posix_rtld_now(void) { return RTLD_NOW; }
 static inline int std_posix_rtld_lazy(void) { return RTLD_LAZY; }
+static inline int std_posix_pwd_field(int uid, int field, char *out, int cap)
+{
+    struct passwd *p = getpwuid((uid_t)uid);
+    const char *v;
+    if (!p || !out || cap <= 0) return -1;
+    switch (field) {
+    case 0: v = p->pw_name; break;
+    case 1: v = p->pw_dir; break;
+    default: v = p->pw_shell; break;
+    }
+    if (!v) v = "";
+    if ((int)strlen(v) + 1 > cap) return -1;
+    strcpy(out, v);
+    return 0;
+}
+static inline int std_posix_grp_name(int gid, char *out, int cap)
+{
+    struct group *g = getgrgid((gid_t)gid);
+    if (!g || !out || cap <= 0) return -1;
+    if ((int)strlen(g->gr_name) + 1 > cap) return -1;
+    strcpy(out, g->gr_name);
+    return 0;
+}
+static inline int std_posix_sched_yield(void) { return sched_yield() == 0 ? 0 : -1; }
+static inline int std_posix_sched_max(int policy) { return sched_get_priority_max(policy); }
+static inline int std_posix_sched_min(int policy) { return sched_get_priority_min(policy); }
+static inline int std_posix_sched_other(void) { return SCHED_OTHER; }
+static inline int std_posix_sched_fifo(void) { return SCHED_FIFO; }
+static inline int std_posix_sched_rr(void) { return SCHED_RR; }
+
+
 #endif

@@ -19,6 +19,9 @@ applies-to: v0.12.0
 | `v0-PH-11-dev` | DEV | 实现 PH-11 任务、先红后绿 | `v0-PH-11` |
 | `v0-PH-11-verify` | VERIFY | PH-11 红证与退出判据 | `v0-PH-11` |
 | `v0-PH-11-review` | REVIEW | PH-11 评审 | `v0-PH-11` |
+| `v0-PH-12-dev` | DEV | 实现 PH-12 任务、先红后绿 | `v0-PH-12` |
+| `v0-PH-12-verify` | VERIFY | PH-12 红证与退出判据 | `v0-PH-12` |
+| `v0-PH-12-review` | REVIEW | PH-12 评审 | `v0-PH-12` |
 
 ## 规则
 

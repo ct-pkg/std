@@ -1,0 +1,12 @@
+import std::posix::Posix;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    tp->init();
+    tp->check_eq_int(std::posix::Posix.sched_yield(), 0, "sched_yield");
+    tp->check_true(std::posix::Posix.sched_max(std::posix::Posix.sched_other()) >= 0, "sched max");
+    tp->check_true(std::posix::Posix.sched_max(std::posix::Posix.sched_other()) >= std::posix::Posix.sched_min(std::posix::Posix.sched_other()), "sched range");
+    return tp->report();
+}

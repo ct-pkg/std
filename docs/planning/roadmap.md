@@ -51,7 +51,7 @@ applies-to: v0.12.0
 | `v0-PH-9` | ISO C17 补全 | `0.13.0` | 已收口 | [card](../phases/v0-PH-9/card.md) |
 | `v0-PH-10` | POSIX 核心：线程 / 同步 / 内存映射 / 多路复用 | `0.14.0` | 已收口 | [card](../phases/v0-PH-10/card.md) |
 | `v0-PH-11` | POSIX 服务：uname / rlimit / statvfs / fnmatch / dlfcn | `0.15.0` | 已收口 | [card](../phases/v0-PH-11/card.md) |
-| `v0-PH-12` | POSIX 服务续：aio / mq / shm / sched / spawn / termios / pwd / grp | `0.16.0` | 草案 | [draft](../phases/draft-posix-remaining/card.md) |
+| `v0-PH-12` | POSIX 服务续：pwd / grp / sched / shm / termios / glob / aio / mq / spawn | `0.16.0` | 待开工 | [card](../phases/v0-PH-12/card.md) |
 
 草案卡不排期、不派工、不开工；定稿时按 PN-13 一次完成改名、卡头与编号账本。
 `v0-PH-9` 之后的编号在正式定稿时写入账本；`v0-PH-8` 是下一个可执行 phase。

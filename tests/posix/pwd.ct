@@ -1,0 +1,14 @@
+import std::posix::Posix;
+import std::process::Process;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    char name[128];
+    tp->init();
+    tp->check_eq_int(std::posix::Posix.pwd_field(std::process::Process.get_uid(), 0, name, 128), 0, "pwd name");
+    tp->check_true(name[0] != 0, "pwd value");
+    tp->check_eq_int(std::posix::Posix.grp_name(std::process::Process.get_gid(), name, 128), 0, "grp name");
+    return tp->report();
+}

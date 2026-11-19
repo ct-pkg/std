@@ -19,6 +19,14 @@ pub trait Posix {
     int dlerror(char *out, int cap);
     int rtld_now();
     int rtld_lazy();
+    int pwd_field(int uid, int field, char *out, int cap);
+    int grp_name(int gid, char *out, int cap);
+    int sched_yield();
+    int sched_max(int policy);
+    int sched_min(int policy);
+    int sched_other();
+    int sched_fifo();
+    int sched_rr();
 }
 
 map trait Posix for namespace std::posix {
@@ -39,4 +47,12 @@ map trait Posix for namespace std::posix {
     dlerror(out, cap) -> std_posix_dlerror(out, cap);
     rtld_now() -> std_posix_rtld_now();
     rtld_lazy() -> std_posix_rtld_lazy();
+    pwd_field(uid, field, out, cap) -> std_posix_pwd_field(uid, field, out, cap);
+    grp_name(gid, out, cap) -> std_posix_grp_name(gid, out, cap);
+    sched_yield() -> std_posix_sched_yield();
+    sched_max(policy) -> std_posix_sched_max(policy);
+    sched_min(policy) -> std_posix_sched_min(policy);
+    sched_other() -> std_posix_sched_other();
+    sched_fifo() -> std_posix_sched_fifo();
+    sched_rr() -> std_posix_sched_rr();
 }
