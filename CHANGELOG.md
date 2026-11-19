@@ -1,6 +1,10 @@
-applies-to: v0.14.0
+applies-to: v0.15.0
 
 # Changelog
+
+## 0.15.0 — 2026-11-19
+
+`v0-PH-11` POSIX 服务：uname、rlimit、statvfs、fnmatch、dlfcn；其余服务归 PH-12。
 
 ## 0.14.0 — 2026-11-19
 

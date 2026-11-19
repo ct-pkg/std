@@ -1,0 +1,28 @@
+import std::posix::Posix;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    char buf[256];
+    long bsize = 0; long blocks = 0; long bfree = 0; long bavail = 0;
+    long cur = 0;
+    void *h; void *sym;
+    tp->init();
+    tp->check_eq_int(std::posix::Posix.uname_field(0, buf, 256), 0, "uname sysname");
+    tp->check_true(buf[0] != 0, "uname value");
+    tp->check_eq_int(std::posix::Posix.rlimit_get(std::posix::Posix.rlimit_nofile(), 0, &cur), 0, "rlimit");
+    tp->check_true(cur > 0, "rlimit value");
+    tp->check_eq_int(std::posix::Posix.statvfs(".", &bsize, &blocks, &bfree, &bavail), 0, "statvfs");
+    tp->check_true(bsize > 0 && blocks > 0, "statvfs values");
+    tp->check_eq_int(std::posix::Posix.fnmatch("a*", "abc", 0), 0, "fnmatch hit");
+    tp->check_true(std::posix::Posix.fnmatch("a", "b", 0) != 0, "fnmatch miss");
+    h = std::posix::Posix.dlopen(0, std::posix::Posix.rtld_now());
+    tp->check_true(h != 0, "dlopen self");
+    if (h) {
+        sym = std::posix::Posix.dlsym(h, "malloc");
+        tp->check_true(sym != 0, "dlsym malloc");
+        std::posix::Posix.dlclose(h);
+    }
+    return tp->report();
+}

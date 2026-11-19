@@ -1,0 +1,42 @@
+/* Posix.m.ct - uname/rlimit/statvfs/fnmatch/dlfcn, no CT value types. */
+namespace std::posix;
+
+pub trait Posix {
+    int uname_field(int field, char *out, int cap);
+    int rlimit_get(int resource, int which, long *out);
+    int rlimit_set(int resource, long cur, long max);
+    int rlimit_cpu();
+    int rlimit_fsize();
+    int rlimit_data();
+    int rlimit_stack();
+    int rlimit_nofile();
+    int statvfs(const char *path, long *bsize, long *blocks, long *bfree, long *bavail);
+    int fnmatch(const char *pattern, const char *name, int flags);
+    int fnmatch_nomatch();
+    void *dlopen(const char *path, int flags);
+    void *dlsym(void *handle, const char *name);
+    int dlclose(void *handle);
+    int dlerror(char *out, int cap);
+    int rtld_now();
+    int rtld_lazy();
+}
+
+map trait Posix for namespace std::posix {
+    uname_field(field, out, cap) -> std_posix_uname_field(field, out, cap);
+    rlimit_get(resource, which, out) -> std_posix_rlimit_get(resource, which, out);
+    rlimit_set(resource, cur, max) -> std_posix_rlimit_set(resource, cur, max);
+    rlimit_cpu() -> std_posix_rlimit_cpu();
+    rlimit_fsize() -> std_posix_rlimit_fsize();
+    rlimit_data() -> std_posix_rlimit_data();
+    rlimit_stack() -> std_posix_rlimit_stack();
+    rlimit_nofile() -> std_posix_rlimit_nofile();
+    statvfs(path, bsize, blocks, bfree, bavail) -> std_posix_statvfs(path, bsize, blocks, bfree, bavail);
+    fnmatch(pattern, name, flags) -> std_posix_fnmatch(pattern, name, flags);
+    fnmatch_nomatch() -> std_posix_fnmatch_nomatch();
+    dlopen(path, flags) -> std_posix_dlopen(path, flags);
+    dlsym(handle, name) -> std_posix_dlsym(handle, name);
+    dlclose(handle) -> std_posix_dlclose(handle);
+    dlerror(out, cap) -> std_posix_dlerror(out, cap);
+    rtld_now() -> std_posix_rtld_now();
+    rtld_lazy() -> std_posix_rtld_lazy();
+}

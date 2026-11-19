@@ -455,7 +455,7 @@ AI_ENGINEERING_SPEC=<主规范路径> ...                          # 覆盖默�
   - 生效日期: 2026-11-19
   - 范围: `v0-PH-8` 及之后的新 phase
   - 理由: 历史 `P0`–`P7` 对应 `0.4.0`–`0.11.0`，与 `v0-PH-<n>` 的 `MINOR == n` 错位；已发布 tag 不可回改
-  - 规则: `MINOR = n − d = n + 4`；`v0-PH-8` → `0.12.0`；`v0-PH-9` → `0.13.0`；`v0-PH-10` → `0.14.0`
+  - 规则: `MINOR = n − d = n + 4`；`v0-PH-8` → `0.12.0`；`v0-PH-9` → `0.13.0`；`v0-PH-10` → `0.14.0`；`v0-PH-11` → `0.15.0`
   - 收敛: 永久偏移，不重编号、不回填 tag
   - 签字: USER 2026-11-19（会话指令“工程规范要遵守，正规化吧”）
 
@@ -464,7 +464,7 @@ AI_ENGINEERING_SPEC=<主规范路径> ...                          # 覆盖默�
 ### 1.1 目录与模块
 
 - 仓库根就是包根，`std/` 是命名空间根（`import std::<mod>::<Unit>`）。
-- `std/` 下 19 个模块目录：`arena`、`env`、`errno`、`fs`、`io`、`locale`、`math`、`mmap`、`net`、`num`、`poll`、`process`、`search`、`str`、`test`、`thread`、`time`、`utf8`、`wchar`。
+- `std/` 下 20 个模块目录：`arena`、`env`、`errno`、`fs`、`io`、`locale`、`math`、`mmap`、`net`、`num`、`poll`、`posix`、`process`、`search`、`str`、`test`、`thread`、`time`、`utf8`、`wchar`。
 - `tests/` 与模块一一对应（另有 `tests/all/`），`tests/run.sh` 是测试门。
 - `docs/`：`planning/`、`phases/`、`requirements/`、`decisions/`、`snippets/`、`design/`、`review/`、`backlog.md`、`coding-prerequisites-std.md`、`libc-inventory.md`、`roadmap.md`（历史）。
 - `tools/`：`bootstrap-ct.sh`、`migrate-from-ct.sh`、`check.sh`（G0–G9 全实现）。
@@ -479,7 +479,7 @@ AI_ENGINEERING_SPEC=<主规范路径> ...                          # 覆盖默�
 
 ### 1.3 包定义位置
 
-- 包定义文件是仓库根的 `ct.pkg`；`name = std`、`publisher = std`、`ns-root = .`、`version = 0.14.0`、`licence = MIT`、`requires = ct >= 0.67.0`、`ldflags = -lm`。
+- 包定义文件是仓库根的 `ct.pkg`；`name = std`、`publisher = std`、`ns-root = .`、`version = 0.15.0`、`licence = MIT`、`requires = ct >= 0.67.0`、`ldflags = -lm`。
 
 ### 1.4 `docs/` 下现有文档
 

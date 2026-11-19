@@ -62,14 +62,14 @@ echo
 
 echo "== layout (the package must not be empty) =="
 layout_bad=""
-for mod in str io fs utf8 arena test num math search env process errno locale wchar time net mmap poll thread; do
+for mod in str io fs utf8 arena test num math search env process errno locale wchar time net mmap poll thread posix; do
     [ -d "std/$mod" ] || layout_bad="$layout_bad std/$mod(missing)"
 done
 if [ -z "$(find tests -mindepth 2 -name '*.ct' 2>/dev/null | head -1)" ]; then
     layout_bad="$layout_bad tests/*/*.ct(no fixtures)"
 fi
 if [ -z "$layout_bad" ]; then
-    ok "nineteen modules and at least one fixture per package"
+    ok "twenty modules and at least one fixture per package"
 else
     bad "layout" "$layout_bad"
 fi
