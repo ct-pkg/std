@@ -19,11 +19,10 @@
 # -lm rides in `ldflags` because std::math calls sqrt / fabs / isnan / isinf;
 # on platforms where libm is part of libc it is a no-op.
 #
-# `publisher` and `ns-root` are the two keys the replacement package mechanism
-# requires (SP-002 / SP-003 in ct-lang's ct-pkg-shared-store requirements).
-# Measured on ct v0.53.0 and re-checked on v0.67.0: both are accepted with no diagnostic and silently
-# ignored, so `ct build` and `tests/run.sh` are unaffected. The include root is
-# the package root itself, hence `ns-root = .` (the `std/` segment of
+# `publisher` is the official package identity: ct 0.73+ uses it for the
+# store path (ct/std) and lock rows. Older compilers (0.67) accept the key and
+# skip unknown keys, so `ct build`/`tests/run.sh` are unaffected. The include
+# root is the package root itself, hence `ns-root = .` (the `std/` segment of
 # `import std::<mod>::<Unit>` comes from the directory tree, not this key).
 name = std
 publisher = ct
