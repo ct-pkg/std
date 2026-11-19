@@ -479,7 +479,7 @@ AI_ENGINEERING_SPEC=<主规范路径> ...                          # 覆盖默�
 
 ### 1.3 包定义位置
 
-- 包定义文件是仓库根的 `ct.pkg`；`name = std`、`publisher = std`、`ns-root = .`、`version = 0.11.0`、`licence = MIT`、`requires = ct >= 0.67.0`、`ldflags = -lm`。
+- 包定义文件是仓库根的 `ct.pkg`；`name = std`、`publisher = std`、`ns-root = .`、`version = 0.12.0`、`licence = MIT`、`requires = ct >= 0.67.0`、`ldflags = -lm`。
 
 ### 1.4 `docs/` 下现有文档
 

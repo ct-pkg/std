@@ -1,10 +1,12 @@
+applies-to: v0.12.0
+
 # `std` Roadmap（规范版）
 
 | 项 | 值 |
 | --- | --- |
 | 性质 | 路线图；由主编维护，phase 卡片从本表立项 |
-| 当前版本 | `0.11.0`（`v0.11.0` 已发布） |
-| 当前 phase | 无（`v0-PH-8` 待开工） |
+| 当前版本 | `0.12.0`（`v0.12.0` 已发布） |
+| 当前 phase | 无（`v0-PH-8` 已收口） |
 | 版本偏移 | 历史 `P0`–`P7` 与 `v0-PH-0…7` 错位，`MINOR = n + 4`；见 `AGENTS.md` 的 deviation |
 | 规范版本 | 1.17.0 |
 
@@ -45,7 +47,7 @@
 
 | phase | 主题 | 版本 | 状态 | 卡片 |
 | --- | --- | --- | --- | --- |
-| `v0-PH-8` | 工程规范纳管（G0–G9） | `0.12.0` | 待开工 | [card](../phases/v0-PH-8/card.md) |
+| `v0-PH-8` | 工程规范纳管（G0–G9） | `0.12.0` | 已收口 | [card](../phases/v0-PH-8/card.md) |
 | `v0-PH-9` | ISO C17 补全 | `0.13.0` | 草案 | [draft](../phases/draft-iso-c/card.md) |
 | `v0-PH-10` | POSIX 核心：线程 / 同步 / 内存映射 / 多路复用 | `0.14.0` | 草案 | [draft](../phases/draft-posix-core/card.md) |
 | `v0-PH-11` | POSIX 服务：aio / mq / sem / shm / sched / 资源与信息 | `0.15.0` | 草案 | [draft](../phases/draft-posix-services/card.md) |

@@ -1,3 +1,5 @@
+applies-to: v0.12.0
+
 # Session map
 
 | 对话名 | 角色 | 职责 | 作用域 |
@@ -12,5 +14,5 @@
 ## 规则
 
 - phase 对话命名：`v<M>-PH-<n>-dev` / `-verify` / `-review`；草案（`draft-*`）不得进入本表。
-- 当前可执行 phase：`v0-PH-8`。草案 `draft-iso-c` / `draft-posix-core` / `draft-posix-services` 不排期、不派工。
+- 当前可执行 phase：`v0-PH-8`。草案卡不排期、不派工（PN-14）。
 - 角色的读写边界见 `AGENTS.md` 生成块 §3 与 §5；`lead` 不写实现代码。

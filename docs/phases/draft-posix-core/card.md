@@ -1,3 +1,5 @@
+applies-to: v0.11.0
+
 # draft-posix-core：POSIX 线程 / 同步 / 内存映射 / 多路复用
 
 | 项 | 值 |

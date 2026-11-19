@@ -1,3 +1,5 @@
+applies-to: v0.11.0
+
 # draft-iso-c：ISO C17 补全
 
 | 项 | 值 |

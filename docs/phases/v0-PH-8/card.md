@@ -1,3 +1,5 @@
+applies-to: v0.12.0
+
 # v0-PH-8：工程规范纳管
 
 | 项 | 值 |
@@ -7,7 +9,7 @@
 | 规范版本 | 1.17.0 |
 | version-minor | 8（收口 `0.12.0`，含永久偏移 `+4`） |
 | 依赖 | 无；`v0.11.0` 已发布 |
-| 状态 | 待开工 |
+| 状态 | 已收口（2026-11-19，`v0.12.0`） |
 
 ## 范围
 
@@ -52,14 +54,14 @@
 
 ## 退出判据
 
-- [ ] `bash tools/check.sh all` 退出码 0。
-- [ ] `docs/session-map.md` 存在，且 `AGENTS.md` 0.2/0.3 非空。
-- [ ] `docs/phases/v0-PH-8/card.md` 通过 `tools/check.sh g1`；`docs/acceptance.md` 通过 `g2`。
-- [ ] `bash tests/run.sh` 20/20；`ct pkg check .` 通过。
-- [ ] 存量豁免清单存在且有 D-001 签字；新文档在清单外。
-- [ ] 版本落点全部为 `0.12.0`；annotated tag `v0.12.0` 指向收口提交并推送。
-- [ ] **任务清单每项可独立验收（6.6 T-6）**：收口对照表逐项贴 verify 输出。
-- [ ] 无 P0/P1 issue；新 issue 状态合法。
+- [x] `bash tools/check.sh all` 退出码 0。
+- [x] `docs/session-map.md` 存在，且 `AGENTS.md` 0.2/0.3 非空。
+- [x] `docs/phases/v0-PH-8/card.md` 通过 `tools/check.sh g1`；`docs/acceptance.md` 通过 `g2`。
+- [x] `bash tests/run.sh` 20/20；`ct pkg check .` 通过。
+- [x] 存量豁免清单存在且有 D-001 签字；新文档在清单外。
+- [x] 版本落点全部为 `0.12.0`；annotated tag `v0.12.0` 指向收口提交并推送。
+- [x] **任务清单每项可独立验收（6.6 T-6）**：收口对照表逐项贴 verify 输出。
+- [x] 无 P0/P1 issue；新 issue 状态合法。
 
 ## 已知风险
 

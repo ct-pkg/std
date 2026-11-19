@@ -1,3 +1,5 @@
+applies-to: v0.11.0
+
 # draft-posix-services：POSIX 服务
 
 | 项 | 值 |

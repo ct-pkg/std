@@ -1,3 +1,5 @@
+applies-to: v0.12.0
+
 # D-002：std 的范围 = ISO C17 + POSIX.1-2017
 
 | 项 | 值 |
