@@ -8,7 +8,7 @@ applies-to: v0.12.0
 | 头文件 | 现状 | 缺口 / 处置 |
 | --- | --- | --- |
 | `assert.h` | `direct` | `assert` 是宏；文档写直调 |
-| `complex.h` | `deferred` | 探针见 `docs/iso-c-probes.md`；目标 `v0-PH-10` |
+| `complex.h` | `blocked` | 探针见 `docs/iso-c-probes.md`；CT 无复数类型，等语言侧 |
 | `ctype.h` | `covered` | 14 个方法；无缺口 |
 | `errno.h` | `covered` | `errno` / `strerror` / `perror`（perror 在 T3） |
 | `fenv.h` | `missing` | T7：舍入模式、异常标志 |
@@ -22,7 +22,7 @@ applies-to: v0.12.0
 | `signal.h` | `covered` | `signal` / `raise` / `alarm` 在 process |
 | `stdalign.h` | `direct` | 宏；不封装 |
 | `stdarg.h` | `na` | 变参；不封装 |
-| `stdatomic.h` | `deferred` | CT 无泛型原子类型；目标 `v0-PH-10` |
+| `stdatomic.h` | `blocked` | CT 无泛型原子类型，等语言侧 |
 | `stdbool.h` | `direct` | 宏；不封装 |
 | `stddef.h` | `direct` | `size_t` / `NULL` 等；不封装 |
 | `stdint.h` | `direct` | 定长整数；不封装 |
@@ -31,9 +31,9 @@ applies-to: v0.12.0
 | `stdnoreturn.h` | `direct` | 宏；不封装 |
 | `string.h` | `covered` | T2 已补 `strspn` / `strcspn` / `strpbrk` / `strcoll` / `strxfrm`；`strtok_r` 是 POSIX，归 PH-10 |
 | `tgmath.h` | `na` | 泛型宏；只写直调说明 |
-| `threads.h` | `deferred` | C11 可选，与 pthread 重叠；目标 `v0-PH-10` |
+| `threads.h` | `blocked` | C11 可选，与 pthread 重叠；等语言侧 |
 | `time.h` | `partial` | T5 已补 UTC 字段、`timegm`、`now_timespec`；`asctime` / `ctime` 仍缺 |
-| `uchar.h` | `deferred` | CT 无 `char16_t` / `mbstate_t`；目标 `v0-PH-10` |
+| `uchar.h` | `blocked` | CT 无 `char16_t` / `mbstate_t`，等语言侧 |
 | `wchar.h` | `partial` | 有转换；缺宽字符 I/O（T6 视成本） |
 | `wctype.h` | `covered` | T6 已补 7 个 `isw_*` 与 `towupper` / `towlower` |
 
