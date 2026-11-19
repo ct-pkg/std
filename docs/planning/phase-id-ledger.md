@@ -10,5 +10,5 @@ window: W3
 | --- | --- | --- | --- | --- | --- |
 | — | `v0-PH-8` | — | `docs/phases/v0-PH-8/card.md` | `0.12.0` | migrated |
 | `draft-iso-c` | `v0-PH-9` | `docs/phases/draft-iso-c/card.md` | `docs/phases/v0-PH-9/card.md` | `0.13.0` | migrated |
-| — | `draft-posix-core` | — | `docs/phases/draft-posix-core/card.md` | — | planned |
+| `draft-posix-core` | `v0-PH-10` | `docs/phases/draft-posix-core/card.md` | `docs/phases/v0-PH-10/card.md` | `0.14.0` | migrated |
 | — | `draft-posix-services` | — | `docs/phases/draft-posix-services/card.md` | — | planned |

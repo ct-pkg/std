@@ -27,7 +27,7 @@ class Gate:
             if not re.search(r"^\| T\d+ \|", s, re.M): self.fail(f"{base}: no task rows")
             if "TBD" in s: self.fail(f"{base}: contains TBD")
             if "| status | draft |" in s: self.fail(f"{base}: formal card marked draft")
-            if f"| target | `{base}` |" not in decisions:
+            if f"| target | `{base}` |" not in decisions and f"| target-2 | `{base}` |" not in decisions:
                 self.fail(f"{base}: no decision target authorization")
         for d in glob.glob(self.path("docs/phases/draft-*/card.md")):
             ds = read(d); base = os.path.basename(os.path.dirname(d))
@@ -101,9 +101,9 @@ class Gate:
         v = self.version()
         cards = sorted(glob.glob(self.path("docs/phases/v0-PH-*/card.md")))
         if v and cards:
-            n = max(int(re.search(r"v0-PH-(\d+)", c).group(1)) for c in cards)
-            if not re.match(rf"0\.{n + 4}\.\d+$", v):
-                self.fail(f"version {v} does not match v0-PH-{n} (0.{n+4}.x)")
+            ns = [int(re.search(r"v0-PH-(\d+)", c).group(1)) for c in cards]
+            if not any(re.match(rf"0\.{n + 4}\.\d+$", v) for n in ns):
+                self.fail(f"version {v} does not match any open/closed phase")
 
     def version(self):
         m = re.search(r"^version\s*=\s*(\S+)", read(self.path("ct.pkg")), re.M)

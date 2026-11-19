@@ -49,7 +49,7 @@ applies-to: v0.12.0
 | --- | --- | --- | --- | --- |
 | `v0-PH-8` | 工程规范纳管（G0–G9） | `0.12.0` | 已收口 | [card](../phases/v0-PH-8/card.md) |
 | `v0-PH-9` | ISO C17 补全 | `0.13.0` | 已收口 | [card](../phases/v0-PH-9/card.md) |
-| `v0-PH-10` | POSIX 核心：线程 / 同步 / 内存映射 / 多路复用 | `0.14.0` | 草案 | [draft](../phases/draft-posix-core/card.md) |
+| `v0-PH-10` | POSIX 核心：线程 / 同步 / 内存映射 / 多路复用 | `0.14.0` | 待开工 | [card](../phases/v0-PH-10/card.md) |
 | `v0-PH-11` | POSIX 服务：aio / mq / sem / shm / sched / 资源与信息 | `0.15.0` | 草案 | [draft](../phases/draft-posix-services/card.md) |
 
 草案卡不排期、不派工、不开工；定稿时按 PN-13 一次完成改名、卡头与编号账本。
