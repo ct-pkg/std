@@ -11,7 +11,7 @@
 
 set -u
 
-root="$(cd "$(dirname "$0")/.." && pwd)"
+root="${STD_CHECK_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 cd "$root" || exit 1
 
 SPEC_SRC="${AI_ENGINEERING_HOME:-/Users/samxx/trae-ws/.ai-engineering}"
@@ -46,8 +46,8 @@ g0() {
     fi
 }
 
-g1() { echo "== g1: not implemented (PH-8 T3) =="; return 2; }
-g2() { echo "== g2: not implemented (PH-8 T3) =="; return 2; }
+g1() { echo "== g1: phase card =="; python3 "$root/tools/gate_checks.py" g1 --root "$root"; }
+g2() { echo "== g2: acceptance =="; python3 "$root/tools/gate_checks.py" g2 --root "$root"; }
 
 g3() {
     echo "== g3: build and unit tests =="
@@ -63,11 +63,11 @@ g3() {
     fi
 }
 
-g4() { echo "== g4: not implemented (PH-8 T4) =="; return 2; }
-g5() { echo "== g5: not implemented (PH-8 T5) =="; return 2; }
-g6() { echo "== g6: not implemented (PH-8 T6) =="; return 2; }
-g7() { echo "== g7: not implemented (PH-8 T5) =="; return 2; }
-g8() { echo "== g8: not implemented (PH-8 T7) =="; return 2; }
+g4() { echo "== g4: docs =="; python3 "$root/tools/gate_checks.py" g4 --root "$root"; }
+g5() { echo "== g5: self-proof =="; python3 "$root/tools/gate_checks.py" g5 --root "$root"; }
+g6() { echo "== g6: ledger =="; python3 "$root/tools/gate_checks.py" g6 --root "$root"; }
+g7() { echo "== g7: security =="; python3 "$root/tools/gate_checks.py" g7 --root "$root" || return 1; bash "$root/tools/sanitizer.sh"; }
+g8() { echo "== g8: release =="; python3 "$root/tools/gate_checks.py" g8 --root "$root"; }
 
 g9() {
     echo "== g9: spec pin =="
