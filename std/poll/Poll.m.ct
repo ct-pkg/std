@@ -1,0 +1,28 @@
+/* Poll.m.ct - POSIX poll; pollfd arrays are opaque handles. */
+namespace std::poll;
+
+pub trait Poll {
+    void *new_set(int count);
+    int set_fd(void *set, int index, int fd, int events);
+    int events(void *set, int index);
+    int wait(void *set, int count, int timeout);
+    void free_set(void *set);
+    int in();
+    int out();
+    int error();
+    int hangup();
+    int invalid();
+}
+
+map trait Poll for namespace std::poll {
+    new_set(count) -> std_poll_new(count);
+    set_fd(set, index, fd, events) -> std_poll_set_fd(set, index, fd, events);
+    events(set, index) -> std_poll_events(set, index);
+    wait(set, count, timeout) -> std_poll_wait(set, count, timeout);
+    free_set(set) -> std_poll_free(set);
+    in() -> std_poll_in();
+    out() -> std_poll_out();
+    error() -> std_poll_err();
+    hangup() -> std_poll_hup();
+    invalid() -> std_poll_nval();
+}

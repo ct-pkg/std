@@ -1,0 +1,16 @@
+import std::poll::Poll;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    void *set;
+    tp->init();
+    set = std::poll::Poll.new_set(2);
+    tp->check_true(set != 0, "poll set alloc");
+    tp->check_eq_int(std::poll::Poll.set_fd(set, 0, -1, std::poll::Poll.in()), 0, "set fd");
+    tp->check_eq_int(std::poll::Poll.wait(set, 1, 0), 0, "poll timeout");
+    tp->check_eq_int(std::poll::Poll.events(set, 0), 0, "no events");
+    std::poll::Poll.free_set(set);
+    return tp->report();
+}
