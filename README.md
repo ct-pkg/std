@@ -53,11 +53,11 @@ ldflags = -lm
 ```sh
 ct get ct/std@0.19.0   # 解析并写入 ct.lock
 ct verify              # 核对 store 与 lock 的摘要
-ct install             # 打印建议的构建命令（含 include 根）
+ct install             # 打印建议的构建命令
 ```
 
-`ct install` 会打印包含 `-I <store>/ct/std/0.19.0` 的构建命令；`-I` 由 lock 自动补，
-示例里不再手写 `vendor/` 路径：
+`ct install` 会打印构建命令；include 根由 `ct.lock` 自动补，示例里不再手写 `-I`
+或 `vendor/` 路径：
 
 ```sh
 ct build src/main.ct -o main --cflags "-Wall -Wextra"
@@ -76,7 +76,7 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 
 ### 离线 / 钉版本
 
-把 `vendor/` 连同 `ct.lock` 一起提交，CI 里用 `ct install --check`（或 `ct verify`）即可离线构建。
+把 `ct.lock` 提交；CI 里用 `ct install --check`（或 `ct verify`）核对 store 与 lock，即可离线构建。
 需要某个具体版本时，在 `ct.pkg` 里写 `dep = ct/std@0.19.0` 并提交 `ct.lock`。
 
 ### 当前发布状态

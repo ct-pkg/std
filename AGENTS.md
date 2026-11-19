@@ -473,7 +473,7 @@ AI_ENGINEERING_SPEC=<主规范路径> ...                          # 覆盖默�
 ### 1.2 构建与测试
 
 - 包根内构建：`ct build -I . <file>.ct -o <out> --cflags "-Wall -Wextra"`。
-- 消费者安装：`ct get ct/std@<range>` → `ct verify` → `ct install`；`ct install` 打印的 include 项由 lock 自动补，形如 `-I <store>/ct/std/<version>`。
+- 消费者安装：`ct get ct/std@<range>` → `ct verify` → `ct install`；`ct install` 打印构建命令；include 根由 lock 自动补，无需手写 `-I`。
 - 测试门：`bash tests/run.sh`；可用 `CT=<ct 路径>`、`CC=<C 编译器>` 覆盖。
 - 本机实测：`ct v0.67.0`（`ct.pkg` 的 `requires` 为 `ct >= 0.67.0`）。
 
