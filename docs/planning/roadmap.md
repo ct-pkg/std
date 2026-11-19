@@ -51,12 +51,11 @@ applies-to: v0.12.0
 | `v0-PH-9` | ISO C17 补全 | `0.13.0` | 已收口 | [card](../phases/v0-PH-9/card.md) |
 | `v0-PH-10` | POSIX 核心：线程 / 同步 / 内存映射 / 多路复用 | `0.14.0` | 已收口 | [card](../phases/v0-PH-10/card.md) |
 | `v0-PH-11` | POSIX 服务：uname / rlimit / statvfs / fnmatch / dlfcn | `0.15.0` | 已收口 | [card](../phases/v0-PH-11/card.md) |
-| `v0-PH-12` | POSIX 服务续：pwd / grp / sched / shm / termios / glob | `0.16.0` | 已收口 |
+| `v0-PH-12` | POSIX 服务续：pwd / grp / sched / shm / termios / glob | `0.16.0` | 已收口 | [card](../phases/v0-PH-12/card.md) |
 | `v0-PH-13` | POSIX 异步：aio / posix_spawn | `0.17.0` | 已收口 | [card](../phases/v0-PH-13/card.md) |
-| `v0-PH-14` | POSIX mqueue | `0.18.0` | 已收口 | [card](../phases/v0-PH-14/card.md) | [card](../phases/v0-PH-12/card.md) |
+| `v0-PH-14` | POSIX mqueue | `0.18.0` | 已收口 | [card](../phases/v0-PH-14/card.md) |
 
-草案卡不排期、不派工、不开工；定稿时按 PN-13 一次完成改名、卡头与编号账本。
-`v0-PH-9` 之后的编号在正式定稿时写入账本；`v0-PH-8` 是下一个可执行 phase。
+当前**无待开工 phase**；`v0-PH-8`–`v0-PH-14` 全部收口。ISO C 的 `complex`/`stdatomic`/`threads`/`uchar` 与 `madvise` 已登记为 language-side / platform blocked（不是 phase）。新增工作按新卡立项。
 
 ## 4. 各期目标
 
