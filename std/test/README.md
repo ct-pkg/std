@@ -27,8 +27,8 @@
 包安装后（详见[包根 README](../../README.md#安装)）：
 
 ```sh
-ct get std@^0.2.0
-ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
+ct get ct/std@0.19.0
+ct build src/main.ct -o main --cflags "-Wall -Wextra"
 ```
 
 在包根内开发时：

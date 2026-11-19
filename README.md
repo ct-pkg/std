@@ -29,9 +29,9 @@
 
 ```
 name = std
-publisher = std
+publisher = ct
 ns-root = .
-version = 0.18.0
+version = 0.19.0
 licence = MIT
 requires = ct >= 0.67.0
 ldflags = -lm
@@ -42,8 +42,8 @@ ldflags = -lm
 `requires` 只告警、不拒装；`ldflags` 里的 `-lm` 给 `std::math` 用，在 libm 已并入 libc 的平台上
 是空操作。
 
-`publisher` 与 `ns-root` 属于替换 `-I vendor/<包名>` 的新包机制（需求 SP-002 / SP-003）：
-发布方是 `std`，命名空间根就是包根自身（`import std::<mod>::<Unit>` 里的 `std/` 段来自目录树，
+`publisher` 与 `ns-root` 属于替换旧 `-I vendor/<包名>` 的新包机制（需求 SP-002 / SP-003）：
+发布方是 `ct`（规范名 `ct/std`），命名空间根就是包根自身（`import std::<mod>::<Unit>` 里的 `std/` 段来自目录树，
 不由这个键提供）。**实测 ct v0.67.0**：这两个键会被静默忽略——`read_manifest` 只认
 `name` / `version` / `dep` / `requires` / `ldflags`，未知键直接跳过，`ct build` 与 `tests/run.sh`
 行为不变、无告警。也就是说现在写上它们是「为将来的工具准备好的声明」，不影响当前构建。
@@ -51,19 +51,20 @@ ldflags = -lm
 ### 安装
 
 ```sh
-ct get std@^0.2.0      # 解析并写入 ct.lock、vendor/std/
-ct verify              # 核对 vendor/ 与 lock 的摘要
-ct install             # 打印建议的构建命令
+ct get ct/std@0.19.0   # 解析并写入 ct.lock
+ct verify              # 核对 store 与 lock 的摘要
+ct install             # 打印建议的构建命令（含 include 根）
 ```
 
-`ct install` 会打印 `-I vendor/std ...`，把这一项加进 `ct build` 即可：
+`ct install` 会打印包含 `-I <store>/ct/std/0.19.0` 的构建命令；`-I` 由 lock 自动补，
+示例里不再手写 `vendor/` 路径：
 
 ```sh
-ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra"
+ct build src/main.ct -o main --cflags "-Wall -Wextra"
 ```
 
-`vendor/std/std/str/String.m.ct` 这样的双层目录不是笔误：包工具按包打印 `-I vendor/<包名>`，
-而命名空间根是 `std/`，两层合起来正好还原 `import std::str::String`。
+store 布局是 `$CT_HOME/pkg/ct/std/0.19.0`，包的命名空间根仍是其中的 `std/` 子目录；
+两层合起来正好还原 `import std::str::String`。
 
 ### 在包根内开发
 
@@ -76,11 +77,11 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 ### 离线 / 钉版本
 
 把 `vendor/` 连同 `ct.lock` 一起提交，CI 里用 `ct install --check`（或 `ct verify`）即可离线构建。
-需要某个具体版本时，在 `ct.pkg` 里写 `dep = std@0.2.0` 并提交 `ct.lock`。
+需要某个具体版本时，在 `ct.pkg` 里写 `dep = ct/std@0.19.0` 并提交 `ct.lock`。
 
 ### 当前发布状态
 
-`0.18.0` 是当前版本，已打 `v0.18.0`；`0.11.0` 及更早的 `0.6.0`–`0.10.0` 是开发里程碑（只有 `v0.11.0` 打了 tag）。
+`0.19.0` 是当前版本，已打 `v0.19.0`（官方包身份 `ct/std`）；`0.18.0` 及更早的 `v0.18.0` 仍保留。`0.11.0` 及更早的 `0.6.0`–`0.10.0` 是开发里程碑（只有 `v0.11.0` 打了 tag）。
 `0.13.0`（`v0-PH-9`）补 ISO C17 的 string/stdio/stdlib/time/wctype/fenv 缺口；`0.12.0`（`v0-PH-8`）只做工程规范纳管；`0.11.0`（P7）补全 `std::net`：TCP/UDP 工厂、`bind_to` /
 `listen_backlog` / `accept`、`send_to` / `receive_from`、`send_message` / `receive_message`、
 `resolve_host` / `parse_ip`、超时与 `set_option`；`Socket` 仍是 `FileDesc` 别名。同时补齐 P1 漏项
@@ -111,7 +112,7 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 `v0.1.0` 仍指向旧接口（大小写转换方法原地改写、
 `copyFrom` 仍在、`requires` 为 0.20.0），不要拿它配本 README。
 索引只收录每个仓库最高的 `v*` tag，不保留历史版本，所以老编译器无法从索引取到与它兼容的旧版 std；
-需要旧版时只能用 `file://` 路径安装，或手工 checkout 对应 tag 的 `vendor/std`。
+需要旧版时只能用 `file://` 路径安装，或手工 checkout 对应 tag。
 
 ## 3. 快速开始
 
@@ -438,6 +439,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
+| `0.19.0` | 已打 `v0.19.0` | **官方包身份归一**：`publisher = ct`，规范名 `ct/std`；版本 0.19.0，API 无变化。 |
 | `0.18.0` | 已打 `v0.18.0` | **`v0-PH-14` POSIX mqueue**：Linux 真实 mqueue，macOS stub + `mq_supported()`。 |
 | `0.17.0` | 已打 `v0.17.0` | **`v0-PH-13` POSIX 异步**：aio 句柄、posix_spawn；mq 归 `v0-PH-14`。 |
 | `0.16.0` | 已打 `v0.16.0` | **`v0-PH-12` POSIX 服务续**：pwd/grp、sched、shm、termios、glob；aio/mq/posix_spawn 归 `v0-PH-13`。 |

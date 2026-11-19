@@ -39,8 +39,8 @@ namespace 入口的 import 不再是文档写法。
 包安装后（详见[包根 README](../../README.md#安装)）：
 
 ```sh
-ct get std@^0.2.0
-ct build src/main.ct -I vendor/std -o main --cflags "-Wall -Wextra" --ldflags "-lm"
+ct get ct/std@0.19.0
+ct build src/main.ct -o main --cflags "-Wall -Wextra" --ldflags "-lm"
 ```
 
 ## 3. 快速开始

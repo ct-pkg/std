@@ -1,6 +1,11 @@
-applies-to: v0.18.0
+applies-to: v0.19.0
 
 # Changelog
+
+## 0.19.0 — 2026-11-19
+
+官方包身份归一：`publisher = std` → `publisher = ct`，规范名 `ct/std`；版本 0.19.0，
+API 无变化。旧 tag 与旧 store 不移动、不删除。
 
 ## 0.18.0 — 2026-11-19
 

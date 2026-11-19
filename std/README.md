@@ -1,6 +1,6 @@
 # `std/` — 命名空间根（导航）
 
-这里是 `-I vendor/std` 指向的目录，`import std::<mod>::<Unit>` 的根。包级说明（定位、安装、
+这里是包的命名空间根（`-I` 指向本目录，由 `ct.lock` 自动补），`import std::<mod>::<Unit>` 的根。包级说明（定位、安装、
 版本策略、跨模块用法）在[包根 README](../README.md)；本页只做索引，不再复制 API 表。
 
 | 模块 | 入口 import | 文档 |

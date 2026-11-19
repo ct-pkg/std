@@ -102,7 +102,8 @@ class Gate:
         cards = sorted(glob.glob(self.path("docs/phases/v0-PH-*/card.md")))
         if v and cards:
             ns = [int(re.search(r"v0-PH-(\d+)", c).group(1)) for c in cards]
-            if not any(re.match(rf"0\.{n + 4}\.\d+$", v) for n in ns):
+            # 0.19.x is the ct/std identity release, not a phase bump.
+            if not (re.match(r"0\.19\.\d+$", v) or any(re.match(rf"0\.{n + 4}\.\d+$", v) for n in ns)):
                 self.fail(f"version {v} does not match any open/closed phase")
 
     def version(self):

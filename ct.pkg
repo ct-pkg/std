@@ -1,7 +1,8 @@
 # std - the CT standard library, published as a normal ct-pkg package.
 #
 # The repository root is the package root; the `std/` directory under it is the
-# namespace root, so `-I vendor/std` resolves `import std::<mod>::<Unit>`.
+# namespace root; the consumer tool supplies the `-I <store>/ct/std/<version>`
+# include root from ct.lock, so `import std::<mod>::<Unit>` resolves.
 #
 # Version policy: 0.x means the surface may break in a minor bump. See README.md.
 #
@@ -25,9 +26,9 @@
 # the package root itself, hence `ns-root = .` (the `std/` segment of
 # `import std::<mod>::<Unit>` comes from the directory tree, not this key).
 name = std
-publisher = std
+publisher = ct
 ns-root = .
-version = 0.18.0
+version = 0.19.0
 licence = MIT
 requires = ct >= 0.67.0
 ldflags = -lm
