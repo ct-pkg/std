@@ -27,7 +27,7 @@ class Gate:
             if not re.search(r"^\| T\d+ \|", s, re.M): self.fail(f"{base}: no task rows")
             if "TBD" in s: self.fail(f"{base}: contains TBD")
             if "| status | draft |" in s: self.fail(f"{base}: formal card marked draft")
-            if f"| target | `{base}` |" not in decisions and f"| target-2 | `{base}` |" not in decisions and f"| target-3 | `{base}` |" not in decisions and f"| target-4 | `{base}` |" not in decisions:
+            if f"| target | `{base}` |" not in decisions and f"| target-2 | `{base}` |" not in decisions and f"| target-3 | `{base}` |" not in decisions and f"| target-4 | `{base}` |" not in decisions and f"| target-5 | `{base}` |" not in decisions:
                 self.fail(f"{base}: no decision target authorization")
         for d in glob.glob(self.path("docs/phases/draft-*/card.md")):
             ds = read(d); base = os.path.basename(os.path.dirname(d))

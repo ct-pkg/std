@@ -1,6 +1,10 @@
-applies-to: v0.16.0
+applies-to: v0.17.0
 
 # Changelog
+
+## 0.17.0 — 2026-11-19
+
+`v0-PH-13` POSIX 异步：aio 句柄与 posix_spawn；mq 归 PH-14。
 
 ## 0.16.0 — 2026-11-19
 

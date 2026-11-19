@@ -45,6 +45,19 @@ pub trait Posix {
     int tty_echo(void *handle);
     int tty_set_echo(void *handle, int on);
     void tty_free(void *handle);
+    void *aio_new();
+    int aio_set_fd(void *h, int fd);
+    int aio_set_offset(void *h, long off);
+    int aio_set_buf(void *h, char *buf, long n);
+    int aio_read(void *h);
+    int aio_write(void *h);
+    int aio_error(void *h);
+    int aio_return(void *h);
+    int aio_cancel(void *h);
+    int aio_suspend(void *h);
+    void aio_free(void *h);
+    int spawn_pid(const char *path);
+    int spawn_wait(const char *path);
 }
 
 map trait Posix for namespace std::posix {
@@ -91,4 +104,17 @@ map trait Posix for namespace std::posix {
     tty_echo(handle) -> std_posix_tty_echo(handle);
     tty_set_echo(handle, on) -> std_posix_tty_set_echo(handle, on);
     tty_free(handle) -> std_posix_tty_free(handle);
+    aio_new() -> std_posix_aio_new();
+    aio_set_fd(h, fd) -> std_posix_aio_set_fd(h, fd);
+    aio_set_offset(h, off) -> std_posix_aio_set_offset(h, off);
+    aio_set_buf(h, buf, n) -> std_posix_aio_set_buf(h, buf, n);
+    aio_read(h) -> std_posix_aio_read(h);
+    aio_write(h) -> std_posix_aio_write(h);
+    aio_error(h) -> std_posix_aio_error(h);
+    aio_return(h) -> std_posix_aio_return(h);
+    aio_cancel(h) -> std_posix_aio_cancel(h);
+    aio_suspend(h) -> std_posix_aio_suspend(h);
+    aio_free(h) -> std_posix_aio_free(h);
+    spawn_pid(path) -> std_posix_spawn_pid(path);
+    spawn_wait(path) -> std_posix_spawn_wait(path);
 }

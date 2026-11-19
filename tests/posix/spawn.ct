@@ -1,0 +1,10 @@
+import std::posix::Posix;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    tp->init();
+    tp->check_eq_int(std::posix::Posix.spawn_wait("/usr/bin/true"), 0, "spawn true");
+    return tp->report();
+}

@@ -1,0 +1,20 @@
+import std::posix::Posix;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    void *h;
+    char buf[16];
+    tp->init();
+    h = std::posix::Posix.aio_new();
+    tp->check_true(h != 0, "aio alloc");
+    if (h) {
+        tp->check_eq_int(std::posix::Posix.aio_set_fd(h, -1), 0, "set fd");
+        tp->check_eq_int(std::posix::Posix.aio_set_offset(h, 0), 0, "set offset");
+        tp->check_eq_int(std::posix::Posix.aio_set_buf(h, buf, 16), 0, "set buf");
+        tp->check_true(std::posix::Posix.aio_cancel(h) >= -1, "cancel");
+        std::posix::Posix.aio_free(h);
+    }
+    return tp->report();
+}

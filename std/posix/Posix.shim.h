@@ -26,6 +26,11 @@
 #include <unistd.h>
 #include <termios.h>
 #include <glob.h>
+#include <aio.h>
+#include <spawn.h>
+#include <sys/wait.h>
+#include <errno.h>
+extern char **environ;
 #include <string.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -198,6 +203,47 @@ static inline int std_posix_tty_set_echo(void *handle, int on)
     return 0;
 }
 static inline void std_posix_tty_free(void *handle) { free(handle); }
+
+
+static inline void *std_posix_aio_new(void) { return calloc(1, sizeof(struct aiocb)); }
+static inline int std_posix_aio_set_fd(void *h, int fd) { if (!h) return -1; ((struct aiocb *)h)->aio_fildes = fd; return 0; }
+static inline int std_posix_aio_set_offset(void *h, long off) { if (!h) return -1; ((struct aiocb *)h)->aio_offset = (off_t)off; return 0; }
+static inline int std_posix_aio_set_buf(void *h, char *buf, long n) { if (!h || !buf || n < 0) return -1; ((struct aiocb *)h)->aio_buf = buf; ((struct aiocb *)h)->aio_nbytes = (size_t)n; return 0; }
+static inline int std_posix_aio_read(void *h) { return h && aio_read((struct aiocb *)h) == 0 ? 0 : -1; }
+static inline int std_posix_aio_write(void *h) { return h && aio_write((struct aiocb *)h) == 0 ? 0 : -1; }
+static inline int std_posix_aio_error(void *h) { return h ? aio_error((struct aiocb *)h) : -1; }
+static inline int std_posix_aio_return(void *h) { return h ? (int)aio_return((struct aiocb *)h) : -1; }
+static inline int std_posix_aio_cancel(void *h) { return h ? aio_cancel(((struct aiocb *)h)->aio_fildes, (struct aiocb *)h) : -1; }
+static inline int std_posix_aio_suspend(void *h) {
+    struct aiocb *list[1];
+    if (!h) return -1;
+    list[0] = (struct aiocb *)h;
+    return aio_suspend((const struct aiocb *const *)list, 1, 0) == 0 ? 0 : -1;
+}
+static inline void std_posix_aio_free(void *h) { free(h); }
+
+static inline int std_posix_spawn_pid(const char *path)
+{
+    pid_t pid = -1;
+    char *argv[2];
+    if (!path) return -1;
+    argv[0] = (char *)path;
+    argv[1] = 0;
+    if (posix_spawn(&pid, path, 0, 0, argv, environ) != 0) return -1;
+    return (int)pid;
+}
+static inline int std_posix_spawn_wait(const char *path)
+{
+    pid_t pid = -1;
+    int status = 0;
+    char *argv[2];
+    if (!path) return -1;
+    argv[0] = (char *)path;
+    argv[1] = 0;
+    if (posix_spawn(&pid, path, 0, 0, argv, environ) != 0) return -1;
+    if (waitpid(pid, &status, 0) < 0) return -1;
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
 
 
 #endif
