@@ -10,6 +10,9 @@ applies-to: v0.12.0
 | `v0-PH-8-dev` | DEV | 实现 PH-8 任务、先红后绿 | `v0-PH-8` |
 | `v0-PH-8-verify` | VERIFY | PH-8 红证与退出判据 | `v0-PH-8` |
 | `v0-PH-8-review` | REVIEW | PH-8 评审 | `v0-PH-8` |
+| `v0-PH-9-dev` | DEV | 实现 PH-9 任务、先红后绿 | `v0-PH-9` |
+| `v0-PH-9-verify` | VERIFY | PH-9 红证与退出判据 | `v0-PH-9` |
+| `v0-PH-9-review` | REVIEW | PH-9 评审 | `v0-PH-9` |
 
 ## 规则
 

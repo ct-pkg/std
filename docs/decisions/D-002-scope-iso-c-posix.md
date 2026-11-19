@@ -12,6 +12,7 @@ applies-to: v0.12.0
 | judge | USER |
 | seats | REQ / ARCH |
 | scope | `std` 的全部模块与后续 phase |
+| target | `v0-PH-9` |
 | criteria | ISO C17 头文件与 POSIX.1-2017 头文件逐项有归属；变参函数、Windows 原生 API 与 C++ 明确排除；新 phase 按头文件分组 |
 | verdict | accepted：范围定为 ISO C17 + POSIX.1-2017；PH-9 做 ISO C 缺口，PH-10 做 POSIX 核心，PH-11 做 POSIX 服务；C 结构体用不透明句柄或 `void *`，不建 CT 值类型 |
 | rationale | 用户明确要求两者都纳入。ISO C17 是语言标准库；POSIX.1-2017 是宿主 libc 的系统接口，C 程序员日常使用的线程、mmap、poll、aio 都在其中。把两者合并成一条交付面，避免“哪些算标准库”反复争议 |
