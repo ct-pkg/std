@@ -1,0 +1,34 @@
+/* Mmap.m.ct - POSIX sys/mman; namespace host, no CT value type. */
+namespace std::mmap;
+
+pub trait Mmap {
+    void *map(int fd, long length, int prot, int flags, long offset);
+    int unmap(void *addr, long length);
+    int protect(void *addr, long length, int prot);
+    int sync(void *addr, long length, int flags);
+    int prot_read();
+    int prot_write();
+    int prot_exec();
+    int prot_none();
+    int shared();
+    int private();
+    int anonymous();
+    int sync_sync();
+    int sync_async();
+}
+
+map trait Mmap for namespace std::mmap {
+    map(fd, length, prot, flags, offset) -> std_mmap_map(fd, length, prot, flags, offset);
+    unmap(addr, length) -> std_mmap_unmap(addr, length);
+    protect(addr, length, prot) -> std_mmap_protect(addr, length, prot);
+    sync(addr, length, flags) -> std_mmap_sync(addr, length, flags);
+    prot_read() -> std_mmap_prot_read();
+    prot_write() -> std_mmap_prot_write();
+    prot_exec() -> std_mmap_prot_exec();
+    prot_none() -> std_mmap_prot_none();
+    shared() -> std_mmap_shared();
+    private() -> std_mmap_private();
+    anonymous() -> std_mmap_anonymous();
+    sync_sync() -> std_mmap_sync_sync();
+    sync_async() -> std_mmap_sync_async();
+}

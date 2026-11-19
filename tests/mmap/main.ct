@@ -1,0 +1,19 @@
+import std::mmap::Mmap;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    char *p;
+    int flags;
+    tp->init();
+    flags = std::mmap::Mmap.private() | std::mmap::Mmap.anonymous();
+    p = std::mmap::Mmap.map(-1, 4096, std::mmap::Mmap.prot_read() | std::mmap::Mmap.prot_write(), flags, 0);
+    tp->check_true(p != 0, "mmap anonymous");
+    if (p) {
+        p[0] = 'A'; p[4095] = 'Z';
+        tp->check_eq_int(p[0], 'A', "mmap read/write");
+        tp->check_eq_int(std::mmap::Mmap.unmap(p, 4096), 0, "munmap");
+    }
+    return tp->report();
+}
