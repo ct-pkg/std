@@ -1,6 +1,11 @@
-applies-to: v0.13.0
+applies-to: v0.14.0
 
 # Changelog
+
+## 0.14.0 — 2026-11-19
+
+`v0-PH-10` POSIX 核心：mmap/munmap/mprotect/msync、poll、select、pthread
+thread/mutex/cond、匿名 semaphore；句柄为 `void *` + 显式释放。
 
 ## 0.13.0 — 2026-11-19
 

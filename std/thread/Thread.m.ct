@@ -1,0 +1,41 @@
+/* Thread.m.ct - POSIX pthread mutex/cond and an anonymous semaphore.
+   All handles are opaque void* and must be freed by *_free. */
+namespace std::thread;
+
+pub trait Thread {
+    void *create(void *start, void *arg);
+    int join(void *thread);
+    void *mutex_new();
+    int lock(void *mutex);
+    int unlock(void *mutex);
+    int try_lock(void *mutex);
+    void mutex_free(void *mutex);
+    void *cond_new();
+    int wait(void *cond, void *mutex);
+    int signal(void *cond);
+    int broadcast(void *cond);
+    void cond_free(void *cond);
+    void *sem_new(int value);
+    int sem_wait(void *sem);
+    int sem_post(void *sem);
+    void sem_free(void *sem);
+}
+
+map trait Thread for namespace std::thread {
+    create(start, arg) -> std_thread_create(start, arg);
+    join(t) -> std_thread_join(t);
+    mutex_new() -> std_thread_mutex_new();
+    lock(m) -> std_thread_mutex_lock(m);
+    unlock(m) -> std_thread_mutex_unlock(m);
+    try_lock(m) -> std_thread_mutex_trylock(m);
+    mutex_free(m) -> std_thread_mutex_free(m);
+    cond_new() -> std_thread_cond_new();
+    wait(c, m) -> std_thread_cond_wait(c, m);
+    signal(c) -> std_thread_cond_signal(c);
+    broadcast(c) -> std_thread_cond_broadcast(c);
+    cond_free(c) -> std_thread_cond_free(c);
+    sem_new(value) -> std_thread_sem_new(value);
+    sem_wait(s) -> std_thread_sem_wait(s);
+    sem_post(s) -> std_thread_sem_post(s);
+    sem_free(s) -> std_thread_sem_free(s);
+}

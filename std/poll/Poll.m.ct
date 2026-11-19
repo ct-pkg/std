@@ -12,6 +12,12 @@ pub trait Poll {
     int error();
     int hangup();
     int invalid();
+    void *new_fd_set();
+    int fd_set_add(void *set, int fd);
+    int fd_set_remove(void *set, int fd);
+    int fd_set_isset(void *set, int fd);
+    int select_wait(void *read_set, void *write_set, void *except_set, int timeout_ms);
+    void fd_set_free(void *set);
 }
 
 map trait Poll for namespace std::poll {
@@ -25,4 +31,10 @@ map trait Poll for namespace std::poll {
     error() -> std_poll_err();
     hangup() -> std_poll_hup();
     invalid() -> std_poll_nval();
+    new_fd_set() -> std_select_new_set();
+    fd_set_add(set, fd) -> std_select_add(set, fd);
+    fd_set_remove(set, fd) -> std_select_remove(set, fd);
+    fd_set_isset(set, fd) -> std_select_isset(set, fd);
+    select_wait(r, w, e, timeout_ms) -> std_select_wait(r, w, e, timeout_ms);
+    fd_set_free(set) -> std_select_free(set);
 }

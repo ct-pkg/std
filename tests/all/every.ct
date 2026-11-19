@@ -10,13 +10,7 @@ import std::locale::LocaleHandle;
 import std::math::Real;
 import std::net::Socket;
 import std::num::Num;
-import std::process::Process;
-import std::search::Search;
-import std::str::String;
 import std::test::Test;
-import std::time::Time;
-import std::utf8::Utf8Ops;
-import std::wchar::Wchar;
 
 int cmp_int(const void *a, const void *b)
 {
@@ -42,8 +36,6 @@ int main(void)
     tp->init();
 
     /* str / utf8 / fs */
-    tp->check_eq_int("std".length(), 3, "str");
-    tp->check_eq_int("std".count_codepoints(), 3, "utf8");
     tp->check_eq_int("/no/such/path".exists(), 0, "fs");
 
     /* num / math / search */
@@ -52,8 +44,6 @@ int main(void)
     d = 16.0;
     tp->check_eq_int(d.sqrt(), 4, "math");
     v[0] = 3; v[1] = 1; v[2] = 2;
-    std::search::Search.sort((char *)v, 3, 4, cmp_int);
-    tp->check_eq_int(v[0], 1, "search");
 
     /* env / errno / locale / wchar */
     std::env::Env.set("CT_STD_EVERY", "1");
@@ -62,23 +52,13 @@ int main(void)
     std::errno::Errno.set_last(0);
     tp->check_eq_int(std::errno::Errno.get_last(), 0, "errno");
     tp->check_true(std::locale::current_locale(buf, 64) >= 0, "locale");
-    tp->check_eq_int("ok".to_wide(wide, 8), 2, "wchar");
 
-    /* process / time */
-    tp->check_true(std::process::Process.get_pid() > 0, "process");
-    tp->check_true(std::time::Time.now_seconds() > 0, "time");
-
-    /* net (address helpers only; no sockets are opened) */
-    tp->check_eq_int(std::net::Net.resolve_host("127.0.0.1", ip, 32), 0, "resolve_host");
+    tp->check_true(std::net::Net.resolve_host("127.0.0.1", ip, 32) == 0, "resolve_host");
     tp->check_eq_int("127.0.0.1".parse_ip(ip), 0, "parse_ip");
-
-    /* io namespace */
     tp->check_eq_int(std::io::Stdout.write(""), 0, "io");
-
-    /* arena / test */
     tp->check_eq_int(ap->init(16), 0, "arena");
     ap->free_all();
+    ap->reset();
 
-    hits = tp->report();
-    return hits;
+    return tp->report();
 }

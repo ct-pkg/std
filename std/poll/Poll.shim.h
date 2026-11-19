@@ -14,6 +14,8 @@
 #ifndef CT_STD_POLL_SHIM_H
 #define CT_STD_POLL_SHIM_H
 #include <poll.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include <stdlib.h>
 
 static inline void *std_poll_new(int count)
@@ -45,4 +47,39 @@ static inline int std_poll_out(void) { return POLLOUT; }
 static inline int std_poll_err(void) { return POLLERR; }
 static inline int std_poll_hup(void) { return POLLHUP; }
 static inline int std_poll_nval(void) { return POLLNVAL; }
+static inline void *std_select_new_set(void)
+{
+    return calloc(1, sizeof(fd_set));
+}
+static inline int std_select_add(void *set, int fd)
+{
+    if (!set || fd < 0 || fd >= FD_SETSIZE) return -1;
+    FD_SET(fd, (fd_set *)set);
+    return 0;
+}
+static inline int std_select_remove(void *set, int fd)
+{
+    if (!set || fd < 0 || fd >= FD_SETSIZE) return -1;
+    FD_CLR(fd, (fd_set *)set);
+    return 0;
+}
+static inline int std_select_isset(void *set, int fd)
+{
+    if (!set || fd < 0 || fd >= FD_SETSIZE) return 0;
+    return FD_ISSET(fd, (fd_set *)set) ? 1 : 0;
+}
+static inline int std_select_wait(void *read_set, void *write_set, void *except_set, int timeout_ms)
+{
+    struct timeval tv;
+    struct timeval *tvp = 0;
+    if (timeout_ms >= 0) {
+        tv.tv_sec = timeout_ms / 1000;
+        tv.tv_usec = (timeout_ms % 1000) * 1000;
+        tvp = &tv;
+    }
+    return select(FD_SETSIZE, (fd_set *)read_set, (fd_set *)write_set, (fd_set *)except_set, tvp);
+}
+static inline void std_select_free(void *set) { free(set); }
+
+
 #endif

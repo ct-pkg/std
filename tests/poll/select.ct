@@ -1,0 +1,18 @@
+import std::poll::Poll;
+import std::test::Test;
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    void *r;
+    tp->init();
+    r = std::poll::Poll.new_fd_set();
+    tp->check_true(r != 0, "fd_set alloc");
+    tp->check_eq_int(std::poll::Poll.fd_set_add(r, 1), 0, "fd_set add");
+    tp->check_eq_int(std::poll::Poll.fd_set_isset(r, 1), 1, "fd_set isset");
+    tp->check_eq_int(std::poll::Poll.fd_set_remove(r, 1), 0, "fd_set remove");
+    tp->check_eq_int(std::poll::Poll.fd_set_isset(r, 1), 0, "fd_set cleared");
+    tp->check_eq_int(std::poll::Poll.select_wait(r, 0, 0, 0), 0, "select timeout");
+    std::poll::Poll.fd_set_free(r);
+    return tp->report();
+}

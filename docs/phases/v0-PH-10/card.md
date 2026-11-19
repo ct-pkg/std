@@ -9,7 +9,7 @@ applies-to: v0.13.0
 | 规范版本 | 1.17.0 |
 | version-minor | 10（收口 `0.14.0`，含永久偏移 `+4`） |
 | 依赖 | `v0-PH-9` 已收口；D-002 |
-| 状态 | 待开工 |
+| 状态 | 已收口（2026-11-19，`v0.14.0`） |
 
 ## 范围
 
@@ -48,11 +48,23 @@ applies-to: v0.13.0
 
 ## 退出判据
 
-- [ ] 每个模块的夹具通过；`bash tests/run.sh` 全绿。
-- [ ] `bash tools/check.sh all` 退出码 0；`ct pkg check .` 通过。
-- [ ] 版本落点全部为 `0.14.0`；annotated tag `v0.14.0` 指向收口提交并推送。
-- [ ] **任务清单每项可独立验收（6.6 T-6）**：收口对照表逐项贴 verify 输出。
-- [ ] deferred 复评有结论；不能做的项写目标 phase，不静默跳过。
+- [x] 每个模块的夹具通过；`bash tests/run.sh` 全绿。
+- [x] `bash tools/check.sh all` 退出码 0；`ct pkg check .` 通过。
+- [x] 版本落点全部为 `0.14.0`；annotated tag `v0.14.0` 指向收口提交并推送。
+- [x] **任务清单每项可独立验收（6.6 T-6）**：收口对照表逐项贴 verify 输出。
+- [x] deferred 复评有结论；不能做的项写目标 phase，不静默跳过。
+
+## 进度
+
+| 任务 | 状态 | 证据 |
+| --- | --- | --- |
+| T1 | done | `docs/phases/v0-PH-10/design.md` |
+| T2 | done | `tests/mmap/main.ct` 3 checks |
+| T3 | done | `tests/poll/main.ct` 4 checks |
+| T4 | done | `tests/poll/select.ct` 6 checks |
+| T5 | done | `tests/thread/main.ct` 9 checks（thread/mutex/cond） |
+| T6 | done | 同上（semaphore） |
+| T7 | done | `docs/posix-deferred-review.md` |
 
 ## 已知风险
 

@@ -5,7 +5,7 @@ applies-to: v0.12.0
 | 项 | 值 |
 | --- | --- |
 | 性质 | 路线图；由主编维护，phase 卡片从本表立项 |
-| 当前版本 | `0.13.0`（`v0.13.0` 已发布） |
+| 当前版本 | `0.14.0`（`v0.14.0` 已发布） |
 | 当前 phase | 无（`v0-PH-8` 已收口） |
 | 版本偏移 | 历史 `P0`–`P7` 与 `v0-PH-0…7` 错位，`MINOR = n + 4`；见 `AGENTS.md` 的 deviation |
 | 规范版本 | 1.17.0 |
@@ -49,7 +49,7 @@ applies-to: v0.12.0
 | --- | --- | --- | --- | --- |
 | `v0-PH-8` | 工程规范纳管（G0–G9） | `0.12.0` | 已收口 | [card](../phases/v0-PH-8/card.md) |
 | `v0-PH-9` | ISO C17 补全 | `0.13.0` | 已收口 | [card](../phases/v0-PH-9/card.md) |
-| `v0-PH-10` | POSIX 核心：线程 / 同步 / 内存映射 / 多路复用 | `0.14.0` | 待开工 | [card](../phases/v0-PH-10/card.md) |
+| `v0-PH-10` | POSIX 核心：线程 / 同步 / 内存映射 / 多路复用 | `0.14.0` | 已收口 | [card](../phases/v0-PH-10/card.md) |
 | `v0-PH-11` | POSIX 服务：aio / mq / sem / shm / sched / 资源与信息 | `0.15.0` | 草案 | [draft](../phases/draft-posix-services/card.md) |
 
 草案卡不排期、不派工、不开工；定稿时按 PN-13 一次完成改名、卡头与编号账本。

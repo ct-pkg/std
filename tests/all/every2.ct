@@ -1,0 +1,25 @@
+/* The other half of the coexist check: process/search/str/time/utf8/wchar. */
+import std::process::Process;
+import std::search::Search;
+import std::str::String;
+import std::test::Test;
+import std::time::Time;
+import std::utf8::Utf8Ops;
+import std::wchar::Wchar;
+
+int main(void)
+{
+    Test t;
+    Test *tp = &t;
+    int wide[8];
+    char buf[64];
+
+    tp->init();
+    tp->check_eq_int("std".length(), 3, "str");
+    tp->check_eq_int("std".count_codepoints(), 3, "utf8");
+    tp->check_eq_int("ok".to_wide(wide, 8), 2, "wchar");
+    tp->check_true(std::process::Process.get_pid() > 0, "process");
+    tp->check_true(std::time::Time.now_seconds() > 0, "time");
+    tp->check_eq_int("42".to_int(), 42, "parse");
+    return tp->report();
+}

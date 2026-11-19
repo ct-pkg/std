@@ -1,0 +1,34 @@
+import std::thread::Thread;
+import std::test::Test;
+
+int g_worker_ran = 0;
+
+void *worker(void *arg)
+{
+    g_worker_ran = (int)(long)arg;
+    return 0;
+}
+
+int main(void)
+{
+    Test t; Test *tp = &t;
+    void *m; void *c; void *s;
+    tp->init();
+    m = std::thread::Thread.mutex_new();
+    c = std::thread::Thread.cond_new();
+    s = std::thread::Thread.sem_new(1);
+    void *th = std::thread::Thread.create(worker, (void *)7);
+    tp->check_true(th != 0, "thread create");
+    tp->check_eq_int(std::thread::Thread.join(th), 0, "thread join");
+    tp->check_eq_int(g_worker_ran, 7, "thread ran");
+    tp->check_true(m != 0 && c != 0 && s != 0, "handles");
+    tp->check_eq_int(std::thread::Thread.lock(m), 0, "lock");
+    tp->check_eq_int(std::thread::Thread.try_lock(m) == 0, 0, "trylock held");
+    tp->check_eq_int(std::thread::Thread.unlock(m), 0, "unlock");
+    tp->check_eq_int(std::thread::Thread.sem_wait(s), 0, "sem wait");
+    tp->check_eq_int(std::thread::Thread.sem_post(s), 0, "sem post");
+    std::thread::Thread.sem_free(s);
+    std::thread::Thread.cond_free(c);
+    std::thread::Thread.mutex_free(m);
+    return tp->report();
+}
