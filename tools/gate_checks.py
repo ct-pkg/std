@@ -146,7 +146,7 @@ class Gate:
                     if subprocess.run(["git", "merge-base", "--is-ancestor", h.stdout.strip(), "HEAD"], cwd=self.root).returncode == 0:
                         d = subprocess.run(["git", "diff", "--name-only", f"{h.stdout.strip()}..HEAD"], cwd=self.root, capture_output=True, text=True)
                         paths = [x for x in d.stdout.splitlines() if x]
-                        doc_prefixes = ("docs/", "issues/", "README.md", "CHANGELOG.md", "AGENTS.md")
+                        doc_prefixes = ("docs/", "issues/", "tools/", "README.md", "CHANGELOG.md", "AGENTS.md")
                         lag_ok = bool(paths) and all(x.startswith(doc_prefixes) for x in paths)
                     if not lag_ok:
                         self.fail(f"{tv} does not point at HEAD")
