@@ -8,7 +8,14 @@ base="$(mktemp -d)"
 trap 'rm -rf "$base"' EXIT
 case_no=0
 copy() {
-    rm -rf "$base/r"; mkdir -p "$base/r"
+    # Reusing the directory after `git init` can leave a transient .git
+    # subtree on macOS; move the old tree aside instead of failing the run.
+    if [ -e "$base/r" ]; then
+        local old="$base/old.$case_no"
+        mv "$base/r" "$old"
+        rm -rf "$old" >/dev/null 2>&1 || true
+    fi
+    mkdir -p "$base/r"
     rsync -a --exclude .git --exclude .ctbuild --exclude .temp "$repo/" "$base/r/"
 }
 expect_fail() {
@@ -26,7 +33,16 @@ expect_pass() {
     case_no=$((case_no + 1))
 }
 tag_base() {
-    ( cd "$base/r" && git init -q && git config user.email t@example.invalid && git config user.name t       && git add -A && git commit -qm base && git tag -a v0.20.0 -m base )
+    python3 - "$base/r" <<'PY'
+import sys
+r=sys.argv[1]
+for rel in ('ct.pkg','README.md','docs/planning/roadmap.md'):
+    p=r+'/'+rel
+    s=open(p).read().replace('0.20.1','0.20.0')
+    open(p,'w').write(s)
+PY
+    ( cd "$base/r" && git init -q && git config user.email t@example.invalid && git config user.name t \
+      && git add -A && git commit -qm base && git tag -a v0.20.0 -m base )
 }
 mut() { # mut file python snippet
     python3 - "$base/r/$1" "$2" <<'PY'

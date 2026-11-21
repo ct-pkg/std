@@ -1,6 +1,12 @@
-applies-to: v0.20.0
+applies-to: v0.20.1
 
 # Changelog
+
+## 0.20.1 — 2026-11-21
+
+门禁 PATCH 修复（issue 0006）：`g8` 接受按 V-7 未打 tag 的 fix 版本，
+只有 PATCH=0 的 phase 发行仍要求 annotated tag；删除 `g6` 的 `0.19.x`
+硬编码，改由 D-004 记录。无 API 变化，无 tag。
 
 ## 0.20.0 — 2026-11-21
 

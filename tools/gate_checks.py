@@ -102,8 +102,7 @@ class Gate:
         cards = sorted(glob.glob(self.path("docs/phases/v0-PH-*/card.md")))
         if v and cards:
             ns = [int(re.search(r"v0-PH-(\d+)", c).group(1)) for c in cards]
-            # 0.19.x is the ct/std identity release, not a phase bump.
-            if not (re.match(r"0\.19\.\d+$", v) or any(re.match(rf"0\.{n + 4}\.\d+$", v) for n in ns)):
+            if not any(re.match(rf"0\.{n + 4}\.\d+$", v) for n in ns):
                 self.fail(f"version {v} does not match any open/closed phase")
 
     def version(self):
@@ -151,7 +150,19 @@ class Gate:
                     if not lag_ok:
                         self.fail(f"{tv} does not point at HEAD")
             else:
-                self.fail(f"{tv} is not an annotated tag")
+                # V-7: a fix release (PATCH > 0) is intentionally untagged.
+                # Require the enclosing phase tag v<MAJOR>.<MINOR>.0 instead.
+                m = re.match(r"^(\d+)\.(\d+)\.(\d+)$", v)
+                if not m or int(m.group(3)) == 0:
+                    self.fail(f"{tv} is not an annotated tag")
+                else:
+                    phase_tv = f"v{m.group(1)}.{m.group(2)}.0"
+                    pt = subprocess.run(["git", "cat-file", "-t", phase_tv], cwd=self.root, capture_output=True, text=True)
+                    if pt.returncode != 0 or pt.stdout.strip() != "tag":
+                        self.fail(f"{phase_tv} is not an annotated phase tag")
+                    ph = subprocess.run(["git", "rev-parse", f"{phase_tv}^{{commit}}"], cwd=self.root, capture_output=True, text=True)
+                    if subprocess.run(["git", "merge-base", "--is-ancestor", ph.stdout.strip(), "HEAD"], cwd=self.root).returncode != 0:
+                        self.fail(f"{phase_tv} is not an ancestor of HEAD")
         except Exception as e: self.fail(str(e))
         sm = read(self.path("docs/session-map.md"))
         for d in glob.glob(self.path("docs/phases/draft-*/card.md")):

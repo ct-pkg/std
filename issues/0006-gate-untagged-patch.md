@@ -8,7 +8,7 @@ status: open
 | 项 | 值 |
 | --- | --- |
 | 编号 | 0006 |
-| 状态 | **open** |
+| 状态 | **open**（DEV 已处置，待 REV 复核） |
 | 类型 | 门禁缺陷 / 版本规则一致性 |
 | 发现 | 2026-11-21，处理 0004 后发布记账时 |
 | 关联 | V-3、V-4、V-7、g8 |
@@ -53,6 +53,27 @@ fixture 做的是：在 `v0.20.0` 之上把版本改为 `0.20.1` 并提交，但
 - 删除 `g6` 的 `0.19.x` 硬编码，改由 `docs/decisions/D-004` 记录；
 - 负例：phase 版本无 tag 必须红；PATCH 有 tag 但指向错误提交必须红。
 
-## 4. 处置
+## 4. 处置（DEV，2026-11-21）
 
-（待实现）
+- `g8`：当 `v<version>` 不存在且 PATCH > 0 时，要求同 MINOR 的 phase tag
+  `v<MAJOR>.<MINOR>.0` 是 annotated tag 且为 HEAD 祖先；PATCH == 0 仍必须有
+  自己的 tag。
+- `g6`：删除 `0.19.x` 硬编码；0.19 的例外由 D-004 记录。
+- 版本到 `0.20.1`（fix，按 V-7 不打 tag）；`ct.pkg` / README / roadmap /
+  AGENTS / CHANGELOG 同步。
+- `tools/tests/selftest.sh` 新增未打 tag 的 0.20.1 正例，保留 phase 无 tag
+  与 code-after-tag 负例。
+
+原始输出：
+
+```console
+$ bash tools/tests/selftest.sh
+selftest: 9 negative gates ok
+# 退出码 0
+
+$ bash tools/check.sh all
+gates: 10 ok, 0 failed/blocked
+# 退出码 0
+```
+
+修复提交见紧随其后的 `fix(gates)` 提交；复核由 REV 在下一步写入。

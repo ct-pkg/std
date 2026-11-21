@@ -31,7 +31,7 @@
 name = std
 publisher = ct
 ns-root = .
-version = 0.20.0
+version = 0.20.1
 licence = MIT
 requires = ct >= 0.67.0
 ldflags = -lm
@@ -81,7 +81,7 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 
 ### 当前发布状态
 
-`0.20.0` 是当前版本，已打 `v0.20.0`（`v0-PH-16`：`std::str::CharStr` 改名，破坏性变更）。`0.19.0`（官方包身份 `ct/std`）与 `0.18.0` 及更早的 `v0.18.0` 仍保留。`0.11.0` 及更早的 `0.6.0`–`0.10.0` 是开发里程碑（只有 `v0.11.0` 打了 tag）。
+`0.20.1` 是当前包版本（门禁 PATCH 修复，按 V-7 不打 tag）；`0.20.0` 是当前发布 tag（`v0-PH-16`：`std::str::CharStr` 改名，破坏性变更）。`0.19.0`（官方包身份 `ct/std`）与 `0.18.0` 及更早的 `v0.18.0` 仍保留。`0.11.0` 及更早的 `0.6.0`–`0.10.0` 是开发里程碑（只有 `v0.11.0` 打了 tag）。
 `0.13.0`（`v0-PH-9`）补 ISO C17 的 string/stdio/stdlib/time/wctype/fenv 缺口；`0.12.0`（`v0-PH-8`）只做工程规范纳管；`0.11.0`（P7）补全 `std::net`：TCP/UDP 工厂、`bind_to` /
 `listen_backlog` / `accept`、`send_to` / `receive_from`、`send_message` / `receive_message`、
 `resolve_host` / `parse_ip`、超时与 `set_option`；`Socket` 仍是 `FileDesc` 别名。同时补齐 P1 漏项
@@ -439,6 +439,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 | 版本 | 状态 | 变更 |
 | --- | --- | --- |
+| `0.20.1` | 无 tag（fix，V-7） | **门禁 PATCH 修复**：`g8` 接受未打 tag 的 PATCH，`g6` 去掉 `0.19.x` 硬编码；见 issue 0006 / D-004。 |
 | `0.20.0` | 已打 `v0.20.0` | **`v0-PH-16` 改名（BREAKING）**：`std::str::String` → `std::str::CharStr`，单元改为 `CharStr.m.ct` / `CharStr.shim.h`；方法名与 C 符号 `std_str_*` 不变，不留兼容别名。 |
 | `0.19.0` | 已打 `v0.19.0` | **官方包身份归一**：`publisher = ct`，规范名 `ct/std`；版本 0.19.0，API 无变化。 |
 | `0.18.0` | 已打 `v0.18.0` | **`v0-PH-14` POSIX mqueue**：Linux 真实 mqueue，macOS stub + `mq_supported()`。 |
