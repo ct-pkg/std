@@ -1,6 +1,6 @@
 ---
 id: 0006
-status: open
+status: verified
 ---
 
 # Issue 0006：`g8` 拒绝未打 tag 的 PATCH，和 V-7 冲突
@@ -8,7 +8,7 @@ status: open
 | 项 | 值 |
 | --- | --- |
 | 编号 | 0006 |
-| 状态 | **open**（DEV 已处置，待 REV 复核） |
+| 状态 | **verified**（REV 复核通过，2026-11-21；`0.20.1`，fix 无 tag） |
 | 类型 | 门禁缺陷 / 版本规则一致性 |
 | 发现 | 2026-11-21，处理 0004 后发布记账时 |
 | 关联 | V-3、V-4、V-7、g8 |
@@ -77,3 +77,28 @@ gates: 10 ok, 0 failed/blocked
 ```
 
 修复提交见紧随其后的 `fix(gates)` 提交；复核由 REV 在下一步写入。
+
+
+## 5. 复核（REV，2026-11-21）
+
+修复提交：`d11afa3`（`fix(gates): 0006 accept untagged PATCH releases`）。
+版本 `0.20.1`，按 V-7 不建 `v0.20.1`；最近的 phase tag 仍是
+`v0.20.0`（annotated）。
+
+| # | 命令 | 原始输出 | 退出码 |
+| --- | --- | --- | --- |
+| 1 | `bash tools/tests/selftest.sh` | `selftest: 9 negative gates ok` | 0 |
+| 2 | `bash tools/check.sh all` | `gates: 10 ok, 0 failed/blocked` | 0 |
+| 3 | `bash tests/run.sh` | `std: 25 passed, 0 failed` | 0 |
+| 4 | `git cat-file -t v0.20.1` | 失败（无 fix tag，符合 V-7） | 1 |
+| 5 | `git cat-file -t v0.20.0` | `tag`（phase tag 存在） | 0 |
+| 6 | `git merge-base --is-ancestor v0.20.0^{} HEAD` | 无输出 | 0 |
+
+复核结论：
+
+- `g8` 对 `0.20.1` 走“未打 tag 的 PATCH”分支，并校验 `v0.20.0` 是
+  annotated phase tag 且为 HEAD 祖先；不再要求 `v0.20.1`。
+- `g6` 的 `0.19.x` 硬编码已删除；0.19 的例外只由 D-004 登记。
+- `selftest` 覆盖：未打 tag 的 PATCH 通过、phase 版本无 tag 失败、
+  release tag 后的 code change 失败。
+- 本 issue 的 fix 是门禁修复，按 V-3 计一次 PATCH；`0.20.1` 无 tag。
