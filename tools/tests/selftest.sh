@@ -59,4 +59,18 @@ printf '\n/* post-release code */\n' >> "$base/r/std/str/CharStr.m.ct"
 ( cd "$base/r" && git add std/str/CharStr.m.ct && git commit -qm code )
 expect_fail g8 "code change after release tag"
 
+# A fix release has no tag of its own (V-7); the last phase tag must still
+# be an ancestor and the current version must be its PATCH bump.
+copy; tag_base
+python3 - "$base/r" <<'PY'
+import sys
+r=sys.argv[1]
+p=r+'/ct.pkg'; s=open(p).read().replace('version = 0.20.0','version = 0.20.1'); open(p,'w').write(s)
+for rel in ('README.md','docs/planning/roadmap.md'):
+    with open(r+'/'+rel,'a') as f: f.write('\n`0.20.1`\n')
+p=r+'/README.md'; s=open(p).read().replace('version = 0.20.0','version = 0.20.1'); open(p,'w').write(s)
+PY
+( cd "$base/r" && git add ct.pkg README.md docs/planning/roadmap.md && git commit -qm patch )
+expect_pass g8 "untagged patch after phase tag"
+
 echo "selftest: $case_no negative gates ok"
