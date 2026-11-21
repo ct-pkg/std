@@ -18,6 +18,16 @@ expect_fail() {
     fi
     case_no=$((case_no + 1))
 }
+expect_pass() {
+    local gate="$1" label="$2"
+    if ! python3 "$base/r/tools/gate_checks.py" "$gate" --root "$base/r" >/tmp/std-selftest.out 2>&1; then
+        echo "FAIL: $label: gate $gate unexpectedly failed"; cat /tmp/std-selftest.out; exit 1
+    fi
+    case_no=$((case_no + 1))
+}
+tag_base() {
+    ( cd "$base/r" && git init -q && git config user.email t@example.invalid && git config user.name t       && git add -A && git commit -qm base && git tag -a v0.20.0 -m base )
+}
 mut() { # mut file python snippet
     python3 - "$base/r/$1" "$2" <<'PY'
 import sys
@@ -37,4 +47,16 @@ copy; printf 'applies-to: v0.11.0\n\n# big\n' > "$base/r/docs/big.md"; for i in 
 copy; printf -- '---\nstatus: done\n---\n# bad\n' > "$base/r/issues/9999-new.md"; expect_fail g6 "invalid issue status"
 copy; printf 'applies-to: v0.11.0\n\n# secret\n' > "$base/r/docs/secret.md"; echo 'AKIAABCDEFGHIJKLMNOP' >> "$base/r/docs/secret.md"; expect_fail g7 "secret-like string"
 copy; mut ct.pkg bad-version; expect_fail g8 "version mismatch"
+
+# A release tag may trail docs-only bookkeeping, but not code changes.
+copy; tag_base
+printf '\nbookkeeping\n' >> "$base/r/docs/backlog.md"
+( cd "$base/r" && git add docs/backlog.md && git commit -qm docs )
+expect_pass g8 "docs-only commit after release tag"
+
+copy; tag_base
+printf '\n/* post-release code */\n' >> "$base/r/std/str/CharStr.m.ct"
+( cd "$base/r" && git add std/str/CharStr.m.ct && git commit -qm code )
+expect_fail g8 "code change after release tag"
+
 echo "selftest: $case_no negative gates ok"

@@ -139,12 +139,15 @@ class Gate:
                 h = subprocess.run(["git", "rev-parse", f"{tv}^{{commit}}"], cwd=self.root, capture_output=True, text=True)
                 head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.root, capture_output=True, text=True)
                 if h.stdout.strip() != head.stdout.strip():
-                    # allow lag only when a newer phase card is open
-                    cards = glob.glob(self.path("docs/phases/v0-PH-9/card.md"))
+                    # A release tag may lag behind bookkeeping-only commits
+                    # (docs/issues/CHANGELOG). Any code change after the tag
+                    # invalidates the release and must fail.
                     lag_ok = False
-                    if cards:
-                        st = re.search(r"\| 状态 \| ([^|]+) \|", read(cards[0]))
-                        lag_ok = bool(st and "已收口" not in st.group(1))
+                    if subprocess.run(["git", "merge-base", "--is-ancestor", h.stdout.strip(), "HEAD"], cwd=self.root).returncode == 0:
+                        d = subprocess.run(["git", "diff", "--name-only", f"{h.stdout.strip()}..HEAD"], cwd=self.root, capture_output=True, text=True)
+                        paths = [x for x in d.stdout.splitlines() if x]
+                        doc_prefixes = ("docs/", "issues/", "README.md", "CHANGELOG.md", "AGENTS.md")
+                        lag_ok = bool(paths) and all(x.startswith(doc_prefixes) for x in paths)
                     if not lag_ok:
                         self.fail(f"{tv} does not point at HEAD")
             else:
