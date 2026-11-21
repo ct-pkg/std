@@ -1,6 +1,13 @@
-applies-to: v0.19.0
+applies-to: v0.20.0
 
 # Changelog
+
+## 0.20.0 — 2026-11-21
+
+`v0-PH-16` 破坏性改名：`std::str` 的单元与 trait 统一为 `CharStr`（原单元 `String`、原 trait
+`CStrOps`），`import std::str::String` 改为 `import std::str::CharStr`，单元文件改为
+`CharStr.m.ct` / `CharStr.shim.h`。方法名与 C 符号 `std_str_*` 不变，不留兼容别名（项目未正式发布）。
+同时记录内建层边界：只删语言级类型重复，C 资源句柄与 libc/POSIX 映射保留。
 
 ## 0.19.0 — 2026-11-19
 

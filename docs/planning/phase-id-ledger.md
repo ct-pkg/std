@@ -15,3 +15,6 @@ window: W3
 | `draft-posix-remaining` | `v0-PH-12` | `docs/phases/draft-posix-remaining/card.md` | `docs/phases/v0-PH-12/card.md` | `0.16.0` | migrated |
 | `draft-posix-async` | `v0-PH-13` | `docs/phases/draft-posix-async/card.md` | `docs/phases/v0-PH-13/card.md` | `0.17.0` | migrated |
 | `draft-posix-mq` | `v0-PH-14` | `docs/phases/draft-posix-mq/card.md` | `docs/phases/v0-PH-14/card.md` | `0.18.0` | migrated |
+| — | `v0-PH-16` | — | `docs/phases/v0-PH-16/card.md` | `0.20.0` | migrated |
+
+`v0-PH-15` 未开卡：`0.19.0` 是官方包身份归一发行，不属于 phase；该号位不复用（PN-7）。
