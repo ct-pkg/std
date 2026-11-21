@@ -56,7 +56,7 @@ applies-to: v0.20.0
 | `v0-PH-14` | POSIX mqueue | `0.18.0` | 已收口 | [card](../phases/v0-PH-14/card.md) |
 | `v0-PH-16` | `std::str` 的 `CharStr` 改名与内建层边界对齐 | `0.20.0` | 已收口 | [card](../phases/v0-PH-16/card.md) |
 
-当前**无待开工 phase**；`v0-PH-8`–`v0-PH-16` 已收口（`v0-PH-15` 未开卡，`0.19.0` 是官方身份发行，号位不复用）。ISO C 的 `complex`/`stdatomic`/`threads`/`uchar` 与 `madvise` 已登记为 language-side / platform blocked（不是 phase）。新增工作按新卡立项。
+当前**无待开工 phase**；`v0-PH-8`–`v0-PH-16` 已收口（`v0-PH-15` 未开卡，`0.19.0` 是官方身份发行（D-004 例外），号位不复用）。ISO C 的 `complex`/`stdatomic`/`threads`/`uchar` 与 `madvise` 已登记为 language-side / platform blocked（不是 phase）。新增工作按新卡立项。
 
 ## 4. 各期目标
 

@@ -17,4 +17,4 @@ window: W3
 | `draft-posix-mq` | `v0-PH-14` | `docs/phases/draft-posix-mq/card.md` | `docs/phases/v0-PH-14/card.md` | `0.18.0` | migrated |
 | — | `v0-PH-16` | — | `docs/phases/v0-PH-16/card.md` | `0.20.0` | migrated |
 
-`v0-PH-15` 未开卡：`0.19.0` 是官方包身份归一发行，不属于 phase；该号位不复用（PN-7）。
+`v0-PH-15` 未开卡：`0.19.0` 是官方包身份归一发行，不属于 phase；该号位不复用（PN-7）。该例外由 D-004 签字登记。
