@@ -111,7 +111,7 @@ CT 里的裸指针（来自 C 互操作）是使用者的负担，接口应尽�
 「只有真持有资源才建类型」同口径：若由 `split_into` 自己分配，切分结果就带上了所有权与释放责任，
 必须再配一个 `free_split`；缓冲式把这两件事留在调用方，函数本身无状态、无分配。
 
-另：`String` → `CStrOps`（issue 0001，`0.4.0`），除 `copy_to` → `copy_from`/`move_from` 外方法名不变。
+另：`String` → `CStrOps`（issue 0001，`0.4.0`；`0.20.0` 起为 `CharStr`），除 `copy_to` → `copy_from`/`move_from` 外方法名不变。
 
 `Str` 是语言侧内置的拥有型字符串：本仓不定义、不提供、也不在 `Str` 上挂方法，只作为消费方依赖它；
 `char *` 是借用视图，两者的分工由语言侧决定，不在本仓定义。
@@ -292,7 +292,7 @@ struct 作为它的对等类型」**，一旦引入就多出装箱/拆箱、拷�
 | 编号 | 原类型 | 为什么原类型承载不了方法 | struct 解决了什么 | 代价 | 状态 |
 | --- | --- | --- | --- | --- | --- |
 | A1 | `char`（现状：标量宿主可直接挂方法） | 现状**不需要** struct；`Char` 是 trait 不是类型 | 若改为 struct：可携带状态（如编码/大小写表），但现有方法都是纯函数，无状态可带 | 装箱：每个字符一次 `malloc` → 热路径不可接受；拷贝：值语义与 `char` 不再等价；互操作：所有 C 侧 `char` 参数都要拆箱；命名/文档：`Char` 从 trait 变类型，语义双写 | **已定：不建 struct**。`Char` 保持 trait 直接映射 `char`；trait 编译期展开、无装箱；现有方法纯函数，无状态可带 |
-| A2 | `char *` 与语言侧内置 `Str`（非本包） | `char *` 能挂方法（`CStrOps` 就是），但**不拥有**；长度要每次 `strlen`，且无法表达「内嵌 `\0` + 长度」。`Str` 由语言侧提供拥有语义，两者不是替代关系 | 拥有堆缓冲 + 显式长度 + `Drop`；非 NUL 结尾也能安全传递 | 装箱：每次构造一次 `malloc`；拷贝：带 `Drop` 的值不能浅拷贝，复制必须深拷贝或显式 `clone`；所有权：与借用 `char *` 混用时边界要写清；互操作：所有 libc/shim 入口仍要 `.data` 取裸指针；命名/文档：同一能力可能两种写法（`"s".length()` vs `s.length()`） | **已定：`Str` 归语言侧内置类型，本仓完全删除——不定义、不提供、不提供方法层，只作消费方**。`char *` 是借用视图、`Str` 是拥有型，二者关系与分工由语言侧决定，不在本仓定义 |
+| A2 | `char *` 与语言侧内置 `Str`（非本包） | `char *` 能挂方法（`CharStr` 就是），但**不拥有**；长度要每次 `strlen`，且无法表达「内嵌 `\0` + 长度」。`Str` 由语言侧提供拥有语义，两者不是替代关系 | 拥有堆缓冲 + 显式长度 + `Drop`；非 NUL 结尾也能安全传递 | 装箱：每次构造一次 `malloc`；拷贝：带 `Drop` 的值不能浅拷贝，复制必须深拷贝或显式 `clone`；所有权：与借用 `char *` 混用时边界要写清；互操作：所有 libc/shim 入口仍要 `.data` 取裸指针；命名/文档：同一能力可能两种写法（`"s".length()` vs `s.length()`） | **已定：`Str` 归语言侧内置类型，本仓完全删除——不定义、不提供、不提供方法层，只作消费方**。`char *` 是借用视图、`Str` 是拥有型，二者关系与分工由语言侧决定，不在本仓定义 |
 | A3 | `DIR *` → 本方案 `Dir` | C 侧 `DIR` 是不透明类型，CT 看不到定义；裸指针无法挂方法（需要可命名的 CT 类型），且必须 `closedir` | 可命名、可 `Drop`、`close` 幂等；`next()` 等方法有接收者 | 装箱：每个目录句柄一个 `malloc`（约一个指针 + 状态）；拷贝：句柄不可拷贝，需禁止或只允许 `own` 转移；所有权：与 `open_dir()` 的工厂语义绑定；互操作：`readdir` 的 `struct dirent` 仍在 shim 内，返回的是拷出的名字，调用方拿不到原始 `dirent`；命名/文档：`Dir` 与 `FsOps.list` 两种列举方式并存，需说明取舍 | **已定：建 `Dir`（③ 资源对象）**；`File` 与 `Dir` 是两个独立对象，属性方法各不同 |
 | A4 | `int`（fd）→ 本方案 `FileDesc`（`Socket` 同义别名） | `int` 本身是合法宿主（`Int` 已存在），技术上能挂 `send`/`close`，但会把 socket 方法挂到**所有整数**上 | 可命名、可 `Drop`、`accept()` 产出新句柄，所有权清晰；`Socket` 与 `FileDesc` 是同一类型、方法一套、可互相赋值 | 装箱：每个句柄一个包装 struct；拷贝：fd 不可拷贝，需禁止；所有权：`accept` 产生新 `own`，与 `open_as_file_desc` 一致；互操作：需要 fd 时得开 `raw_file_desc()`（按 P6 实现），否则无法和 `select`/`poll` 等未包裹能力配合；命名/文档：`Socket` 是别名，不是第二套类型 | **已定：建 `FileDesc`（③ 资源对象），`Socket` 为同义别名**；别名能力依赖语言侧 |
 | A5 | 数组 / 动态列表 / `Map`（语言侧内置类型） | 不属本包：这些容器由语言侧提供，std 不再造对等类型 | — | — | **已定：不引入**。数组、动态列表、`Map` 均归语言侧，std 不涉及；删除 `make_list` 一类表述 |
@@ -345,7 +345,7 @@ int main(void)
 这是本版扩宽的一层。判断标准只有一条：**写起来是否明显更短、读起来是否更像 CT**。
 
 ```ct
-import std::str::String;
+import std::str::CharStr;
 import std::io::File;
 
 int main(void)
@@ -375,7 +375,7 @@ CT 范式要求「链路走到底」：基础类型 → 文本 → 文本方法�
 
 ```ct
 import std::num::Num;
-import std::str::String;
+import std::str::CharStr;
 import std::io::File;
 
 int main(void)
@@ -465,14 +465,14 @@ drop ran
 
 ## 4. 模块划分
 
-事实澄清：`Path` / `File` 在 `std/io/File.m.ct`（`:11`、`:19`），`std/str` 只有 `String.m.ct`
+事实澄清：`Path` / `File` 在 `std/io/File.m.ct`（`:11`、`:19`），`std/str` 只有 `CharStr.m.ct`
 一个方法层。`std/io` 是一个 unit 两个宿主。
 
 ### 4.1 目录结构
 
 ```
 std/
-  str/    CStrOps.m.ct + CStrOps.shim.h      （0.4.0 改名）
+  str/    CharStr.m.ct + CharStr.shim.h      （0.4.0 改名）
   io/     File.m.ct  FileDesc.h.ct           （Path + File + FileDesc；stdout/stderr/stdin 直接作 `FILE *` 宿主，不封装）
   fs/     Fs.m.ct  Dir.h.ct                  （`Dir`；`FileStat` 不建包装）
   utf8/   Utf8Ops.m.ct + shim
@@ -498,7 +498,7 @@ std/
 ### 4.2 import 形态
 
 ```ct
-import std::str::CStrOps;     // 0.4.0 起
+import std::str::CharStr;     // 0.20.0 起
 import std::io::File;         // 同时带出 Path 与 File
 import std::io::FileDesc;     // FileDesc；Socket 为其同义别名
 import std::fs::Dir;
@@ -660,7 +660,7 @@ P0–P7 是施工顺序，逐期交付到 `0.6.0`–`0.11.0`；最终统一发�
 
 | 序 | 内容 | 层 | 依赖 | 阶段验收 |
 | --- | --- | --- | --- | --- |
-| **P0** | `String` → `CStrOps`（issue 0001，`0.4.0`）；`len` → `length`；`open` → `open_file`；`to_string` 删除（只留 `to_str`）；`to_upper`/`to_lower` → `uppercase`/`lowercase`；删除 `printf`（破坏性） | 改名/删除 | 无 | 旧名零命中；`tests/run.sh` 全绿；文档同步 |
+| **P0** | `String` → `CharStr`（issue 0001，`0.4.0`）；`len` → `length`；`open` → `open_file`；`to_string` 删除（只留 `to_str`）；`to_upper`/`to_lower` → `uppercase`/`lowercase`；删除 `printf`（破坏性） | 改名/删除 | 无 | 旧名零命中；`tests/run.sh` 全绿；文档同步 |
 | **P1** | `char` 7 个 `is_*`；`char *` 内存方法（`copy_from`/`move_from`/`fill`/`compare_with`/`find_byte`/`compare_prefix`）与 `split_into`；`math` 新族（`Float`/`Real` 方法层，全名为主、短名为别名）；`sort`/`binary_search`、`scale_by_power_of_two`/`split_exponent`/`split_fraction` ① 直连 | ①② | P0 | 每条 M0/M1 转发；无宿主重名；重叠/不重叠拷贝夹具；三态/指针返回验证；回调/出参用法写明 |
 | **P2** | 新增 `std::env` / `std::process`（含控制/信号）/ `std::errno` / `std::locale` / `std::wchar`（各一个模块） | ②③ | P1 | 无新类型（`Locale` 除外）；借用指针语义、`fork` 后状态、`Locale.apply` 改进程全局状态且线程不安全，写进 README |
 | **P3** | `stdio`：`File`（`FILE *` 宿主）+ `FileDesc`（`open_as_file_desc`）；方法补全（`seek`/`tell`/`rewind`/`at_end_of_file`/`has_error`/`read_char`/`write_char`/`read_line`/`flush`）；变参格式化/解析按 §2.9 成对替代，不封装（`printf` 已在 P0 删除） | ③ | P0 | `own` 关闭与幂等 `close` fixture；`stdout` 裸宿主不归包管；`to_str`/`concat`、`parse_*`、格式化+`write` 样例覆盖 |

@@ -46,7 +46,7 @@ TCP 回环：
 ```ct
 import std::net::Socket;
 import std::num::Num;
-import std::str::String;
+import std::str::CharStr;
 
 int main(void)
 {

@@ -1,5 +1,5 @@
 /* std::str - the error-reporting parsers added to close the P1 gap. */
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(void)

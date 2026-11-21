@@ -1,4 +1,4 @@
-# `std::str` — `char *` 的字节字符串方法（`CStrOps`）
+# `std::str` — `char *` 的字节字符串方法（`CharStr`）
 
 `char *` 上的查询、拷贝、拼接、大小写与数字解析。全部是**静态类型宿主映射**：
 `s.length()` 在调用点直接展开成 `std_str_len(s)`，没有 wrapper、没有 vtable、不改变 C 布局。
@@ -17,10 +17,10 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `String.m.ct` | `pub trait CStrOps` + `map trait CStrOps for type char *`（14 个方法） |
-| `String.shim.h` | `std_str_*` 的 `static inline` 实现，编译器自动 include |
+| `CharStr.m.ct` | `pub trait CharStr` + `map trait CharStr for type char *`（14 个方法） |
+| `CharStr.shim.h` | `std_str_*` 的 `static inline` 实现，编译器自动 include |
 
-引入方式：`import std::str::String;`。
+引入方式：`import std::str::CharStr;`。
 
 包安装后（详见[包根 README](../../README.md#安装)）：
 
@@ -38,7 +38,7 @@ ct build -I . main.ct -o /tmp/std-str --cflags "-Wall -Wextra"
 ## 3. 快速开始
 
 ```ct
-import std::str::String;
+import std::str::CharStr;
 import std::num::Num;
 import std::io::Stdout;
 
@@ -133,7 +133,7 @@ Hello, ct
 （`int` 宿主），**调用结果可以直接作接收者**：
 
 ```ct
-import std::str::String;
+import std::str::CharStr;
 import std::num::Num;
 import std::io::Stdout;
 
@@ -156,7 +156,7 @@ int main(void)
 ### 5.1 一次完整的读写
 
 ```ct
-import std::str::String;
+import std::str::CharStr;
 import std::num::Num;
 import std::math::Real;
 import std::io::Stdout;
@@ -299,7 +299,7 @@ char out[8];
 ### 解析 `key=value` 行
 
 ```ct
-import std::str::String;
+import std::str::CharStr;
 import std::num::Num;
 import std::io::Stdout;
 
@@ -351,7 +351,7 @@ value=42
 ### 7.1 方法名不存在
 
 ```ct
-import std::str::String;
+import std::str::CharStr;
 
 int main(void)
 {
@@ -387,7 +387,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 ### 7.3 字面量接收者（0.19.1）
 
 ```ct
-import std::str::String;
+import std::str::CharStr;
 
 int main(void)
 {
@@ -406,7 +406,7 @@ main.ct:6:1: error: method receiver must be a variable, an element, a call or a 
 ### 7.4 少给参数
 
 ```ct
-import std::str::String;
+import std::str::CharStr;
 
 int main(void)
 {

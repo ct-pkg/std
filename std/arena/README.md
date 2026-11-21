@@ -249,7 +249,7 @@ int main(void)
 ```ct
 import std::arena::Arena;
 import std::num::Num;
-import std::str::String;
+import std::str::CharStr;
 import std::io::Stdout;
 
 int main(void)
@@ -320,7 +320,7 @@ main.ct:8:1: error: no method 'nope' for type 'struct std_arena_Arena *'
 ```ct
 import std::arena::Arena;
 import std::num::Num;
-import std::str::String;
+import std::str::CharStr;
 import std::io::Stdout;
 
 int main(void)

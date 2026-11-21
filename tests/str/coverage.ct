@@ -1,7 +1,7 @@
 /* std::str - the empty string, a string of one repeated byte, every find
  * miss, the full slice bounds matrix, NULL / zero-capacity buffers, the
  * out-buffer case folding, the raw memory shapes and the two C parsers. */
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(void)
@@ -26,169 +26,169 @@ int main(void)
     tp->init();
 
     /* ---- empty string -------------------------------------------------- */
-    tp->check_eq_int(empty.length(), 0, "CStrOps.len: empty");
-    tp->check_eq_int(empty.find(""), 0, "CStrOps.find: empty needle in empty");
-    tp->check_eq_int(empty.find("x"), -1, "CStrOps.find: no hit in empty");
-    tp->check_eq_int(empty.find_char('x'), -1, "CStrOps.find_char: no hit in empty");
-    tp->check_eq_int(empty.find_char(0), 0, "CStrOps.find_char: the terminator is at 0");
-    tp->check_eq_int(empty.starts_with(""), 1, "CStrOps.starts_with: empty prefix");
-    tp->check_eq_int(empty.ends_with(""), 1, "CStrOps.ends_with: empty suffix");
-    tp->check_eq_int(empty.copy(buf, 1), 0, "CStrOps.copy: empty fits cap 1");
-    tp->check_eq_str(buf, "", "CStrOps.copy: empty value");
-    tp->check_eq_int(empty.copy(buf, 0), -1, "CStrOps.copy: cap 0 fails");
-    tp->check_eq_int(empty.slice(0, 0, buf, 1), 0, "CStrOps.slice: empty range fits cap 1");
-    tp->check_eq_str(buf, "", "CStrOps.slice: empty range value");
-    tp->check_eq_int(empty.concat("", buf, 1), 0, "CStrOps.concat: two empties fit cap 1");
-    tp->check_eq_str(buf, "", "CStrOps.concat: two empties value");
-    tp->check_eq_int(empty.compare(""), 0, "CStrOps.compare: empty vs empty");
+    tp->check_eq_int(empty.length(), 0, "CharStr.len: empty");
+    tp->check_eq_int(empty.find(""), 0, "CharStr.find: empty needle in empty");
+    tp->check_eq_int(empty.find("x"), -1, "CharStr.find: no hit in empty");
+    tp->check_eq_int(empty.find_char('x'), -1, "CharStr.find_char: no hit in empty");
+    tp->check_eq_int(empty.find_char(0), 0, "CharStr.find_char: the terminator is at 0");
+    tp->check_eq_int(empty.starts_with(""), 1, "CharStr.starts_with: empty prefix");
+    tp->check_eq_int(empty.ends_with(""), 1, "CharStr.ends_with: empty suffix");
+    tp->check_eq_int(empty.copy(buf, 1), 0, "CharStr.copy: empty fits cap 1");
+    tp->check_eq_str(buf, "", "CharStr.copy: empty value");
+    tp->check_eq_int(empty.copy(buf, 0), -1, "CharStr.copy: cap 0 fails");
+    tp->check_eq_int(empty.slice(0, 0, buf, 1), 0, "CharStr.slice: empty range fits cap 1");
+    tp->check_eq_str(buf, "", "CharStr.slice: empty range value");
+    tp->check_eq_int(empty.concat("", buf, 1), 0, "CharStr.concat: two empties fit cap 1");
+    tp->check_eq_str(buf, "", "CharStr.concat: two empties value");
+    tp->check_eq_int(empty.compare(""), 0, "CharStr.compare: empty vs empty");
     emptybuf[0] = 0;
-    tp->check_eq_int(emptybuf.lowercase(buf, 1), 0, "CStrOps.lowercase: empty succeeds");
-    tp->check_eq_str(buf, "", "CStrOps.lowercase: empty stays empty");
-    tp->check_eq_int(emptybuf.uppercase(buf, 1), 0, "CStrOps.uppercase: empty succeeds");
-    tp->check_eq_str(buf, "", "CStrOps.uppercase: empty stays empty");
-    tp->check_eq_int(emptybuf.uppercase(buf, 0), -1, "CStrOps.uppercase: cap 0 fails");
+    tp->check_eq_int(emptybuf.lowercase(buf, 1), 0, "CharStr.lowercase: empty succeeds");
+    tp->check_eq_str(buf, "", "CharStr.lowercase: empty stays empty");
+    tp->check_eq_int(emptybuf.uppercase(buf, 1), 0, "CharStr.uppercase: empty succeeds");
+    tp->check_eq_str(buf, "", "CharStr.uppercase: empty stays empty");
+    tp->check_eq_int(emptybuf.uppercase(buf, 0), -1, "CharStr.uppercase: cap 0 fails");
 
     /* ---- one repeated byte --------------------------------------------- */
-    tp->check_eq_int(same.length(), 4, "CStrOps.len: 'aaaa'");
-    tp->check_eq_int(same.find("aa"), 0, "CStrOps.find: overlapping hit at 0");
-    tp->check_eq_int(same.find("aaa"), 0, "CStrOps.find: three of four");
-    tp->check_eq_int(same.find("aaaaa"), -1, "CStrOps.find: needle longer than input");
-    tp->check_eq_int(same.find_char('a'), 0, "CStrOps.find_char: first of four");
-    tp->check_eq_int(same.starts_with("aaa"), 1, "CStrOps.starts_with: 'aaa'");
-    tp->check_eq_int(same.starts_with("aab"), 0, "CStrOps.starts_with: mismatch at the end");
-    tp->check_eq_int(same.ends_with("aaa"), 1, "CStrOps.ends_with: 'aaa'");
-    tp->check_eq_int(same.ends_with("ba"), 0, "CStrOps.ends_with: mismatch at the start");
-    tp->check_eq_int(same.slice(1, 3, buf, 32), 0, "CStrOps.slice: middle of repeated bytes");
-    tp->check_eq_str(buf, "aa", "CStrOps.slice: repeated value");
-    tp->check_eq_int(same.compare("aaaa"), 0, "CStrOps.compare: repeated equal");
+    tp->check_eq_int(same.length(), 4, "CharStr.len: 'aaaa'");
+    tp->check_eq_int(same.find("aa"), 0, "CharStr.find: overlapping hit at 0");
+    tp->check_eq_int(same.find("aaa"), 0, "CharStr.find: three of four");
+    tp->check_eq_int(same.find("aaaaa"), -1, "CharStr.find: needle longer than input");
+    tp->check_eq_int(same.find_char('a'), 0, "CharStr.find_char: first of four");
+    tp->check_eq_int(same.starts_with("aaa"), 1, "CharStr.starts_with: 'aaa'");
+    tp->check_eq_int(same.starts_with("aab"), 0, "CharStr.starts_with: mismatch at the end");
+    tp->check_eq_int(same.ends_with("aaa"), 1, "CharStr.ends_with: 'aaa'");
+    tp->check_eq_int(same.ends_with("ba"), 0, "CharStr.ends_with: mismatch at the start");
+    tp->check_eq_int(same.slice(1, 3, buf, 32), 0, "CharStr.slice: middle of repeated bytes");
+    tp->check_eq_str(buf, "aa", "CharStr.slice: repeated value");
+    tp->check_eq_int(same.compare("aaaa"), 0, "CharStr.compare: repeated equal");
 
     /* ---- find, including the empty needle ------------------------------ */
-    tp->check_eq_int(hello.find(""), 0, "CStrOps.find: empty needle in a non-empty string");
-    tp->check_eq_int(hello.find("hello!"), -1, "CStrOps.find: needle one byte longer");
-    tp->check_eq_int(hello.find("l"), 2, "CStrOps.find: single-byte hit");
-    tp->check_eq_int(hello.find_char(0), 5, "CStrOps.find_char: terminator of 'hello'");
+    tp->check_eq_int(hello.find(""), 0, "CharStr.find: empty needle in a non-empty string");
+    tp->check_eq_int(hello.find("hello!"), -1, "CharStr.find: needle one byte longer");
+    tp->check_eq_int(hello.find("l"), 2, "CharStr.find: single-byte hit");
+    tp->check_eq_int(hello.find_char(0), 5, "CharStr.find_char: terminator of 'hello'");
 
     /* ---- slice bounds -------------------------------------------------- */
-    tp->check_eq_int(hello.slice(-1, 2, buf, 32), -1, "CStrOps.slice: start < 0");
-    tp->check_eq_int(hello.slice(3, 2, buf, 32), -1, "CStrOps.slice: end < start");
-    tp->check_eq_int(hello.slice(0, 6, buf, 32), -1, "CStrOps.slice: end > len");
-    tp->check_eq_int(hello.slice(6, 6, buf, 32), -1, "CStrOps.slice: start > len");
-    tp->check_eq_int(hello.slice(5, 5, buf, 1), 0, "CStrOps.slice: empty range at the end");
-    tp->check_eq_str(buf, "", "CStrOps.slice: empty range at the end value");
-    tp->check_eq_int(hello.slice(1, 4, buf, 4), 0, "CStrOps.slice: cap exactly");
-    tp->check_eq_str(buf, "ell", "CStrOps.slice: cap exactly value");
-    tp->check_eq_int(hello.slice(1, 4, buf, 3), -1, "CStrOps.slice: cap one short");
-    tp->check_eq_int(hello.slice(0, 2, pnull, 32), -1, "CStrOps.slice: NULL buffer");
-    tp->check_eq_int(hello.slice(0, 2, buf, 0), -1, "CStrOps.slice: cap 0");
+    tp->check_eq_int(hello.slice(-1, 2, buf, 32), -1, "CharStr.slice: start < 0");
+    tp->check_eq_int(hello.slice(3, 2, buf, 32), -1, "CharStr.slice: end < start");
+    tp->check_eq_int(hello.slice(0, 6, buf, 32), -1, "CharStr.slice: end > len");
+    tp->check_eq_int(hello.slice(6, 6, buf, 32), -1, "CharStr.slice: start > len");
+    tp->check_eq_int(hello.slice(5, 5, buf, 1), 0, "CharStr.slice: empty range at the end");
+    tp->check_eq_str(buf, "", "CharStr.slice: empty range at the end value");
+    tp->check_eq_int(hello.slice(1, 4, buf, 4), 0, "CharStr.slice: cap exactly");
+    tp->check_eq_str(buf, "ell", "CharStr.slice: cap exactly value");
+    tp->check_eq_int(hello.slice(1, 4, buf, 3), -1, "CharStr.slice: cap one short");
+    tp->check_eq_int(hello.slice(0, 2, pnull, 32), -1, "CharStr.slice: NULL buffer");
+    tp->check_eq_int(hello.slice(0, 2, buf, 0), -1, "CharStr.slice: cap 0");
 
     /* ---- copy / concat ------------------------------------------------- */
-    tp->check_eq_int(hello.copy(pnull, 32), -1, "CStrOps.copy: NULL buffer");
-    tp->check_eq_int(hello.copy(buf, 0), -1, "CStrOps.copy: cap 0");
-    tp->check_eq_int(hello.copy(buf, 6), 0, "CStrOps.copy: cap exactly len + 1");
-    tp->check_eq_str(buf, "hello", "CStrOps.copy: cap exactly value");
-    tp->check_eq_int("ab".concat("cd", pnull, 32), -1, "CStrOps.concat: NULL buffer");
-    tp->check_eq_int("ab".concat("cd", buf, 0), -1, "CStrOps.concat: cap 0");
-    tp->check_eq_int(nul.concat("cd", buf, 32), -1, "CStrOps.concat: NULL left side");
-    tp->check_eq_int("ab".concat(nul, buf, 32), -1, "CStrOps.concat: NULL right side");
+    tp->check_eq_int(hello.copy(pnull, 32), -1, "CharStr.copy: NULL buffer");
+    tp->check_eq_int(hello.copy(buf, 0), -1, "CharStr.copy: cap 0");
+    tp->check_eq_int(hello.copy(buf, 6), 0, "CharStr.copy: cap exactly len + 1");
+    tp->check_eq_str(buf, "hello", "CharStr.copy: cap exactly value");
+    tp->check_eq_int("ab".concat("cd", pnull, 32), -1, "CharStr.concat: NULL buffer");
+    tp->check_eq_int("ab".concat("cd", buf, 0), -1, "CharStr.concat: cap 0");
+    tp->check_eq_int(nul.concat("cd", buf, 32), -1, "CharStr.concat: NULL left side");
+    tp->check_eq_int("ab".concat(nul, buf, 32), -1, "CharStr.concat: NULL right side");
 
     /* ---- case folding: the receiver is read, the result goes to `word` -- */
-    tp->check_eq_int("abc123!".lowercase(word, 16), 0, "CStrOps.lowercase: already lower");
-    tp->check_eq_str(word, "abc123!", "CStrOps.lowercase: leaves digits and punctuation");
-    tp->check_eq_int("abc123!".uppercase(word, 16), 0, "CStrOps.uppercase: from lower");
-    tp->check_eq_str(word, "ABC123!", "CStrOps.uppercase: value");
-    tp->check_eq_int("aBc".uppercase(word, 16), 0, "CStrOps.uppercase: mixed");
-    tp->check_eq_str(word, "ABC", "CStrOps.uppercase: mixed value");
-    tp->check_eq_int("aBc".lowercase(word, 16), 0, "CStrOps.lowercase: mixed");
-    tp->check_eq_str(word, "abc", "CStrOps.lowercase: mixed value");
-    tp->check_eq_int("aBc".uppercase(word, 3), -1, "CStrOps.uppercase: needs room for the NUL");
-    tp->check_eq_int(nul.uppercase(word, 16), -1, "CStrOps.uppercase: NULL receiver");
+    tp->check_eq_int("abc123!".lowercase(word, 16), 0, "CharStr.lowercase: already lower");
+    tp->check_eq_str(word, "abc123!", "CharStr.lowercase: leaves digits and punctuation");
+    tp->check_eq_int("abc123!".uppercase(word, 16), 0, "CharStr.uppercase: from lower");
+    tp->check_eq_str(word, "ABC123!", "CharStr.uppercase: value");
+    tp->check_eq_int("aBc".uppercase(word, 16), 0, "CharStr.uppercase: mixed");
+    tp->check_eq_str(word, "ABC", "CharStr.uppercase: mixed value");
+    tp->check_eq_int("aBc".lowercase(word, 16), 0, "CharStr.lowercase: mixed");
+    tp->check_eq_str(word, "abc", "CharStr.lowercase: mixed value");
+    tp->check_eq_int("aBc".uppercase(word, 3), -1, "CharStr.uppercase: needs room for the NUL");
+    tp->check_eq_int(nul.uppercase(word, 16), -1, "CharStr.uppercase: NULL receiver");
 
     /* ---- compare, including a NULL receiver ---------------------------- */
-    tp->check_eq_int("ab".compare("abc"), -1, "CStrOps.compare: shorter prefix");
-    tp->check_eq_int("abc".compare("ab"), 1, "CStrOps.compare: longer string");
-    tp->check_eq_int(nul.compare(""), 0, "CStrOps.compare: NULL is empty");
-    tp->check_eq_int(nul.compare("a"), -1, "CStrOps.compare: NULL is less than 'a'");
-    tp->check_eq_int("a".compare(nul), 1, "CStrOps.compare: 'a' is greater than NULL");
+    tp->check_eq_int("ab".compare("abc"), -1, "CharStr.compare: shorter prefix");
+    tp->check_eq_int("abc".compare("ab"), 1, "CharStr.compare: longer string");
+    tp->check_eq_int(nul.compare(""), 0, "CharStr.compare: NULL is empty");
+    tp->check_eq_int(nul.compare("a"), -1, "CharStr.compare: NULL is less than 'a'");
+    tp->check_eq_int("a".compare(nul), 1, "CharStr.compare: 'a' is greater than NULL");
 
     /* ---- copy_from / move_from / fill: the raw memory shapes ------------- */
     src[0] = 'a'; src[1] = 'b'; src[2] = 'c'; src[3] = 0;
     dst[0] = 'X'; dst[1] = 'Y'; dst[2] = 'Z'; dst[3] = 0;
     dst.copy_from(src, 3);
     dst[3] = 0;
-    tp->check_eq_str(dst, "abc", "CStrOps.copy_from: three bytes");
+    tp->check_eq_str(dst, "abc", "CharStr.copy_from: three bytes");
     dst.copy_from(src, 0);
-    tp->check_eq_str(dst, "abc", "CStrOps.copy_from: n == 0 is a no-op");
+    tp->check_eq_str(dst, "abc", "CharStr.copy_from: n == 0 is a no-op");
     dst.copy_from(nul, 3);
-    tp->check_eq_str(dst, "abc", "CStrOps.copy_from: NULL source is a no-op");
+    tp->check_eq_str(dst, "abc", "CharStr.copy_from: NULL source is a no-op");
 
     ov[0] = 'a'; ov[1] = 'b'; ov[2] = 'c';
     ov[3] = 'd'; ov[4] = 'e'; ov[5] = 'f'; ov[6] = 0;
     ov.move_from(ov + 2, 4);
     ov[4] = 0;
-    tp->check_eq_str(ov, "cdef", "CStrOps.move_from: overlapping ranges shift left");
+    tp->check_eq_str(ov, "cdef", "CharStr.move_from: overlapping ranges shift left");
 
     dst[0] = 'X'; dst[1] = 'Y'; dst[2] = 'Z'; dst[3] = 0;
     dst.fill('x', 3);
     dst[3] = 0;
-    tp->check_eq_str(dst, "xxx", "CStrOps.fill: three bytes");
+    tp->check_eq_str(dst, "xxx", "CharStr.fill: three bytes");
 
     /* ---- compare_with / find_byte / compare_prefix ----------------------- */
-    tp->check_true("abc".compare_with("abd", 3) < 0, "CStrOps.compare_with: less");
-    tp->check_eq_int("abc".compare_with("abd", 2), 0, "CStrOps.compare_with: equal in two bytes");
-    tp->check_true("abd".compare_with("abc", 3) > 0, "CStrOps.compare_with: greater");
+    tp->check_true("abc".compare_with("abd", 3) < 0, "CharStr.compare_with: less");
+    tp->check_eq_int("abc".compare_with("abd", 2), 0, "CharStr.compare_with: equal in two bytes");
+    tp->check_true("abd".compare_with("abc", 3) > 0, "CharStr.compare_with: greater");
 
     hit = hello.find_byte('l', 5);
-    tp->check_eq_int((int)(hit - hello), 2, "CStrOps.find_byte: first 'l'");
-    tp->check_true(hello.find_byte('z', 5) == 0, "CStrOps.find_byte: absent");
-    tp->check_true(hello.find_byte('h', 0) == 0, "CStrOps.find_byte: zero-length window");
+    tp->check_eq_int((int)(hit - hello), 2, "CharStr.find_byte: first 'l'");
+    tp->check_true(hello.find_byte('z', 5) == 0, "CharStr.find_byte: absent");
+    tp->check_true(hello.find_byte('h', 0) == 0, "CharStr.find_byte: zero-length window");
 
     tp->check_eq_int("abcdef".compare_prefix("abcxyz", 3), 0,
-                     "CStrOps.compare_prefix: equal prefix");
+                     "CharStr.compare_prefix: equal prefix");
     tp->check_true("abcdef".compare_prefix("abcxyz", 4) < 0,
-                   "CStrOps.compare_prefix: differs at byte four");
+                   "CharStr.compare_prefix: differs at byte four");
     tp->check_eq_int("abc".compare_prefix("abcx", 3), 0,
-                     "CStrOps.compare_prefix: stops after three bytes");
+                     "CharStr.compare_prefix: stops after three bytes");
     tp->check_true("abc".compare_prefix("abcx", 4) < 0,
-                   "CStrOps.compare_prefix: the terminator decides at byte four");
+                   "CharStr.compare_prefix: the terminator decides at byte four");
 
     /* ---- split_into: buffered split, source untouched -------------------- */
     nparts = "a,bc,d".split_into(",", parts[0], 3, 8);
-    tp->check_eq_int(nparts, 3, "CStrOps.split_into: three fields");
-    tp->check_eq_str(parts[0], "a", "CStrOps.split_into: field 0");
-    tp->check_eq_str(parts[1], "bc", "CStrOps.split_into: field 1");
-    tp->check_eq_str(parts[2], "d", "CStrOps.split_into: field 2");
+    tp->check_eq_int(nparts, 3, "CharStr.split_into: three fields");
+    tp->check_eq_str(parts[0], "a", "CharStr.split_into: field 0");
+    tp->check_eq_str(parts[1], "bc", "CharStr.split_into: field 1");
+    tp->check_eq_str(parts[2], "d", "CharStr.split_into: field 2");
 
     parts[0][0] = 'X';
     nparts = "a,bc,d".split_into(",", parts[0], 2, 8);
-    tp->check_eq_int(nparts, 3, "CStrOps.split_into: too few slots reports the need");
-    tp->check_eq_str(parts[0], "X", "CStrOps.split_into: nothing written when short");
+    tp->check_eq_int(nparts, 3, "CharStr.split_into: too few slots reports the need");
+    tp->check_eq_str(parts[0], "X", "CharStr.split_into: nothing written when short");
 
     nparts = "a,bc,d".split_into(",", parts[0], 3, 2);
-    tp->check_eq_int(nparts, 3, "CStrOps.split_into: too small a slot reports the need");
+    tp->check_eq_int(nparts, 3, "CharStr.split_into: too small a slot reports the need");
 
     tp->check_eq_int("abc".split_into("", parts[0], 3, 8), 1,
-                     "CStrOps.split_into: empty separator keeps one field");
-    tp->check_eq_str(parts[0], "abc", "CStrOps.split_into: whole string");
+                     "CharStr.split_into: empty separator keeps one field");
+    tp->check_eq_str(parts[0], "abc", "CharStr.split_into: whole string");
 
     tp->check_eq_int("a,,b".split_into(",", parts[0], 3, 8), 3,
-                     "CStrOps.split_into: empty field is kept");
-    tp->check_eq_str(parts[1], "", "CStrOps.split_into: the empty field");
+                     "CharStr.split_into: empty field is kept");
+    tp->check_eq_str(parts[1], "", "CharStr.split_into: the empty field");
 
     tp->check_eq_int(nul.split_into(",", parts[0], 3, 8), 0,
-                     "CStrOps.split_into: NULL receiver");
+                     "CharStr.split_into: NULL receiver");
 
     /* ---- the C parsers ------------------------------------------------- */
-    tp->check_eq_int("-42".to_int(), -42, "CStrOps.to_int: negative");
-    tp->check_eq_int("  -7".to_int(), -7, "CStrOps.to_int: leading spaces");
-    tp->check_eq_int("12abc".to_int(), 12, "CStrOps.to_int: stops at the first non-digit");
-    tp->check_eq_int(empty.to_int(), 0, "CStrOps.to_int: empty");
-    tp->check_eq_int("abc".to_int(), 0, "CStrOps.to_int: no digits");
-    tp->check_eq_int(nul.to_int(), 0, "CStrOps.to_int: NULL receiver");
-    tp->check_true("-2.25".to_double() == -2.25, "CStrOps.to_double: negative");
-    tp->check_true("1e3".to_double() == 1000.0, "CStrOps.to_double: exponent");
-    tp->check_true("abc".to_double() == 0.0, "CStrOps.to_double: no number");
-    tp->check_true(empty.to_double() == 0.0, "CStrOps.to_double: empty");
-    tp->check_true(nul.to_double() == 0.0, "CStrOps.to_double: NULL receiver");
+    tp->check_eq_int("-42".to_int(), -42, "CharStr.to_int: negative");
+    tp->check_eq_int("  -7".to_int(), -7, "CharStr.to_int: leading spaces");
+    tp->check_eq_int("12abc".to_int(), 12, "CharStr.to_int: stops at the first non-digit");
+    tp->check_eq_int(empty.to_int(), 0, "CharStr.to_int: empty");
+    tp->check_eq_int("abc".to_int(), 0, "CharStr.to_int: no digits");
+    tp->check_eq_int(nul.to_int(), 0, "CharStr.to_int: NULL receiver");
+    tp->check_true("-2.25".to_double() == -2.25, "CharStr.to_double: negative");
+    tp->check_true("1e3".to_double() == 1000.0, "CharStr.to_double: exponent");
+    tp->check_true("abc".to_double() == 0.0, "CharStr.to_double: no number");
+    tp->check_true(empty.to_double() == 0.0, "CharStr.to_double: empty");
+    tp->check_true(nul.to_double() == 0.0, "CharStr.to_double: NULL receiver");
 
     return tp->report();
 }

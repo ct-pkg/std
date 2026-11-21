@@ -19,7 +19,7 @@
  * (or several translation units) include this header.
  *
  * Every name is prefixed so it cannot collide with another module's shim
- * (`String.shim.h` declares `std_str_*`) or with user code.
+ * (`CharStr.shim.h` declares `std_str_*`) or with user code.
  *
  * Allocation: nothing here allocates. `read_file` and `list` write into the
  * caller's buffer and take its capacity; the caller owns the buffer and there is

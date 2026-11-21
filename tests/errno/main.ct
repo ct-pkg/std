@@ -4,7 +4,7 @@
  * its presence, its copying contract and the buffer-too-small path, not the
  * exact wording. */
 import std::errno::Errno;
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 /* ENOENT is 2 on Linux and macOS. A `.ct` file cannot include <errno.h>. */

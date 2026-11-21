@@ -26,7 +26,7 @@
 
 ```ct
 import std::env::Env;
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(void)

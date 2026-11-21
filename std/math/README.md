@@ -48,7 +48,7 @@ ct build src/main.ct -o main --cflags "-Wall -Wextra" --ldflags "-lm"
 ```ct
 import std::math::Real;
 import std::num::Num;
-import std::str::String;
+import std::str::CharStr;
 import std::io::Stdout;
 
 int main(void)
@@ -273,7 +273,7 @@ namespace 入口自 **0.5.0** 起删除，`Math.m.ct` 已物理移除。
 
 ```ct
 import std::math::Real;
-import std::str::String;
+import std::str::CharStr;
 import std::io::Stdout;
 
 int main(void)
@@ -336,7 +336,7 @@ ct build -I . main.ct -o /tmp/std-math --cflags "-Wall -Wextra" --ldflags "-lm"
 
 ```ct
 import std::math::Real;
-import std::str::String;
+import std::str::CharStr;
 import std::io::Stdout;
 
 int main(void)

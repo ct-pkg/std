@@ -42,7 +42,7 @@ ct build src/main.ct -o main --cflags "-Wall -Wextra"
 
 ```ct
 import std::num::Num;
-import std::str::String;
+import std::str::CharStr;
 import std::io::Stdout;
 
 int main(void)
@@ -152,7 +152,7 @@ upper=A
 
 ```ct
 import std::num::Num;
-import std::str::String;
+import std::str::CharStr;
 import std::io::Stdout;
 
 int main(void)
@@ -245,7 +245,7 @@ base small null=1
 
 ```ct
 import std::num::Num;
-import std::str::String;
+import std::str::CharStr;
 import std::io::Stdout;
 
 int main(void)

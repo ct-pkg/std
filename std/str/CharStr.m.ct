@@ -1,14 +1,15 @@
 /*
- * String.m.ct - the method spellings for `char *` in std::str (std::str::String).
+ * CharStr.m.ct - the method spellings for `char *` in std::str (std::str::CharStr).
  *
  * Every binding is a zero-cost static mapping: `s.length()` expands at the call
  * site into `std_str_len(s)`, with no wrapper, no interface value and no
- * vtable. The functions it calls are defined `static inline` in String.shim.h;
+ * vtable. The functions it calls are defined `static inline` in CharStr.shim.h;
  * this unit adds spelling only, never semantics.
  *
- * The trait is `CStrOps`, not `Str`: there is no `Str` struct here at all, and
- * a `pub trait Str` would still be a poor name beside the C `std_str_*` layer.
- * `CStrOps` is a distinct name, so nothing shadows it.
+ * The trait is `CharStr` -- "a char string", the C-shaped byte string. It is
+ * deliberately neither `String` (which reads like an owned value type) nor
+ * `Str` (the compiler's built-in owned string); `CharStr` is a distinct name,
+ * so nothing shadows anything.
  *
  * `map trait ... for type` is legal only in `.m.ct`, so this is the only CT
  * unit of std::str; the C surface lives in the shim pair next to it, not in a
@@ -33,10 +34,10 @@
  * same host. That is harmless now: no method writes through the receiver, so a
  * literal is safe everywhere in this module.
  *
- * This unit is the only import: `import std::str::String;` brings the trait and
+ * This unit is the only import: `import std::str::CharStr;` brings the trait and
  * the shim, so the generated `.c` has the definitions it needs. The C functions
  * (`std_str_len`, ...) are still callable from C or from a raw
- * `#include "String.shim.h"` block -- they are `static inline`, so each
+ * `#include "CharStr.shim.h"` block -- they are `static inline`, so each
  * translation unit gets its own copy; the CT-level `std::str::length(...)` spelling
  * no longer exists.
  *
@@ -49,7 +50,7 @@
 
 namespace std::str;
 
-pub trait CStrOps {
+pub trait CharStr {
     int length();
     int find(const char *needle);
     int find_char(int c);
@@ -83,7 +84,7 @@ pub trait CStrOps {
     int parse_real(double *out);
 }
 
-map trait CStrOps for type char * {
+map trait CharStr for type char * {
     length(s) -> std_str_len(s);
     find(s, needle) -> std_str_find(s, needle);
     find_char(s, c) -> std_str_find_char(s, c);

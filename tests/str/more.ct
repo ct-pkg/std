@@ -1,6 +1,6 @@
 /* std::str - the last two P1 entries from the design: reverse_find_char and
    compare_ignore_case. */
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(void)
@@ -24,7 +24,7 @@ int main(void)
 
     /* Both names are unique on the shared char * host. */
     i = "x".length();
-    tp->check_eq_int(i, 1, "the other CStrOps methods still resolve");
+    tp->check_eq_int(i, 1, "the other CharStr methods still resolve");
 
     return tp->report();
 }

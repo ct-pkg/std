@@ -5,7 +5,7 @@
  *
  *   ct build -I . tests/str/first.ct -o /tmp/first && /tmp/first
  */
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(void)

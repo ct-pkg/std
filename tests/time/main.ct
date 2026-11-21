@@ -2,7 +2,7 @@
  *
  * Calendar assertions use a fixed timestamp and the local zone, so they check
  * relations and formatting rather than a hard-coded date. */
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 import std::time::Time;
 

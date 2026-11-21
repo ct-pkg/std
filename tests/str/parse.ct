@@ -1,5 +1,5 @@
-/* std::str::String - the two C parsers behind to_int / to_double. */
-import std::str::String;
+/* std::str::CharStr - the two C parsers behind to_int / to_double. */
+import std::str::CharStr;
 import std::test::Test;
 
 int main(void)

@@ -1,9 +1,9 @@
 /* std::str - positive path and the bounded / missing cases.
  *
- * `std::str`'s only CT entry is the OO spelling from `String.m.ct`; each call
- * is a static mapping onto the `std_str_*` C functions in String.shim.h, so
+ * `std::str`'s only CT entry is the OO spelling from `CharStr.m.ct`; each call
+ * is a static mapping onto the `std_str_*` C functions in CharStr.shim.h, so
  * these checks cover both the spelling and the code. */
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(void)

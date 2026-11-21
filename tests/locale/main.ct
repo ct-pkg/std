@@ -4,7 +4,7 @@
  * restored before the report. The assertions avoid exact name strings: macOS
  * normalises "C" to "C" but other platforms may append codesets. */
 import std::locale::LocaleHandle;
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(void)

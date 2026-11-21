@@ -4,7 +4,7 @@
  * another process for a fixed number. */
 import std::net::Socket;
 import std::num::Num;
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(void)

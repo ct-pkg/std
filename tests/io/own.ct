@@ -4,7 +4,7 @@
  * a statement. The observable proof that Drop ran is that the stream was
  * flushed and closed before the file is read back. */
 import std::io::File;
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(int argc, char **argv)

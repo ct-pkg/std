@@ -1,7 +1,7 @@
 /*
- * String.shim.h - the C surface behind std::str::String.
+ * CharStr.shim.h - the C surface behind std::str::CharStr.
  *
- * `String.m.ct` maps the OO spellings (`s.len()`, `s.to_lower(out, cap)`) onto the
+ * `CharStr.m.ct` maps the OO spellings (`s.len()`, `s.to_lower(out, cap)`) onto the
  * `std_str_*` functions below. A mapping unit cannot declare functions or carry
  * `#ct-raw` code (a `.m.ct` prologue allows only `#include` / `#define`), so the
  * definitions live here: the compiler auto-detects `<base>.shim.h` next to a

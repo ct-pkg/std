@@ -43,7 +43,7 @@
 import std::fs::Fs;
 import std::fs::Dir;
 import std::fs::Stat;
-import std::str::String;
+import std::str::CharStr;
 
 int main(void)
 {

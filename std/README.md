@@ -5,7 +5,7 @@
 
 | 模块 | 入口 import | 文档 |
 | --- | --- | --- |
-| `std::str` | `std::str::String` | [str/README.md](str/README.md) |
+| `std::str` | `std::str::CharStr` | [str/README.md](str/README.md) |
 | `std::io` | `std::io::Stdout` / `File` | [io/README.md](io/README.md) |
 | `std::fs` | `std::fs::Fs` | [fs/README.md](fs/README.md) |
 | `std::utf8` | `std::utf8::Utf8Ops` | [utf8/README.md](utf8/README.md) |

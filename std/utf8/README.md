@@ -33,7 +33,7 @@ ct build src/main.ct -o main --cflags "-Wall -Wextra"
 
 ```ct
 import std::utf8::Utf8Ops;
-import std::str::String;
+import std::str::CharStr;
 import std::num::Num;
 import std::io::Stdout;
 
@@ -110,7 +110,7 @@ encoded=2
 | `"€"` | 3 | 1 |
 | `"😀"`（U+1F600） | 4 | 1 |
 
-两个名字不能互换：`CStrOps.length` 数字节，`Utf8Ops.count_codepoints` 数码点。
+两个名字不能互换：`CharStr.length` 数字节，`Utf8Ops.count_codepoints` 数码点。
 
 ### 5.2 解码一个码点
 
@@ -119,7 +119,7 @@ encoded=2
 ```ct
 import std::utf8::Utf8Ops;
 import std::num::Num;
-import std::str::String;
+import std::str::CharStr;
 import std::io::Stdout;
 
 int main(void)
@@ -164,7 +164,7 @@ bytes=3
 
 ```ct
 import std::utf8::Utf8Ops;
-import std::str::String;
+import std::str::CharStr;
 import std::num::Num;
 import std::io::Stdout;
 
@@ -260,7 +260,7 @@ UTF-8；再写 `buf[n] = 0;` 才得到 C 字符串。
 ```ct
 import std::utf8::Utf8Ops;
 import std::num::Num;
-import std::str::String;
+import std::str::CharStr;
 import std::io::Stdout;
 
 int main(void)

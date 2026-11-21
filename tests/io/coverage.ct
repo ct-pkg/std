@@ -2,7 +2,7 @@
  * read/write direction rules, n == 0 / n < 0 / NULL buffers, append, and the
  * Stdout namespace. */
 import std::io::File;
-import std::str::String;
+import std::str::CharStr;
 import std::num::Num;
 import std::io::Stdout;
 import std::test::Test;

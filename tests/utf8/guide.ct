@@ -8,7 +8,7 @@
  *   ct build -I . tests/utf8/guide.ct -o /tmp/guide && /tmp/guide
  */
 import std::utf8::Utf8Ops;
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(void)
@@ -26,7 +26,7 @@ int main(void)
     tp->init();
 
     /* 1. Two units, two names: bytes vs code points. */
-    tp->check_eq_int("é".length(), 2, "CStrOps.len counts bytes");
+    tp->check_eq_int("é".length(), 2, "CharStr.len counts bytes");
     tp->check_eq_int("é".count_codepoints(), 1, "count_codepoints counts code points");
     tp->check_eq_int("héllo".length(), 6, "héllo is six bytes");
     tp->check_eq_int("héllo".count_codepoints(), 5, "héllo is five code points");

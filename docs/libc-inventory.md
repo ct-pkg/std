@@ -63,7 +63,7 @@
 | 函数 | 现状 | 结论 | 落地细节 |
 | --- | --- | --- | --- |
 | `malloc` / `calloc` / `realloc` / `free` | 无（仅 shim 内部使用） | **不建议包**（第三档） | 裸内存直用；池化归 `std::arena` |
-| `atoi` / `atof` | `String.to_int` / `to_double`（`String.m.ct:62-63`） | 已在 std | 无错误报告，溢出是 libc 未定义行为（`String.shim.h:208-219`） |
+| `atoi` / `atof` | `String.to_int` / `to_double`（`CharStr.m.ct:62-63`） | 已在 std | 无错误报告，溢出是 libc 未定义行为（`CharStr.shim.h:208-219`） |
 | `atol` / `atoll` | 无 | 建议包·第二档 | `parse_long(s, out)` / `parse_llong(s, out)`，宿主 `char *`；`0` 成功 / `-1` 失败，值写 `out` |
 | `strtol` / `strtoll` / `strtoul` / `strtoull` | 无 | 建议包·第二档 | `parse_long` / `parse_llong` / `parse_ulong`（同上），范围错误映射为 `-1` |
 | `strtod` / `strtof` / `strtold` | 无 | 建议包·第二档 | `parse_real(s, out)`，`double` 出参；`-1` 失败 |
@@ -82,7 +82,7 @@
 
 | 函数 | 现状 | 结论 | 落地细节 |
 | --- | --- | --- | --- |
-| `memcpy` / `memmove` / `memset` / `memcmp` / `memchr` | `String.copy_to` 只覆盖固定 `n` 的 memcpy 形态（`String.m.ct:61`） | **第三档** | 直映射，不新增名字 |
+| `memcpy` / `memmove` / `memset` / `memcmp` / `memchr` | `String.copy_to` 只覆盖固定 `n` 的 memcpy 形态（`CharStr.m.ct:61`） | **第三档** | 直映射，不新增名字 |
 | `strlen` | `String.len` | 已在 std | — |
 | `strcmp` | `String.compare` | 已在 std | — |
 | `strncmp` | 无 | 第三档 | 直映射（热路径、语义同 `strcmp`） |
@@ -260,7 +260,7 @@
 
 | 来源 | 已占名字 |
 | --- | --- |
-| `String`（拟改 `CStrOps`，14） | `len` `find` `find_char` `starts_with` `ends_with` `copy` `slice` `concat` `to_lower` `to_upper` `compare` `copy_to` `to_int` `to_double` |
+| `String`（现 `CharStr`，14） | `len` `find` `find_char` `starts_with` `ends_with` `copy` `slice` `concat` `to_lower` `to_upper` `compare` `copy_to` `to_int` `to_double` |
 | `FsOps`（7） | `exists` `read_file` `write_file` `list` `mkdir` `remove` `rename` |
 | `Utf8Ops`（3） | `decode` `count_codepoints` `encode` |
 | `Path`（1） | `open` |
@@ -323,5 +323,5 @@
 - 不写任何实现、不动 shim、不新增 trait / 类型到代码里。
 - 不动版本：`0.3.1` 已发布，`0.4.0` 留给 issue 0001 的改名；本文只提供排期输入。
 - 不开相卡、不排具体日期。
-- 不批量改既有 API 名（`String` → `CStrOps` 只在 issue 0001 处理）。
+- 不批量改既有 API 名（`String` → `CharStr` 由 issue 0004 在 `0.20.0` 处理）。
 - 不修改 `README.md:505-506` 的 libc 原名豁免；若要全动词化，先改 §11 再谈本文条目。

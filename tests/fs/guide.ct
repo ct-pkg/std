@@ -10,7 +10,7 @@
  *   /tmp/guide /tmp /tmp/ct-fs-guide.txt
  */
 import std::fs::Fs;
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(int argc, char **argv)

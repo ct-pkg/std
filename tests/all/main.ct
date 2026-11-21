@@ -7,7 +7,7 @@
    the built-in names. */
 import std::arena::Arena;
 import std::fs::Fs;
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 import std::utf8::Utf8Ops;
 

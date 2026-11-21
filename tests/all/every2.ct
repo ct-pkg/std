@@ -1,7 +1,7 @@
 /* The other half of the coexist check: process/search/str/time/utf8/wchar. */
 import std::process::Process;
 import std::search::Search;
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 import std::time::Time;
 import std::utf8::Utf8Ops;

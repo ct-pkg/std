@@ -86,7 +86,7 @@
 
 **正席（拆）**：`Path` 与 `File` 单职责；`exists`/`rename` 不该与文件句柄混在一个 unit。
 
-**反席（不拆）**：`open` → `read`/`write`/`close` 是连续 API 面，拆开对消费者是 import 成本；0.4.0 已计划 `String` → `CStrOps` 改名，叠加拆分扩大破坏面。
+**反席（不拆）**：`open` → `read`/`write`/`close` 是连续 API 面，拆开对消费者是 import 成本；0.4.0 已计划 `String` → `CStrOps` 改名（`0.20.0` 起为 `CharStr`），叠加拆分扩大破坏面。
 
 **结论：建议否决拆分**。0.4.0 只改 trait 名，`File.m.ct` 保持一个 unit；若 `Path` 将来需要独立演化，另开 issue。
 
@@ -192,7 +192,7 @@
 
 | 阶段 | 内容（§7 原表） | 依赖的裁定（已关闭） | 前置门禁 | 说明 |
 | --- | --- | --- | --- | --- |
-| P0 | `String` → `CStrOps`、`len` → `length`、`open` → `open_file`、删 `to_string`、`printf` 删除 | Q1 已定 | G-final 已达成 | 不拆 unit，只做改名与删除 |
+| P0 | `String` → `CStrOps`（`0.20.0` 起为 `CharStr`）、`len` → `length`、`open` → `open_file`、删 `to_string`、`printf` 删除 | Q1 已定 | G-final 已达成 | 不拆 unit，只做改名与删除 |
 | P1 | `char` 的 `is_*`、内存方法、`split_into`、`math` 新族、`sort`/`binary_search` | Q3 不做、Q9 已定 | G-final 已达成 | 不设名字上限；`Math` namespace 删除，仅 7 个生僻名改全称 |
 | P2 | `env`/`process`/`errno`/`locale`/`wchar` | Q4 已定 | G-final 已达成 | `Locale` 为工厂对象；`apply` 全局状态与 `LC_NUMERIC` 影响已写入方案 |
 | P3 | stdio 补全、`FileDesc`、变参替代 | Q2 已定、`FileDesc` 已定 | G-final 已达成 | `File` 用 `own` + 幂等 `close`；`printf` 已删 |

@@ -31,7 +31,7 @@
 
 ```ct
 import std::errno::Errno;
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 int main(void)

@@ -1,6 +1,6 @@
 # `std` — CT 标准库（ct-pkg 包）
 
-`std` 是**源码库**，不是 `ct` 二进制的一部分：`import std::str::String` 只在显式 `-I` 下解析，
+`std` 是**源码库**，不是 `ct` 二进制的一部分：`import std::str::CharStr` 只在显式 `-I` 下解析，
 编译器没有默认搜索路径。仓库根就是包根，`std/` 子目录是命名空间根。
 
 ## 1. 定位与边界
@@ -64,7 +64,7 @@ ct build src/main.ct -o main --cflags "-Wall -Wextra"
 ```
 
 store 布局是 `$CT_HOME/pkg/ct/std/0.19.0`，包的命名空间根仍是其中的 `std/` 子目录；
-两层合起来正好还原 `import std::str::String`。
+两层合起来正好还原 `import std::str::CharStr`。
 
 ### 在包根内开发
 
@@ -106,7 +106,7 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` /
 `split_into`，以及 `Float` / `Real` 的完整方法族；数学改为只提供方法形态，
 `is_inf` 改名 `is_infinite`，新增 `std::search`（`qsort` / `bsearch`）。
-`0.4.0`（P0）是破坏性改名与删除批：`String` trait 改为 `CStrOps`，`len` 改为 `length`，
+`0.4.0`（P0）是破坏性改名与删除批：`String` trait 改为 `CStrOps`（`0.20.0` 起统一为 `CharStr`），`len` 改为 `length`，
 `open` 改为 `open_file`，大小写转换改为 `uppercase` / `lowercase`，删除 `to_string` 与
 `std::io` 的变参 `printf`。`0.3.2` 只统一了包身份与许可，`publisher` 改为 `std`，API 无变化。
 `v0.1.0` 仍指向旧接口（大小写转换方法原地改写、
@@ -119,7 +119,7 @@ ct build -I . src/main.ct -o /tmp/main --cflags "-Wall -Wextra"
 跨四个模块的完整程序：写文件、读回来、转大写、打印字节数。
 
 ```ct
-import std::str::String;
+import std::str::CharStr;
 import std::fs::Fs;
 import std::num::Num;
 import std::io::Stdout;
@@ -171,7 +171,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 | 模块 | 入口 import | 宿主 | 方法数 | 文档 |
 | --- | --- | --- | --- | --- |
-| `std::str` | `std::str::String` | `char *` | 26 | [str/README.md](std/str/README.md) |
+| `std::str` | `std::str::CharStr` | `char *` | 26 | [str/README.md](std/str/README.md) |
 | `std::io` | `std::io::File` / `FileDesc` / `Stdout` | namespace、`char *`、`File *`、`FileDesc *` | 6 + 1 + 15 + 8 | [io/README.md](std/io/README.md) |
 | `std::fs` | `std::fs::Fs` / `Dir` / `Stat` | `char *`、`Dir *`、`Stat *` | 17 + 7 + 4 | [fs/README.md](std/fs/README.md) |
 | `std::utf8` | `std::utf8::Utf8Ops` | `char *` | 3 | [utf8/README.md](std/utf8/README.md) |
@@ -193,7 +193,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 | 模块 | 方法 |
 | --- | --- |
-| `CStrOps` | `length` `find` `find_char` `reverse_find_char` `starts_with` `ends_with` `copy` `slice` `concat` `lowercase` `uppercase` `compare` `compare_ignore_case` `copy_from` `move_from` `fill` `compare_with` `find_byte` `compare_prefix` `split_into` `to_int` `to_double` `parse_long` `parse_long_long` `parse_unsigned_long` `parse_real` |
+| `CharStr` | `length` `find` `find_char` `reverse_find_char` `starts_with` `ends_with` `copy` `slice` `concat` `lowercase` `uppercase` `compare` `compare_ignore_case` `copy_from` `move_from` `fill` `compare_with` `find_byte` `compare_prefix` `split_into` `to_int` `to_double` `parse_long` `parse_long_long` `parse_unsigned_long` `parse_real` |
 | `FsOps` | `exists` `read` `write` `list` `mkdir` `remove` `rename` `access` `read_link` `resize` `set_mode` `size` `mode` `modification_time` `is_readable` `is_writable` `resolve_path` |
 | `PathDir`（`std::fs`） | `open_dir` |
 | `ConnectText`（`std::net`） | `connect` |
@@ -204,7 +204,7 @@ file=ct-pkg bytes=6 upper=CT-PKG
 
 合计 26 + 17 + 3 + 1 + 1 + 1 + 1 + 1 = **51**（`split_into` 是便利层，不是 libc 映射）。`errno` 访问器不在 `char *` 上：它是每翻译单元一份的全局值，
 挂在 namespace 宿主（`std::fs::FsEnv.get_last_error()`，见 §4.3）。`const char *` 也匹配同一宿主：
-类型键丢掉顶层 `const`，但 `CStrOps` 里已没有任何写接收者的方法，字面量接收者不会踩到只读内存。
+类型键丢掉顶层 `const`，但 `CharStr` 里已没有任何写接收者的方法，字面量接收者不会踩到只读内存。
 
 ### 4.3 其它宿主
 
@@ -264,7 +264,7 @@ vptr），本机实测 `sizeof(Arena) == 32`、`sizeof(Test) == 16`、`sizeof(Fi
 
 ### 5.3 字节与码点
 
-`CStrOps.length()` 数字节，`Utf8Ops.count_codepoints()` 数码点。同一段 `"é"` 是 `length() == 2`、
+`CharStr.length()` 数字节，`Utf8Ops.count_codepoints()` 数码点。同一段 `"é"` 是 `length() == 2`、
 `count_codepoints() == 1`。两个名字不能互换。
 需要按字符遍历时用 `decode` 拿到步长，累加字节偏移。
 
@@ -340,7 +340,7 @@ int main(void)
 ### 7.1 字面量接收者
 
 ```ct
-import std::str::String;
+import std::str::CharStr;
 
 int main(void)
 {
@@ -371,7 +371,7 @@ int main(void)
 main.ct:4:1: error: no method 'length' for type 'char *'
 ```
 
-方法随 trait 一起可见；没有 import，`char *` 上就什么都没有。补 `import std::str::String;`。
+方法随 trait 一起可见；没有 import，`char *` 上就什么都没有。补 `import std::str::CharStr;`。
 
 ### 7.3 同名方法冲突
 
@@ -391,28 +391,28 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 
 | 术语 | 含义 | 本包中的所指 |
 | --- | --- | --- |
-| `std` | 包名，也是 `import` 的命名空间前缀 | 仓库根是包根，`std/` 子目录是命名空间根；`import std::str::String` 对应 `std/str/String.m.ct` |
-| `.m.ct` | 映射式单元：只接受 `#include` / `#define` 作前导，没有函数体，方法经 `map trait` 转发 | `str/String.m.ct`、`fs/Fs.m.ct`、`utf8/Utf8Ops.m.ct`、`io/Stdout.m.ct`、`io/Path.m.ct`、`io/FileDescFactory.m.ct`、`math/Real.m.ct`、`num/Num.m.ct`、`env/Env.m.ct` |
+| `std` | 包名，也是 `import` 的命名空间前缀 | 仓库根是包根，`std/` 子目录是命名空间根；`import std::str::CharStr` 对应 `std/str/CharStr.m.ct` |
+| `.m.ct` | 映射式单元：只接受 `#include` / `#define` 作前导，没有函数体，方法经 `map trait` 转发 | `str/CharStr.m.ct`、`fs/Fs.m.ct`、`utf8/Utf8Ops.m.ct`、`io/Stdout.m.ct`、`io/Path.m.ct`、`io/FileDescFactory.m.ct`、`math/Real.m.ct`、`num/Num.m.ct`、`env/Env.m.ct` |
 | `.h.ct` | 可写 `pub struct` / `impl` / 自由函数与函数体的单元；资源句柄用它 | `arena/Arena.h.ct`、`test/Test.h.ct`、`io/File.h.ct`、`io/FileDesc.h.ct`、`locale/LocaleHandle.h.ct` |
 | `host`（宿主） | 方法挂载的接收者类型；同一宿主上方法名必须唯一 | `char *`、`int` / `long` / `long long` / `char`、`float` / `double`、`File *`、`FileDesc *`、`Arena *`、`Test *`，以及 namespace `std::io` / `std::search` / `std::process` |
-| `map trait` | `.m.ct` 专有声明，把 trait 方法逐条映射成 C 调用，调用点展开，没有 vtable | `String.m.ct` 的 `map trait CStrOps for type char *`、`Path.m.ct` 的 `map trait Path for type char *`、`Stdout.m.ct` 的 `map trait Stdout for namespace std::io` |
-| `pub trait` | 方法集声明；映射式里配 `map trait`，原生 OO 里配 `impl` 或固有 `impl X` | `CStrOps`、`FsOps`、`Utf8Ops`、`Path`、`PathFileDesc`、`Stdout`、`Int` / `Long` / `LLong` / `Char`、`Float` / `Real`、`Search`、`ArenaOps`、`TestOps` |
+| `map trait` | `.m.ct` 专有声明，把 trait 方法逐条映射成 C 调用，调用点展开，没有 vtable | `CharStr.m.ct` 的 `map trait CharStr for type char *`、`Path.m.ct` 的 `map trait Path for type char *`、`Stdout.m.ct` 的 `map trait Stdout for namespace std::io` |
+| `pub trait` | 方法集声明；映射式里配 `map trait`，原生 OO 里配 `impl` 或固有 `impl X` | `CharStr`、`FsOps`、`Utf8Ops`、`Path`、`PathFileDesc`、`Stdout`、`Int` / `Long` / `LLong` / `Char`、`Float` / `Real`、`Search`、`ArenaOps`、`TestOps` |
 | `impl` | 为已声明的 `pub trait` 写方法体的块；`impl X { ... }` 是固有方法（无 vptr） | `Arena.h.ct` 的 `impl ArenaOps for Arena`、`Test.h.ct` 的 `impl TestOps for Test`、`File.h.ct` 的 `impl File` |
 | `use` | `struct ... use Trait` 把 vtable 指针追加到结构体尾部；`use Drop` 只置位、不加 vptr | `struct Arena { ... } use ArenaOps`、`struct File { ... } use Drop` |
 | `vptr` | 由 `use` 追加的 vtable 指针，方法调用经它间接分派 | 生成代码里的 `__vptr`，以及导出头里的 `__arenaops_vptr`；`sizeof(Arena) == 32`（24 字节字段 + 8 字节 vptr） |
-| `shim` | 与 `.m.ct` / `.h.ct` 同名的 `.shim.h`，C 实现在里面且是 `static inline`，每个消费单元各复制一份 | `String.shim.h`、`Fs.shim.h`、`File.shim.h`、`FileDesc.shim.h`、`LocaleHandle.shim.h`、`Process.shim.h` |
+| `shim` | 与 `.m.ct` / `.h.ct` 同名的 `.shim.h`，C 实现在里面且是 `static inline`，每个消费单元各复制一份 | `CharStr.shim.h`、`Fs.shim.h`、`File.shim.h`、`FileDesc.shim.h`、`LocaleHandle.shim.h`、`Process.shim.h` |
 | `pub type` | CT 侧的类型别名，只改 CT 名字，不改任何 C 符号 | `FileDescFactory.m.ct` 的 `pub type FileDescHandle = struct std_io_FileDesc;`：映射单元用它命名 `.h.ct` 生成的 C tag |
 | `File` / `FileDesc` | 包内两个资源句柄：`File` 包 `FILE *`，`FileDesc` 包 fd；都是 CT struct + `use Drop` | `File *` 用 `->read` / `->write` / `->close`；`FileDesc *` 用 `->read` / `->send` / `->raw_file_desc` |
 | `handle`（句柄）与裸指针 | 句柄是包装私有 C 状态的 CT 指针，只能经方法使用；裸指针没有附加语义 | `File *` / `FileDesc *` 是句柄，`->close()` 关闭内部资源；`char *` / `void *` 是裸指针，`f->close()` 不是 `free(f)` |
-| `char *` | 全仓共享的映射宿主，任何模块都能往上挂 trait，代价是方法名全局唯一 | `CStrOps`、`FsOps`、`Utf8Ops` 和 `Path` 都映射到它上面；新增方法前先查 §4.2 |
-| `type key`（类型键） | 编译器给宿主去重的键，丢弃顶层 `const` | `const char *` 与 `char *` 是同一宿主；字面量能直接作接收者，因为 `CStrOps` 没有写接收者的方法 |
+| `char *` | 全仓共享的映射宿主，任何模块都能往上挂 trait，代价是方法名全局唯一 | `CharStr`、`FsOps`、`Utf8Ops` 和 `Path` 都映射到它上面；新增方法前先查 §4.2 |
+| `type key`（类型键） | 编译器给宿主去重的键，丢弃顶层 `const` | `const char *` 与 `char *` 是同一宿主；字面量能直接作接收者，因为 `CharStr` 没有写接收者的方法 |
 | `borrow`（借用） | 只保存指针，不复制，也不负责释放 | 本包的 `str` / `fs` 只写调用方缓冲区、不保存指针；内建 `Vec` / `Map`（不属于本包）的元素与键是借用，`release` 不回收它们 |
 | `ownership`（所有权） | 资源由谁负责释放 | 资源句柄拿到后写 `defer { delete h; }`（覆盖落出 / return / break / continue）；`own` 是可选糖，0.67.0 在方法返回值被捕获时会丢掉释放（裁定见 [decision-resource-ownership.md](docs/design/decision-resource-ownership.md)）。`Arena.free_all()` 与内建容器的 `release` 仍由调用方负责 |
-| `cap` | 容量；单位随宿主而变 | `CStrOps` / `FsOps` 与 `num` / `math` 的文本化方法是缓冲区字节数（含结尾 NUL 的位置）；`Utf8Ops.encode` 的 `cap` 只是可用字节数，不写 NUL；`Arena` 的 `init` 参数是首块字节数 |
-| `length()` | 当前长度；单位随宿主而变 | `CStrOps.length()` 数字节（不含 NUL）；内建 `Vec` / `Map` 的长度查询数元素 / 条目 |
+| `cap` | 容量；单位随宿主而变 | `CharStr` / `FsOps` 与 `num` / `math` 的文本化方法是缓冲区字节数（含结尾 NUL 的位置）；`Utf8Ops.encode` 的 `cap` 只是可用字节数，不写 NUL；`Arena` 的 `init` 参数是首块字节数 |
+| `length()` | 当前长度；单位随宿主而变 | `CharStr.length()` 数字节（不含 NUL）；内建 `Vec` / `Map` 的长度查询数元素 / 条目 |
 | `n` | 结构体字段或方法参数里的计数值 | `read` / `write` / `copy_to` / `alloc` 的 `n` 参数是字节数 |
 | `arena` | bump 分配器及其生命周期 | `std::arena` 的 `Arena`：`init(block)` 拿第一块（`block < 16` 按 16），`alloc(n)` 返回 8 字节对齐且不初始化的内存，`reset()` 释放副块并保留首块，`free_all()` 全部释放 |
-| `slice` | 取子串；结果是写进调用方缓冲区的状态码，不是视图 | `CStrOps.slice(start, end, out, cap)` 按字节取半开区间 `[start, end)`，结果写入 `out` 并补 NUL；越界或放不下返回 `-1` |
+| `slice` | 取子串；结果是写进调用方缓冲区的状态码，不是视图 | `CharStr.slice(start, end, out, cap)` 按字节取半开区间 `[start, end)`，结果写入 `out` 并补 NUL；越界或放不下返回 `-1` |
 | `codepoint`（码点） | UTF-8 里一个字符的编号；一个码点占 1..4 字节，码点数不等于字节数 | `Utf8Ops.count_codepoints()` 数码点，`decode()` 返回本次消耗的 1..4 字节，`encode()` 写 1..4 字节且不补 NUL；解码拒绝代理区（U+D800..U+DFFF）和超过 U+10FFFF 的值 |
 | `NUL` | 值为 0x00 的字节，C 字符串的终止符，不是 `NULL` 指针 | `length()` 不计 NUL，`cap` 必须给它留位置；`read` / `write` / `encode` 都不自动补 NUL |
 | `iterator`（迭代器） | 遍历容器的游标；本包没有实现 | 本包不提供容器；内建 `Vec` / `Map` 用 `foreach (v)` 的 `item` / `i` 绑定遍历，没有迭代器对象。最接近的失效规则是 `Arena.alloc()` 的指针在 `reset()` / `free_all()` 后作废 |
@@ -430,7 +430,7 @@ main.ct:4:1: error: no method 'length' for type 'char *'
   只写到已验证的 0.67.0。历史下限：`pub type IoFile` 别名 0.20.3、字面量接收者 0.20.0、内置
   容器 0.30.0。低于 0.67.0 的编译器不满足 `requires`（只告警，不代表能编过）。
 - **`char *` 方法名全局共享**：新增 trait 必须避开 51 个已有名字（§4.2）。
-- **`const` 不参与类型键**：字面量能直接当 `CStrOps` 接收者，因为该 trait 没有写接收者的方法。
+- **`const` 不参与类型键**：字面量能直接当 `CharStr` 接收者，因为该 trait 没有写接收者的方法。
 - **`num.to_str` 静默截断**：容量不够得到短文本，不报错。
 - **容器不在这里**：本包的自有类型是 `Arena` / `Test` 与资源句柄 `File` / `FileDesc` / `Dir` / `LocaleHandle` / `Timer`（`Socket` 为别名）；泛型容器是编译器的内置层，
   需要编译器能找到 `lib/std/Vec.h.ct`（见 §5.4），找不到时报 `use of an undeclared variable`。
@@ -453,8 +453,8 @@ main.ct:4:1: error: no method 'length' for type 'char *'
 | `0.8.0` | 未发布（开发里程碑，未打 tag） | **P4 fs 补全**：路径方法补 10 个；`read_file`/`write_file` → `read`/`write`；新增 `Dir`（`own` 工厂 + 字符串工厂）与 `Stat` 字段镜像；`scan_directory` 流式回调；`resolve_path` 为词法绝对路径。 |
 | `0.7.0` | 未发布（开发里程碑，未打 tag） | **P3 stdio 资源化**：`IoFile` 退役，`File` / `FileDesc` 改为 CT struct + `use Drop`；补全 seek/tell/EOF/错误位/字符与行 IO/flush/adopt；方法调用改 `->`；`own` 只认自由工厂。 |
 | `0.6.0` | 未发布（开发里程碑，未打 tag） | **P2 五个新模块**：`std::env` / `std::process` / `std::errno` / `std::locale` / `std::wchar`；`LocaleHandle` 用 `own` + `Drop`，`apply` 明确为进程全局副作用。 |
-| `0.5.0` | 已打 `v0.5.0` | **P1 补齐**：`Char` 新增 7 个谓词；`CStrOps` 新增 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into`（`copy_to` 移除）；`Float` / `Real` 扩到完整 libm 方法族，七个生僻名改全称，`is_inf` → `is_infinite`，数学只保留方法形态；新增 `std::search`。 |
-| `0.4.0` | 已打 `v0.4.0` | **破坏性改名与删除**（P0）：`String` → `CStrOps`；`len` → `length`；`open` → `open_file`；`to_upper` / `to_lower` → `uppercase` / `lowercase`；删除 `to_string`（只剩 `to_str(out, cap)`）与 `std::io` 的变参 `printf`（`Io.h.ct` 移除，输出改用 `std::io::Stdout`）。 |
+| `0.5.0` | 已打 `v0.5.0` | **P1 补齐**：`Char` 新增 7 个谓词；`CStrOps`（现 `CharStr`）新增 `copy_from` / `move_from` / `fill` / `compare_with` / `find_byte` / `compare_prefix` / `split_into`（`copy_to` 移除）；`Float` / `Real` 扩到完整 libm 方法族，七个生僻名改全称，`is_inf` → `is_infinite`，数学只保留方法形态；新增 `std::search`。 |
+| `0.4.0` | 已打 `v0.4.0` | **破坏性改名与删除**（P0）：`String` → `CStrOps`（`0.20.0` 起为 `CharStr`）；`len` → `length`；`open` → `open_file`；`to_upper` / `to_lower` → `uppercase` / `lowercase`；删除 `to_string`（只剩 `to_str(out, cap)`）与 `std::io` 的变参 `printf`（`Io.h.ct` 移除，输出改用 `std::io::Stdout`）。 |
 | `0.3.2` | 已打 `v0.3.2` | 包身份与许可统一：`publisher` 改为 `std`，许可改为 MIT（`LICENSE`、README 与各单元头部表述一并更新）；`ns-root` 与 API 无变化。 |
 | `0.3.1` | 已打 `v0.3.1` | 文档修正：`0.3.0` 打 tag 后仍写着「未打 tag」，本版订正该状态并同步 `ct.pkg` 版本号；API 无变化（包摘要因文档与版本号变动而更新）。 |
 | `0.3.0` | 已打 `v0.3.0` | **三处破坏性变更 + 四个新接口**（见 §10.1）：删除 `std::vec` / `std::map`（`Vec` / `Map` 已是编译器内置类型，重名会让消费者撞 `'Vec' is a built-in type and cannot be redeclared`）；全量改名到 `snake_case`（`char *` 宿主 25 个方法及其他宿主的同名方法）；`fs.read_file` 对目录返回 `-1`；新增 `mkdir` / `remove` / `rename` 与 `FsEnv.get_last_error`；`requires` 抬到 `ct >= 0.30.0`。 |

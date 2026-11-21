@@ -33,7 +33,7 @@
 
 ### P0 — 改名与删除（`0.4.0`）
 
-- 交付：`String` → `CStrOps`；`len` → `length`；`open` → `open_file`；删除 `to_string`（只留 `to_str`）；`to_upper`/`to_lower` → `uppercase`/`lowercase`；删除 `printf`。
+- 交付：`String` → `CStrOps`（`0.20.0` 起为 `CharStr`）；`len` → `length`；`open` → `open_file`；删除 `to_string`（只留 `to_str`）；`to_upper`/`to_lower` → `uppercase`/`lowercase`；删除 `printf`。
 - 验收：旧名零命中；`printf` 相关样例改为 `to_str`/`concat` + `write` 并跑通。
 
 ### P1 — `str` / `num` / `math`（`0.5.0`）

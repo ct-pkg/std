@@ -5,7 +5,7 @@
    std::fs has no function form: the receiver is the path, so every call is
    `path.method(...)`. */
 import std::fs::Fs;
-import std::str::String;
+import std::str::CharStr;
 import std::test::Test;
 
 /* POSIX errno values used by the checks below. A `.ct` file may not include
