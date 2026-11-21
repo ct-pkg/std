@@ -1,6 +1,7 @@
 ---
 id: 0005
 status: deferred
+reviewed: 2026-11-21
 ---
 
 # Issue 0005：内建 trait 显性化与 `lib/std` → `lib/core` 的包内接应
@@ -56,3 +57,19 @@ status: deferred
 
 - 规划与清单：[builtin-layer-boundary.md](../planning/builtin-layer-boundary.md)
 - 相邻改名：issue [0004](0004-str-unit-name-charstr.md)（`std::str::String` → `CharStr`，落 `0.20.0`）
+
+
+## 6. 复核（REQ，2026-11-21）
+
+触发条件 ①（内建 trait 声明收归内建层）与 ②（`lib/std` → `lib/core`）都没有收到语言仓的
+合并回执；本仓仍按现状保留 `lib/std` 路径，不预写 `lib/core`。
+
+| 检查 | 当前结果 |
+| --- | --- |
+| 语言仓合并回执 | 无；本仓不越界读取语言仓 |
+| `lib/std` 路径引用 | 9 处，仍全部在 `README.md` / `std/README.md`，与 §4.1 清单一致 |
+| `Drop` 指针落点 | 仍待语言仓声明路径确定后补；当前不改写 |
+| 本仓可独立完成的动作 | 无；任务一已核查，任务二/三都依赖触发条件 |
+
+结论：**保持 `deferred`**，不下调为“已完成”。下次复核：2026-12-21，或收到语言仓合并通知时。
+触发后再按 §3 的 6 步执行；在触发前不新增 `lib/core` 预写、不复制 `Drop` 声明。

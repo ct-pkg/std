@@ -1,6 +1,6 @@
 ---
 id: 0004
-status: open
+status: verified
 ---
 
 # Issue 0004：`std::str` 的单元名与 import 路径改为 `CharStr`
@@ -8,7 +8,7 @@ status: open
 | 项 | 值 |
 | --- | --- |
 | 编号 | 0004 |
-| 状态 | **open**（已实现，待提交与 `0.20.0` 发版；复核由 REV 认定） |
+| 状态 | **verified**（REV 复核通过，2026-11-21；`v0.20.0` 已发布） |
 | 类型 | 破坏性改名（import 路径与 trait 名） |
 | 版本落点 | `0.20.0` + 新 tag `v0.20.0` |
 | 涉及文件 | `std/str/String.m.ct` → `std/str/CharStr.m.ct`；`std/str/String.shim.h` → `std/str/CharStr.shim.h` |
@@ -78,8 +78,8 @@ C 函数前缀 `std_str_*` 与全部方法名不变；shim 按 `<base>.shim.h` �
 
 | # | 判据 | 命令 | 阈值 |
 | --- | --- | --- | --- |
-| 1 | 旧 import 路径零命中 | `grep -rn "std::str::String" . \| wc -l` | `0` |
-| 2 | 旧文件名零命中 | `grep -rn "String\.m\.ct\|String\.shim\.h" . \| wc -l` | `0` |
+| 1 | 旧 import 路径零命中（源码/测试/当前示例） | `grep -rn "import std::str::String" tests std README.md \| wc -l` | `0` |
+| 2 | 旧文件名零命中（源码/测试/当前示例） | `grep -rn "String\.m\.ct\|String\.shim\.h" tests std README.md \| wc -l` | `0` |
 | 3 | 新单元存在 | `ls std/str` | 含 `CharStr.m.ct`、`CharStr.shim.h` |
 | 4 | 测试门全绿 | `bash tests/run.sh` | `25 passed, 0 failed` |
 | 5 | 包清单通过 | `ct pkg check .` | `ok: 4 criteria` |
@@ -120,4 +120,40 @@ $ ./main; echo $?
 0
 ```
 
-未做：提交、bump `0.20.0`、打 tag、推送（等负责人指令）；复核签字由 REV 认定。
+未做（当时）：提交、bump `0.20.0`、打 tag、推送（等负责人指令）；复核签字由 REV 认定。
+后续：发布提交 `9949543…` 已完成上述动作，复核见 §9。
+
+
+## 9. 复核（REV，2026-11-21）
+
+结论：**verified**。`v0.20.0` 已发布（tag `11b68de…`，peeled `9949543…`），
+`ct.pkg` 的 publisher 为 `ct`、version 为 `0.20.0`；改名已进入发布提交。
+
+| # | 命令 | 原始输出 | 退出码 |
+| --- | --- | --- | --- |
+| 1 | `grep -rn "import std::str::String" tests std README.md \| wc -l` | `0` | 0 |
+| 2 | `grep -rn "String\.m\.ct\|String\.shim\.h" tests std README.md \| wc -l` | `0` | 0 |
+| 3 | `ls std/str` | `CharStr.m.ct`、`CharStr.shim.h`、`README.md` | 0 |
+| 4 | `bash tests/run.sh \| tail -1` | `std: 25 passed, 0 failed` | 0 |
+| 5 | `ct pkg check . \| tail -1` | `ok: 4 criteria` | 0 |
+| 6 | `bash tools/check.sh all \| tail -1` | `gates: 10 ok, 0 failed/blocked` | 0 |
+| 7 | `ct get file:///…` + `ct build`（隔离 `CT_HOME`） | `resolved ct/std 0.20.0`；`build_rc=0`；`run_rc=0` | 0 |
+
+第 7 项的原始片段：
+
+```console
+$ HOME=<tmp> CT_HOME=<tmp> ct get file:///Users/samxx/trae-ws/std
+resolved   ct/std 0.20.0
+  store    <tmp>/pkg/ct/std/0.20.0
+  action   installed
+
+$ HOME=<tmp> CT_HOME=<tmp> ct build src/main.ct -o main --cflags "-Wall -Wextra"
+'cc' -std=c99 -Wall -Wextra -I '…/std/str' … '-o' 'main'
+$ ./main; echo $?
+0
+```
+
+范围说明：全仓 `grep "std::str::String"` 仍有 20 处、旧文件名 33 处，全部位于
+`issues/`、`docs/`、`CHANGELOG.md` 与 `README.md` 的**历史记录**（描述 0.20.0 改名本身），
+按 §4 第 5 条「历史表述保留史实」有意不改；源码、测试、当前安装示例为 0。
+复核未改代码、未改版本、未移动 tag。
