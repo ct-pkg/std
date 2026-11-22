@@ -1,5 +1,5 @@
-applies-to: v0.12.0
+applies-to: v0.20.1
 
 # 需求池 / 技术池
 
-当前无 open 池条目；PH-8 的未完成项在 phase 卡片任务清单，不另立池条目。
+当前无 open 池条目；`v0-PH-16` 已收口，0005 为跨仓 `deferred`，不另立池条目。

@@ -1,4 +1,4 @@
-applies-to: v0.12.0
+applies-to: v0.20.1
 
 # Session map
 
@@ -28,9 +28,12 @@ applies-to: v0.12.0
 | `v0-PH-14-dev` | DEV | 实现 PH-14 任务、先红后绿 | `v0-PH-14` |
 | `v0-PH-14-verify` | VERIFY | PH-14 红证与退出判据 | `v0-PH-14` |
 | `v0-PH-14-review` | REVIEW | PH-14 评审 | `v0-PH-14` |
+| `v0-PH-16-dev` | DEV | 实现 PH-16 任务、先红后绿 | `v0-PH-16` |
+| `v0-PH-16-verify` | VERIFY | PH-16 红证与退出判据 | `v0-PH-16` |
+| `v0-PH-16-review` | REVIEW | PH-16 评审 | `v0-PH-16` |
 
 ## 规则
 
 - phase 对话命名：`v<M>-PH-<n>-dev` / `-verify` / `-review`；草案（`draft-*`）不得进入本表。
-- 当前可执行 phase：`v0-PH-8`。草案卡不排期、不派工（PN-14）。
+- 当前无待执行 phase：`v0-PH-8`–`v0-PH-16` 已收口；`v0-PH-15` 空号（D-004）。草案卡不排期、不派工（PN-14）。
 - 角色的读写边界见 `AGENTS.md` 生成块 §3 与 §5；`lead` 不写实现代码。
